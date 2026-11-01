@@ -11,8 +11,8 @@
 //   - empty: one's own 建议要素 · 开始策划您的收藏 (Cosmos shows suggested elements under it), anyone else's
 //     无元素 · 该集合为空; no similar ones: 没有相似元素 · 稍后再来查看。
 // The values of ClusterBodyPager's constants are read in order (64, 280, 6, 96, 56, 1000, 16) and matched to their
-// names by how they are used: near. Not here yet: pulling down at the top of the similar page to go back, the header's
-// 更多 menu (edit, pin, delete, …), the collaborators sheet.
+// names by how they are used: near. The header's 更多 opens the collection's menu (ClusterMenuSheet). Not here yet:
+// pulling down at the top of the similar page to go back, the collaborators sheet.
 import { useFocusEffect, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, Text, useWindowDimensions, View } from 'react-native';
@@ -25,7 +25,8 @@ import type { Collection } from '../../components/clusters/CollectionCard';
 import { UserClusterHeader, type ClusterDetail } from '../../components/clusters/UserClusterHeader';
 import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
 import { HEADER_CONTENT_HEIGHT } from '../../components/home/HomeHeader';
-import { ChevronLeftIcon } from '../../components/icons';
+import { ChevronLeftIcon, MoreIcon } from '../../components/icons';
+import { useClusterMenuStore } from '../../components/sheets/ClusterMenuSheet';
 import { useCreateClusterStore } from '../../components/sheets/CreateClusterSheet';
 import { SIMILAR_PAGE_SIZE } from '../../hooks/useSimilarElements';
 import { usePagedList } from '../../hooks/usePagedList';
@@ -187,6 +188,17 @@ export function UserClusterScreen() {
         <Pressable style={styles.headerButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="返回" hitSlop={4}>
           <ChevronLeftIcon color={theme.colors.primary} />
         </Pressable>
+        {cluster ? (
+          <Pressable
+            style={styles.headerButton}
+            onPress={() => useClusterMenuStore.getState().open(cluster, parent, { onChanged: () => { void load(); }, onGone: () => navigation.goBack() })}
+            accessibilityRole="button"
+            accessibilityLabel="更多"
+            hitSlop={4}
+          >
+            <MoreIcon color={theme.colors.primary} />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -198,7 +210,8 @@ const styles = StyleSheet.create((theme) => ({
   center: { flex: 1, alignItems: 'center', paddingHorizontal: theme.spacing.md },
   failed: { ...theme.typography.regular, color: theme.colors.tertiary, marginTop: theme.spacing.xxxxl },
   header: {
-    position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.md,
+    position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
     backgroundColor: theme.colors.background,
   },
   headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
