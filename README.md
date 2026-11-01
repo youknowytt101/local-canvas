@@ -2,6 +2,8 @@
 
 一个灵感收藏 App 的原生前端（Expo SDK 57 + React Native 0.86）。它不带服务端：连接同一 Wi-Fi 里电脑上运行的配套服务（cosmos-lite，不在这个仓库里），图片、搜索、AI 分析都在电脑上。
 
+**目标**：在 GitHub 上编出能装到 iPhone 的 ipa（不签名，用 Sideloadly 装）；界面和交互逐页照 Cosmos 原生重写，安卓用同一套代码。
+
 ## 装到 iPhone（不需要 Mac，不需要付费开发者账号）
 
 1. 打开本仓库的 **Actions → iOS ipa**，选最新一次成功的运行，下载产物：

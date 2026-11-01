@@ -1,5 +1,13 @@
 本地画布：cosmos-lite 的原生前端（Expo / React Native），照 Cosmos 2.33 安卓包的技术栈和源码移植，连同一 Wi-Fi 里电脑上的 cosmos-lite 服务。
 
+## 核心目标
+
+1. **最终产物是 iOS 的 ipa**：在这个仓库的 GitHub Actions 上编（不签名），用 Sideloadly + 免费 Apple ID 装到 iPhone。打包链路坏了比任何页面都优先修。
+2. **原生重写、和 Cosmos 一致**：页面、组件、数值、文案、动效照 Cosmos 2.33 的源码做；用户自己定过的偏离照旧保留（记在 cosmos-lite 的 README“界面”一节和差距表 ⑳）；照不了的写明“近似”。
+3. **服务端不换**：数据、搜索、AI 都在电脑上的 cosmos-lite（GraphQL + 令牌登录 + 局域网访问）；那边的网页前端只修 bug，新功能只做在这里。安卓是同一套代码，顺带。
+
+进度按 cosmos-lite `HANDOFF.md` 的 6.140 起记：0 地基 → 1 导航外壳 → 2 首页 → 3 查看器 → 4 保存和收藏夹 → 5 搜索 → 6 添加和上传 → 7 画布 → 8 探索 / 商城 / 活动 / 设置 / 引导 → 9 正式版。
+
 ## 规矩
 
 - **技术栈照 Cosmos，不照 Expo 模板**：导航是 React Navigation（RootNavigator → MainNavigator → BottomTabNavigator，每个标签一个原生页面栈，底部胶囊 DynamicBar 画在最外层），不是 Expo Router；样式用 react-native-unistyles 3；状态用 zustand；视频用 react-native-video 7；存储用 react-native-mmkv 4 + expo-secure-store。
