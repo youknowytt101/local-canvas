@@ -59,6 +59,26 @@ export function PlusIcon({ color, size = 24, strokeWidth }: IconProps) {
   );
 }
 
+export function BellIcon({ color, size = 24, strokeWidth }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M15.25 17.25C15.25 19.18 13.79 20.75 12 20.75C10.21 20.75 8.75 19.18 8.75 17.25" />
+      <Path {...line(color, strokeWidth)} d="M6 9.25V9.98C6 11.29 5.55 12.56 4.74 13.58L4 14.5V17H20V14.5L19.26 13.58C18.45 12.56 18 11.29 18 9.98V9.25C18 5.94 15.31 3.25 12 3.25C8.69 3.25 6 5.94 6 9.25Z" />
+    </Svg>
+  );
+}
+
+// the home header's logo: six dots in place of Cosmos' wordmark (the user's choice, cosmos-lite HANDOFF 6.59)
+export function SixDotsIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {[[8.5, 5.5], [15.5, 5.5], [8.5, 12], [15.5, 12], [8.5, 18.5], [15.5, 18.5]].map(([cx, cy]) => (
+        <Circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={1.9} fill={color} />
+      ))}
+    </Svg>
+  );
+}
+
 export function UserRound({ color, size = 24, strokeWidth }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

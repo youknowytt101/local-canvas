@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { get } from '../lib/api';
 import { ApiError, hasSession, signOut } from '../lib/auth';
+import { startHub, stopHub } from '../lib/hub';
 import { serverUrl, setServerUrl } from '../lib/server';
 
 export type Me = { id: string; username: string; fullName?: string; avatarUrl?: string | null; hasCompletedOnboarding?: boolean };
@@ -28,6 +29,7 @@ export const useSessionStore = create<SessionState>((set, getState) => ({
     try {
       const me = await get<Me>('/api/me');
       set({ phase: 'main', me, offline: false });
+      void startHub(); // impressions go over it (lib/impressions.ts)
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) set({ phase: 'login', me: null });
       else set({ phase: 'main', offline: true });
@@ -37,10 +39,12 @@ export const useSessionStore = create<SessionState>((set, getState) => ({
     await getState().start();
   },
   async signOut() {
+    await stopHub();
     await signOut();
     set({ phase: 'login', me: null });
   },
   changeServer() {
+    void stopHub();
     setServerUrl(null);
     set({ phase: 'server', me: null });
   },
