@@ -1,25 +1,68 @@
 {
   "expo": {
-    "name": "local-canvas",
+    "name": "本地画布",
     "slug": "local-canvas",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "scheme": "localcanvas",
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "io.github.youknowytt101.localcanvas",
+      "supportsTablet": false,
+      "infoPlist": {
+        "CFBundleDevelopmentRegion": "zh_CN",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        },
+        "NSLocalNetworkUsageDescription": "要连接同一 Wi-Fi 里电脑上的服务。",
+        "NSBonjourServices": ["_expo._tcp"],
+        "NSPhotoLibraryAddUsageDescription": "把图片存到相册。"
+      }
     },
     "android": {
+      "package": "io.github.youknowytt101.localcanvas",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#141414",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      "expo-image",
+      "expo-secure-store",
+      "expo-font",
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120,
+          "backgroundColor": "#F7F5F3",
+          "dark": {
+            "image": "./assets/splash-icon-dark.png",
+            "backgroundColor": "#0D0D0D"
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "选择相册里的图片和视频上传。",
+          "cameraPermission": "拍照或录像后直接上传。",
+          "microphonePermission": "录像时一起录声音。"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ]
   }
 }
