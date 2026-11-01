@@ -1,0 +1,68 @@
+// The tabs' own stacks (Cosmos' HomeNavigator 3389, ExploreNavigator 3188, ShopNavigator 3471, ProfileNavigator 3254)
+// and search's and settings' (SearchNavigator 3495, SettingsNavigator 2638): native stacks without headers, each
+// starting at its root screen. Cosmos also puts the viewer, the canvas (fading), collections and profiles on each of
+// them; those screens are added in their steps.
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ExploreScreen } from '../screens/ExploreScreen';
+import { HomeScreen } from '../screens/HomeScreen';
+import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { SearchScreen } from '../screens/SearchScreen';
+import { SettingsScreen } from '../screens/settings/SettingsScreen';
+import { ShopScreen } from '../screens/ShopScreen';
+import { Routes } from './routes';
+
+const screenOptions = { headerShown: false } as const;
+
+const HomeStack = createNativeStackNavigator();
+export function HomeNavigator() {
+  return (
+    <HomeStack.Navigator initialRouteName={Routes.HOME_ROOT} screenOptions={screenOptions}>
+      <HomeStack.Screen name={Routes.HOME_ROOT} component={HomeScreen} />
+    </HomeStack.Navigator>
+  );
+}
+
+const ExploreStack = createNativeStackNavigator();
+export function ExploreNavigator() {
+  return (
+    <ExploreStack.Navigator initialRouteName={Routes.EXPLORE_ROOT} screenOptions={screenOptions}>
+      <ExploreStack.Screen name={Routes.EXPLORE_ROOT} component={ExploreScreen} />
+    </ExploreStack.Navigator>
+  );
+}
+
+const ShopStack = createNativeStackNavigator();
+export function ShopNavigator() {
+  return (
+    <ShopStack.Navigator initialRouteName={Routes.SHOP_ROOT} screenOptions={screenOptions}>
+      <ShopStack.Screen name={Routes.SHOP_ROOT} component={ShopScreen} />
+    </ShopStack.Navigator>
+  );
+}
+
+const ProfileStack = createNativeStackNavigator();
+export function ProfileNavigator() {
+  return (
+    <ProfileStack.Navigator initialRouteName={Routes.PROFILE_ROOT} screenOptions={screenOptions}>
+      <ProfileStack.Screen name={Routes.PROFILE_ROOT} component={ProfileScreen} />
+    </ProfileStack.Navigator>
+  );
+}
+
+const SearchStack = createNativeStackNavigator();
+export function SearchNavigator() {
+  return (
+    <SearchStack.Navigator initialRouteName={Routes.SEARCH_ROOT} screenOptions={screenOptions}>
+      <SearchStack.Screen name={Routes.SEARCH_ROOT} component={SearchScreen} />
+    </SearchStack.Navigator>
+  );
+}
+
+const SettingsStack = createNativeStackNavigator();
+export function SettingsNavigator() {
+  return (
+    <SettingsStack.Navigator initialRouteName={Routes.SETTINGS_ROOT} screenOptions={screenOptions}>
+      <SettingsStack.Screen name={Routes.SETTINGS_ROOT} component={SettingsScreen} />
+    </SettingsStack.Navigator>
+  );
+}
