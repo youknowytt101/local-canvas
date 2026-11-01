@@ -9,11 +9,10 @@
 //   - useTrackElementView: the element on screen is being viewed while the viewer is focused
 //   - a similar one opens a viewer of the similar list on top (a "rabbit hole"); from the second one on, the header's
 //     cross closes them all at once (isInRabbitHole: the screen under is a viewer too)
-// 保存 opens the save sheet (MoveSheet). For now 更多 (ElementMenuSheet) and the connections sheet come later in step 4; 分享 opens the system's share with the element's address on the computer (Cosmos opens its
+// 保存 opens the save sheet (MoveSheet), 更多 the element menu (ElementMenuSheet); the connections sheet comes later in step 4; 分享 opens the system's share with the element's address on the computer (Cosmos opens its
 // ShareElementScreen).
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useFocusEffect, useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
-import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, useWindowDimensions, View, type ViewToken } from 'react-native';
@@ -22,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { BAR_BOTTOM_OFFSET, TAB_BAR_HEIGHT_DEFAULT } from '../../components/bar/constants';
 import { ElementCarousel } from '../../components/elements/ElementCarousel';
+import { useElementMenuStore } from '../../components/sheets/ElementMenuSheet';
 import { ElementTile } from '../../components/elements/ElementTile';
 import { ViewerSourceContext } from '../../components/elements/viewerContext';
 import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
@@ -106,7 +106,7 @@ export function ElementsViewerScreen() {
       viewerId, mode, saved,
       onSave: () => useMoveSheetStore.getState().open(element),
       onShare: () => { void Share.share({ message: `${serverUrl()}/e/${element.id}` }); },
-      onMore: () => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); },
+      onMore: () => useElementMenuStore.getState().open(element, source),
       onScrollToTop: scrollToTop,
     });
   }, [focused, element?.id, mode, saved]); // eslint-disable-line react-hooks/exhaustive-deps
