@@ -176,7 +176,7 @@ export function ProfileScreen() {
               collections={collections}
               listRef={clusterList}
               onScroll={onScroll[1]}
-              onOpen={() => undefined}
+              onOpen={(c) => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_CLUSTER, params: { clusterId: c.id } } })}
               onCreate={() => useCreateClusterStore.getState().open(() => { void loadCollections(); void loadProfile(); })}
             />
           </View>

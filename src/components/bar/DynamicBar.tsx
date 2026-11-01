@@ -23,8 +23,10 @@ import {
   GLOBAL_SEARCH_ACTION_SIZE, GLOBAL_SEARCH_BAR_HEIGHT, GLOBAL_SEARCH_HORIZONTAL_INSET, GLOBAL_SEARCH_KEYBOARD_HORIZONTAL_INSET,
   GLOBAL_SEARCH_MORPH_EXIT_SPRING_CONFIG, GLOBAL_SEARCH_MORPH_SPRING_CONFIG, TAB_BAR_ACTION_GAP, TAB_BAR_HOME_HEIGHT,
   TAB_BAR_ELEMENT_ACTION_BAR_WIDTH, TAB_BAR_ELEMENT_SCROLL_TO_TOP_SIZE, TAB_BAR_HEIGHT_DEFAULT, TAB_BAR_SEARCH_ACTION_SIZE, TAB_BAR_SIZE_SPRING_CONFIG, getEdgeToEdgeBarWidth, getGlobalSearchBarWidth,
-  getGlobalSearchKeyboardShift, type BarContent,
+  getGlobalSearchKeyboardShift, TAB_BAR_CLUSTER_HEIGHT, TAB_BAR_CLUSTER_SEE_SIMILAR_HEIGHT, TAB_BAR_CLUSTER_SEE_SIMILAR_WIDTH,
+  TAB_BAR_CLUSTER_USER_WIDTH, type BarContent,
 } from './constants';
+import { ClusterSeeSimilarTabBarContent, ClusterTabBarContent } from './ClusterTabBarContent';
 import { DefaultTabsContent } from './DefaultTabsContent';
 import { DynamicBarSearchAction } from './DynamicBarSearchAction';
 import { ElementActionTabBarContent, ElementSideActions, ScrollToTopTabBarContent } from './ElementActionTabBarContent';
@@ -37,6 +39,15 @@ type Targets = { contentIndex: number; width: number; height: number; translateX
 // half of it (getDefaultBarOffsetX); search the same with the search sizes.
 function getBarTargets(type: BarContent, isHidden: boolean, windowWidth: number): Targets {
   // the element viewer: the 162 wide 保存, or the round scroll-to-top; the accessory goes
+  // a collection: its four actions, or 看相似 on someone else's; the accessory goes
+  if (type === 'cluster' || type === 'cluster-see-similar') {
+    const mine = type === 'cluster';
+    return {
+      contentIndex: BAR_CONTENT_INDEX[type], width: mine ? TAB_BAR_CLUSTER_USER_WIDTH : TAB_BAR_CLUSTER_SEE_SIMILAR_WIDTH,
+      height: mine ? TAB_BAR_CLUSTER_HEIGHT : TAB_BAR_CLUSTER_SEE_SIMILAR_HEIGHT, translateX: 0, accessorySize: TAB_BAR_SEARCH_ACTION_SIZE,
+      visibility: isHidden ? 0 : 1, accessoryVisibility: 0,
+    };
+  }
   if (type === 'element' || type === 'scroll-to-top') {
     const width = type === 'element' ? TAB_BAR_ELEMENT_ACTION_BAR_WIDTH : TAB_BAR_ELEMENT_SCROLL_TO_TOP_SIZE;
     return {
@@ -156,6 +167,8 @@ export function DynamicBar() {
             <GlobalSearchTabBarContent activeContentIndex={activeContentIndex} contentTransition={contentTransition} />
             <ElementActionTabBarContent activeContentIndex={activeContentIndex} contentTransition={contentTransition} />
             <ScrollToTopTabBarContent activeContentIndex={activeContentIndex} contentTransition={contentTransition} />
+            <ClusterTabBarContent activeContentIndex={activeContentIndex} contentTransition={contentTransition} />
+            <ClusterSeeSimilarTabBarContent activeContentIndex={activeContentIndex} contentTransition={contentTransition} />
           </View>
           <View style={styles.innerBorder} />
         </Animated.View>

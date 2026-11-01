@@ -43,8 +43,13 @@ export const BAR_HIDDEN_SCREENS = new Set([
 ]);
 
 // BAR_CONTENT_INDEX: the cross-fade interpolates between these numbers (the contents built so far; the others —
-// message 2, cluster 4, organize 5, profile elements 6, cluster-see-similar 8 — come with their screens)
-export const BAR_CONTENT_INDEX = { default: 0, 'global-search': 1, element: 3, 'scroll-to-top': 7 } as const;
+// message 2, organize 5, profile elements 6 — come with their screens)
+export const BAR_CONTENT_INDEX = { default: 0, 'global-search': 1, element: 3, cluster: 4, 'scroll-to-top': 7, 'cluster-see-similar': 8 } as const;
+// a collection's bar (UserClusterActionTabBarContent: 整理 / 添加 / 相似 / 分享) and someone else's (看相似)
+export const TAB_BAR_CLUSTER_USER_WIDTH = 280;
+export const TAB_BAR_CLUSTER_HEIGHT = 60;
+export const TAB_BAR_CLUSTER_SEE_SIMILAR_WIDTH = 156;
+export const TAB_BAR_CLUSTER_SEE_SIMILAR_HEIGHT = 54;
 export type BarContent = keyof typeof BAR_CONTENT_INDEX;
 
 // dynamicBarLayoutTs1 (module 2206, worklet source): the pill beside a round action of `actionSize`, `actionGap` apart,

@@ -146,3 +146,32 @@ export function UserRound({ color, size = 24, strokeWidth }: IconProps) {
     </Svg>
   );
 }
+
+// Cosmos' OrganizeIcon (components/OrganizeIcon.js)
+export function OrganizeIcon({ color, size = 24, strokeWidth }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M6 4H18M4 7.5H20" />
+      <Path {...line(color, strokeWidth)} d="M20.57 12.95C20.72 12.28 20.79 11.95 20.7 11.69C20.63 11.46 20.47 11.26 20.26 11.14C20.03 11 19.69 11 19.01 11H4.99C4.31 11 3.97 11 3.74 11.14C3.53 11.26 3.37 11.46 3.3 11.69C3.21 11.95 3.28 12.28 3.43 12.95L4.16 16.24C4.46 17.58 4.61 18.25 4.97 18.75C5.29 19.2 5.72 19.54 6.22 19.76C6.79 20 7.48 20 8.85 20H15.15C16.52 20 17.21 20 17.78 19.76C18.28 19.54 18.71 19.2 19.03 18.75C19.39 18.25 19.54 17.58 19.84 16.24L20.57 12.95Z" />
+    </Svg>
+  );
+}
+
+// Cosmos' MagicSearchIcon (the collection's 相似): a filled spark over a magnifier
+export function MagicSearchIcon({ color, size = 24, strokeWidth }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path fill={color} d="M16.41 2.48C16.34 2.26 16.14 2.1 15.9 2.1C15.66 2.1 15.46 2.26 15.39 2.48C14.78 4.49 14.29 4.98 12.28 5.59C12.06 5.66 11.9 5.86 11.9 6.1C11.9 6.34 12.06 6.54 12.28 6.61C14.29 7.22 14.78 7.71 15.39 9.72C15.46 9.94 15.66 10.1 15.9 10.1C16.14 10.1 16.34 9.94 16.41 9.72C17.02 7.71 17.51 7.22 19.52 6.61C19.74 6.54 19.9 6.34 19.9 6.1C19.9 5.86 19.74 5.66 19.52 5.59C17.51 4.98 17.02 4.49 16.41 2.48Z" />
+      <Path {...line(color, strokeWidth)} d="M20 20L16.5 16.5M10 3.04C6.07 3.41 3 6.72 3 10.75C3 15.03 6.47 18.5 10.75 18.5C14.6 18.5 17.8 15.69 18.4 12" />
+    </Svg>
+  );
+}
+
+// Cosmos' ChevronDownIcon (ClusterSeeSimilarTabBarContent)
+export function ChevronDownIcon({ color, size = 24, strokeWidth }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M4.25 9.25L12 17L19.75 9.25" />
+    </Svg>
+  );
+}
