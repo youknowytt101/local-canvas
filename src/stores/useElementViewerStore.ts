@@ -4,6 +4,7 @@
 // (useViewerPagination: when 5 or fewer are left and there are more).
 import { create } from 'zustand';
 import type { Element } from '../lib/elements';
+import { onElementSaved } from './useMoveSheetStore';
 
 export type ViewerList = {
   elements: Element[];
@@ -20,6 +21,7 @@ type ViewerState = {
   setCurrentIndex: (viewerId: string, index: number) => void;
   appendElements: (viewerId: string, elements: Element[], hasMore: boolean) => void;
   closeViewer: (viewerId: string) => void;
+  patchElement: (elementId: string, patch: Partial<Element>) => void;
 };
 
 let seq = 0;
@@ -41,8 +43,16 @@ export const useElementViewerStore = create<ViewerState>((set) => ({
     const have = new Set(v.elements.map((e) => e.id));
     return { viewers: { ...s.viewers, [viewerId]: { ...v, elements: [...v.elements, ...elements.filter((e) => !have.has(e.id))], hasMore } } };
   }),
+  // an element changed (saved somewhere): every open viewer showing it
+  patchElement: (elementId, patch) => set((s) => ({
+    viewers: Object.fromEntries(Object.entries(s.viewers).map(([id, v]) => [id, v.elements.some((e) => e.id === elementId)
+      ? { ...v, elements: v.elements.map((e) => (e.id === elementId ? { ...e, ...patch } : e)) } : v])),
+  })),
   closeViewer: (viewerId) => set((s) => {
     const { [viewerId]: _gone, ...rest } = s.viewers;
     return { viewers: rest };
   }),
 }));
+
+// the save sheet saved or took out an element: the viewers showing it say so (已保存)
+onElementSaved((id, patch) => useElementViewerStore.getState().patchElement(id, patch));

@@ -9,8 +9,7 @@
 //   - useTrackElementView: the element on screen is being viewed while the viewer is focused
 //   - a similar one opens a viewer of the similar list on top (a "rabbit hole"); from the second one on, the header's
 //     cross closes them all at once (isInRabbitHole: the screen under is a viewer too)
-// For now: 保存 shows whether it is saved and the save sheet comes in step 4; 更多 (ElementMenuSheet) and the
-// connections sheet too; 分享 opens the system's share with the element's address on the computer (Cosmos opens its
+// 保存 opens the save sheet (MoveSheet). For now 更多 (ElementMenuSheet) and the connections sheet come later in step 4; 分享 opens the system's share with the element's address on the computer (Cosmos opens its
 // ShareElementScreen).
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useFocusEffect, useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
@@ -36,6 +35,7 @@ import { serverUrl } from '../../lib/server';
 import { Routes } from '../../navigation/routes';
 import { useBarStore } from '../../stores/useBarStore';
 import { useElementViewerStore } from '../../stores/useElementViewerStore';
+import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 
 const ELEMENT_VIEWER_HIDE_TAB_BAR_RATIO = 0.15;
 const HEADER_CONTENT_HEIGHT = 64;
@@ -104,7 +104,7 @@ export function ElementsViewerScreen() {
     if (!focused || !element) return;
     useBarStore.getState().setElementViewerBarState({
       viewerId, mode, saved,
-      onSave: () => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); },
+      onSave: () => useMoveSheetStore.getState().open(element),
       onShare: () => { void Share.share({ message: `${serverUrl()}/e/${element.id}` }); },
       onMore: () => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); },
       onScrollToTop: scrollToTop,

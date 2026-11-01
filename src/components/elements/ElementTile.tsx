@@ -7,7 +7,7 @@
 // Content filtering: a picture whose treatment is 'blur' is blurred under a veil saying what it is, with 查看
 // (cosmos-lite's ContentFilterPill: at least 32 high, a 16 corner, #00000066, white); 查看 shows it for this session.
 // The grid's tiles do not scale when pressed (scaleOnLongPress false: PlainPressableContainer); a long press gives a
-// light haptic (the save sheet it opens comes in step 4). Pressing opens the viewer (step 3).
+// light haptic and opens the save sheet (useElementMoveLongPress). Pressing opens the viewer.
 // Videos do not play in the grid (MasonryGrid passes allowVideoPlayback false to ElementMedia).
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -16,6 +16,7 @@ import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { StyleSheet } from 'react-native-unistyles';
 import { NSFW_VEIL, originalImageUrl, tileImageUrl, tileRatio, type Element } from '../../lib/elements';
+import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 
 const revealed = new Set<string>(); // 查看 pressed: shown as it is until the app is closed
 
@@ -78,7 +79,7 @@ export const ElementTile = memo(function ElementTile({ element, width, imageScal
   return (
     <Pressable
       onPress={() => onPress?.(element)}
-      onLongPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+      onLongPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); useMoveSheetStore.getState().open(element); }}
       accessibilityRole="button"
       accessibilityLabel={element.title || undefined}
     >

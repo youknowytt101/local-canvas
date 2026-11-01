@@ -6,6 +6,7 @@ import { DarkTheme, DefaultTheme, NavigationContainer, type NavigationState, typ
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useMemo } from 'react';
 import { useUnistyles } from 'react-native-unistyles';
+import { AppToast } from '../components/AppToast';
 import { DynamicBar } from '../components/bar/DynamicBar';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { ServerScreen } from '../screens/auth/ServerScreen';
@@ -52,6 +53,7 @@ export function RootNavigator() {
         {phase === 'main' ? <Stack.Screen name={Routes.MAIN} component={MainNavigator} /> : null}
       </Stack.Navigator>
       {phase === 'main' ? <DynamicBar /> : null}
+      <AppToast />
     </NavigationContainer>
   );
 }
