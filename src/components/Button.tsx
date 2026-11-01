@@ -31,7 +31,7 @@ export function Button({ text, onPress, variant = 'primary', size = 'regular', f
   const pressed = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const inactive = disabled || loading;
   // the text's colour is worked out here, not as a style variant: Unistyles did not repaint it when the variant
-  // changed on a mounted button (关注 → 正在关注 stayed white on white)
+  // changed on a mounted button (正在关注 → 关注 kept the dark text on the dark button)
   const textColor = disabled ? (variant === 'sheetFilled' ? theme.colors.tertiary : theme.colors.inverted) : variant === 'primary' ? theme.colors.inverted : variant === 'invertedPrimary' ? theme.colors.surfaceInverted : variant === 'destructive' ? theme.colors.alert : theme.colors.primary;
   return (
     <AnimatedPressable
