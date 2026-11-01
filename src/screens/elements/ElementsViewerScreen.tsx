@@ -96,7 +96,8 @@ export function ElementsViewerScreen() {
       const bar = useBarStore.getState();
       if (bar.elementViewerBarState?.viewerId !== viewerId) return;
       bar.setElementViewerBarState(null);
-      bar.setActiveState({ type: 'default' });
+      // the screen under it (a collection) may have set its own bar already
+      if (bar.activeState.type === 'element') bar.setActiveState({ type: 'default' });
     };
   }, [viewerId]));
   const saved = !!element?.isConnectedByUser;
@@ -106,7 +107,14 @@ export function ElementsViewerScreen() {
       viewerId, mode, saved,
       onSave: () => useMoveSheetStore.getState().open(element),
       onShare: () => { void Share.share({ message: `${serverUrl()}/e/${element.id}` }); },
-      onMore: () => useElementMenuStore.getState().open(element, source),
+      onMore: () => useElementMenuStore.getState().open(element, source, viewer?.remove ? {
+        target: viewer.remove,
+        onDone: () => {
+          viewer.onRemoved?.(element.id);
+          useElementViewerStore.getState().dropElement(viewerId, element.id);
+          navigation.goBack();
+        },
+      } : null),
       onScrollToTop: scrollToTop,
     });
   }, [focused, element?.id, mode, saved]); // eslint-disable-line react-hooks/exhaustive-deps

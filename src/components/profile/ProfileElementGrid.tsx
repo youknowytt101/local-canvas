@@ -39,6 +39,7 @@ export function ProfileElementGrid({ list, listRef, headerHeight, headerScrollMa
     openElementViewer(navigation, {
       elements: l.items, initialIndex: Math.max(0, l.items.findIndex((e) => e.id === el.id)), hasMore: !l.done,
       loadMore: () => listNow.current.loadMore(), userInteractionSource: 'ProfileOwn',
+      remove: { kind: 'profile' }, onRemoved: (id) => listNow.current.removeId(id),
     });
   }, [navigation]);
   const renderItem = useCallback(({ item }: { item: Element }) => (

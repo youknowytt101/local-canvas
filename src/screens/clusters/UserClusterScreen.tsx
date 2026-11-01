@@ -124,7 +124,8 @@ export function UserClusterScreen() {
       const b = useBarStore.getState();
       if (b.clusterBarState?.clusterId !== clusterId) return;
       b.setClusterBarState(null);
-      b.setActiveState({ type: 'default' });
+      // the screen pushed over it (the viewer) may have set its own bar already
+      if (b.activeState.type === 'cluster' || b.activeState.type === 'cluster-see-similar') b.setActiveState({ type: 'default' });
     };
   }, [cluster, mine, similarOn, clusterId, load, toggleSimilar]));
 
@@ -148,6 +149,7 @@ export function UserClusterScreen() {
             <ClusterElementGrid
               list={elements}
               source="CollectionOwn"
+              removeFrom={mine ? cluster.id : null}
               topInset={topInset}
               bottomInset={bottomInset}
               empty={mine ? { title: '建议要素', hint: '开始策划您的收藏' } : { title: '无元素', hint: '该集合为空' }}

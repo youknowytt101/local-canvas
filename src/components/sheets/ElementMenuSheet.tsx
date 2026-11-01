@@ -5,17 +5,22 @@
 //   - 分享通过 (useOpenElementShare): the system's share with that address (Cosmos opens its own share screen)
 //   - 不感兴趣 (useDislikeElement): POST /api/elements/dislike, toast 收到反馈
 // Not yet: 保存到相机胶卷 (needs a media-library module in the native build), 查看画布 (step 7), 添加来源 / 编辑来源,
-// 移除 / 删除 (with the profile and collection pages, where the viewer can be opened from them), 举报.
+// 举报, 删除 (All Elements is not here yet).
+//   - 移除 (useElementViewerRemoveAction), last and in the alert colour, for something one has (isConnectedByUser) opened
+//     from one's profile or a collection one may change: asked first (profile / cluster.removeElementsDescription,
+//     the web page's words), then taken out of it (POST /api/elements/connections disconnect), toast
+//     已从个人资料移除 / 已从收藏夹移除, and the viewer goes back. Near Cosmos: the question is the system's alert.
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
 import * as Clipboard from 'expo-clipboard';
 import { Fragment, type ReactNode } from 'react';
-import { Pressable, Share, Text, View } from 'react-native';
+import { Alert, Pressable, Share, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { create } from 'zustand';
 import { recordElementEvent } from '../../hooks/useTrackElementView';
-import { api } from '../../lib/api';
+import { api, get } from '../../lib/api';
 import type { Element } from '../../lib/elements';
+import type { RemoveTarget } from '../../stores/useElementViewerStore';
 import { serverUrl } from '../../lib/server';
 import { showToast } from '../../stores/useToastStore';
 import Svg, { Path } from 'react-native-svg';
@@ -23,25 +28,28 @@ import { ShareIcon } from '../icons';
 
 export const ELEMENT_MENU_SHEET = 'element-menu';
 
-type MenuState = { element: Element | null; source: string; open: (element: Element, source: string) => void };
+type RemoveAction = { target: RemoveTarget; onDone: () => void };
+type MenuState = { element: Element | null; source: string; remove: RemoveAction | null; open: (element: Element, source: string, remove?: RemoveAction | null) => void };
 export const useElementMenuStore = create<MenuState>((set) => ({
   element: null,
   source: 'Unspecified',
-  open: (element, source) => {
-    set({ element, source });
+  remove: null,
+  open: (element, source, remove) => {
+    set({ element, source, remove: remove ?? null });
     void TrueSheet.present(ELEMENT_MENU_SHEET).catch(() => undefined);
   },
 }));
 
 const elementLink = (el: Element) => `${serverUrl()}/e/${el.id}`;
 
-type Item = { label: string; icon: ReactNode; onPress: () => void | Promise<void> };
+type Item = { label: string; icon: ReactNode; onPress: () => void | Promise<void>; danger?: boolean };
 
 export function ElementMenuSheet() {
   const { theme } = useUnistyles();
   const insets = useSafeAreaInsets();
   const element = useElementMenuStore((s) => s.element);
   const source = useElementMenuStore((s) => s.source);
+  const remove = useElementMenuStore((s) => s.remove);
   const close = () => TrueSheet.dismiss(ELEMENT_MENU_SHEET).catch(() => undefined);
   const color = theme.colors.primary;
 
@@ -68,6 +76,29 @@ export function ElementMenuSheet() {
         },
       },
     ],
+    ...(remove && element.isConnectedByUser ? [[{
+      label: '移除', icon: <TrashIcon color={theme.colors.alert} />, danger: true,
+      onPress: async () => {
+        await close();
+        const fromProfile = remove.target.kind === 'profile';
+        Alert.alert('', fromProfile ? '这将从您的个人资料移除 1 个元素。' : '这将从该收藏夹移除 1 个元素。', [
+          { text: '取消', style: 'cancel' },
+          {
+            text: '移除', style: 'destructive',
+            onPress: () => void (async () => {
+              try {
+                const clusterId = remove.target.kind === 'cluster' ? remove.target.clusterId : (await get<{ id: string }>('/api/profile/cluster')).id;
+                await api('POST', '/api/elements/connections', { elementIds: [element.id], disconnect: [clusterId] });
+                remove.onDone();
+                showToast({ text: fromProfile ? '已从个人资料移除' : '已从收藏夹移除' });
+              } catch (e) {
+                showToast({ text: e instanceof Error ? e.message : '无法移除' });
+              }
+            })(),
+          },
+        ]);
+      },
+    }]] : []),
   ] : [];
 
   return (
@@ -80,7 +111,7 @@ export function ElementMenuSheet() {
               <Fragment key={item.label}>
                 {i > 0 ? <View style={styles.separator} /> : null}
                 <Pressable style={styles.item} onPress={() => void item.onPress()} accessibilityRole="button">
-                  <Text style={styles.label}>{item.label}</Text>
+                  <Text style={[styles.label, item.danger && { color: theme.colors.alert }]}>{item.label}</Text>
                   {item.icon}
                 </Pressable>
               </Fragment>
@@ -99,6 +130,14 @@ function LinkIcon({ color }: { color: string }) {
     <Svg width={24} height={24} viewBox="0 0 24 24">
       <Path {...iconLine(color)} d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
       <Path {...iconLine(color)} d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </Svg>
+  );
+}
+// Cosmos' TrashIcon (lucide's trash-2)
+function TrashIcon({ color }: { color: string }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24">
+      <Path {...iconLine(color)} d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
     </Svg>
   );
 }

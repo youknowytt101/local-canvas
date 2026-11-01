@@ -13,7 +13,12 @@ export type ViewerList = {
   hasMore: boolean;
   loadMore?: () => Promise<Element[] | null>; // the next elements, or null when there are none
   userInteractionSource: string;
+  // useElementViewerRemoveAction's source: the profile or a collection one may take things out of, and the list to
+  // tell when one is taken out
+  remove?: RemoveTarget;
+  onRemoved?: (elementId: string) => void;
 };
+export type RemoveTarget = { kind: 'profile' } | { kind: 'cluster'; clusterId: string };
 
 type ViewerState = {
   viewers: Record<string, ViewerList>;
@@ -22,6 +27,7 @@ type ViewerState = {
   appendElements: (viewerId: string, elements: Element[], hasMore: boolean) => void;
   closeViewer: (viewerId: string) => void;
   patchElement: (elementId: string, patch: Partial<Element>) => void;
+  dropElement: (viewerId: string, elementId: string) => void;
 };
 
 let seq = 0;
@@ -48,6 +54,10 @@ export const useElementViewerStore = create<ViewerState>((set) => ({
     viewers: Object.fromEntries(Object.entries(s.viewers).map(([id, v]) => [id, v.elements.some((e) => e.id === elementId)
       ? { ...v, elements: v.elements.map((e) => (e.id === elementId ? { ...e, ...patch } : e)) } : v])),
   })),
+  dropElement: (viewerId, elementId) => set((s) => {
+    const v = s.viewers[viewerId];
+    return v ? { viewers: { ...s.viewers, [viewerId]: { ...v, elements: v.elements.filter((e) => e.id !== elementId) } } } : s;
+  }),
   closeViewer: (viewerId) => set((s) => {
     const { [viewerId]: _gone, ...rest } = s.viewers;
     return { viewers: rest };

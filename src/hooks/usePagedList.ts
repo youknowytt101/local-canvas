@@ -47,5 +47,12 @@ export function usePagedList<T extends { id: string }>(path: string | null, page
 
   useEffect(() => { void load(true); }, [load]);
 
-  return { items, loading, refreshing, done, count, loadMore: () => load(false), refresh: () => load(true, true) };
+  // one taken out (removed from the profile / the collection)
+  const removeId = useCallback((id: string) => {
+    list.current = list.current.filter((e) => e.id !== id);
+    setItems(list.current);
+    setCount((n) => (n == null ? n : Math.max(0, n - 1)));
+  }, []);
+
+  return { items, loading, refreshing, done, count, loadMore: () => load(false), refresh: () => load(true, true), removeId };
 }

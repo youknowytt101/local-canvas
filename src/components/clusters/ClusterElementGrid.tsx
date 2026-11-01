@@ -19,13 +19,14 @@ type Props = {
   list: ReturnType<typeof usePagedList<Element>>;
   listRef?: React.RefObject<FlashListRef<Element> | null>;
   source: string;
+  removeFrom?: string | null; // the collection one may take its elements out of
   header?: ReactElement | null;
   empty: { title: string; hint: string };
   topInset: number;
   bottomInset: number;
 };
 
-export function ClusterElementGrid({ list, listRef, source, header, empty, topInset, bottomInset }: Props) {
+export function ClusterElementGrid({ list, listRef, source, removeFrom, header, empty, topInset, bottomInset }: Props) {
   const { theme } = useUnistyles();
   const { width, height } = useWindowDimensions();
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -37,8 +38,9 @@ export function ClusterElementGrid({ list, listRef, source, header, empty, topIn
     openElementViewer(navigation, {
       elements: l.items, initialIndex: Math.max(0, l.items.findIndex((e) => e.id === el.id)), hasMore: !l.done,
       loadMore: () => listNow.current.loadMore(), userInteractionSource: source,
+      ...(removeFrom ? { remove: { kind: 'cluster' as const, clusterId: removeFrom }, onRemoved: (id: string) => listNow.current.removeId(id) } : {}),
     });
-  }, [navigation, source]);
+  }, [navigation, source, removeFrom]);
   const renderItem = useCallback(({ item }: { item: Element }) => (
     <View style={styles.cell}>
       <ElementTile element={item} width={tileWidth} imageScale={FEED_IMAGE_SCALE} onPress={onPress} />

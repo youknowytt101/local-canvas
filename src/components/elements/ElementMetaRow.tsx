@@ -3,10 +3,11 @@
 // empty, so the media does not move from one element to the next.
 //   - left, ConnectionsInfo (useElementConnectionsProfiles, pageSize 3): who has it — an AvatarStack of the first
 //     three (24 rings in the background colour, each 6 over the one before, the later on top, a 20 avatar inside) and
-//     "+N" (regular, secondary) 6 apart; rings while it loads; nobody: nothing. Its sheet comes in step 4
+//     "+N" (regular, secondary) 6 apart; rings while it loads; nobody: nothing. Pressed, ElementConnectionsSheet
 //   - right, SourceLabel: lucide ArrowUpRight 13 (tertiary, 2 down), 10 of slop, opening the element's site
 //     (useVisitElementSite: an ElementSiteVisited event), when it has one (getLinkFallbackDomain)
 // Local: a person without a picture shows the first letter of their name (cosmos-lite does the same).
+import { useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
@@ -16,19 +17,22 @@ import { recordElementEvent } from '../../hooks/useTrackElementView';
 import { get } from '../../lib/api';
 import { sourceHost, type Element } from '../../lib/elements';
 import { absoluteUrl } from '../../lib/server';
+import { Routes } from '../../navigation/routes';
 import { ArrowUpRight } from '../icons';
+import { useElementConnectionsStore, type ElementConnections } from '../sheets/ElementConnectionsSheet';
 
 export const ELEMENT_VIEWER_HEADER_HEIGHT = 26;
 export const ELEMENT_VIEWER_HEADER_MEDIA_GAP = 8;
 
 type Person = { id: string; username: string; fullName?: string; avatarUrl?: string | null; isSelf?: boolean };
-type Connections = { profiles: { totalCount: number; items: Person[] } };
+type Connections = ElementConnections;
 
 const known = new Map<string, Connections>(); // the viewer goes back and forth
 
 export function ElementMetaRow({ element }: { element: Element }) {
   const { theme } = useUnistyles();
   const source = useTrackElementViewSource();
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const host = sourceHost(element);
   const [connections, setConnections] = useState<Connections | null>(known.get(element.id) ?? null);
   useEffect(() => {
@@ -48,7 +52,16 @@ export function ElementMetaRow({ element }: { element: Element }) {
         {!connections ? (
           <View style={styles.stack}>{[0, 1].map((i) => <View key={i} style={[styles.ring, i > 0 && styles.overlap, { zIndex: i + 1 }]}><View style={styles.skeleton} /></View>)}</View>
         ) : count > 0 ? (
-          <View style={styles.connections} accessibilityLabel={`${count} 人收藏了它`}>
+          <Pressable
+            style={styles.connections}
+            accessibilityRole="button"
+            accessibilityLabel={`${count} 人收藏了它`}
+            hitSlop={8}
+            onPress={() => useElementConnectionsStore.getState().open(element.id, connections, {
+              onOpenCluster: (id) => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_CLUSTER, params: { clusterId: id } } }),
+              onOpenProfile: () => navigation.navigate(Routes.PROFILE),
+            })}
+          >
             <View style={styles.stack}>
               {shown.map((p, i) => (
                 <View key={p.id} style={[styles.ring, i > 0 && styles.overlap, { zIndex: i + 1 }]}>
@@ -58,7 +71,7 @@ export function ElementMetaRow({ element }: { element: Element }) {
               ))}
             </View>
             {count > shown.length ? <Text style={styles.more}>+{count - shown.length}</Text> : null}
-          </View>
+          </Pressable>
         ) : null}
       </View>
       {host ? (
