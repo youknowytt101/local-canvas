@@ -39,6 +39,12 @@ export type Element = {
   embed?: { provider: string; shape?: string } | null;
   nsfw?: { status: NsfwStatus; treatment: 'show' | 'blur' | 'hide' } | null;
   slateId?: string | null;
+  sourceUrl?: string | null;
+  description?: string | null;
+  ai?: { caption?: string | null } | null;
+  isConnectedByUser?: boolean;
+  isUserPublicElement?: boolean;
+  numberOfConnectedUsers?: number;
 };
 
 export const FEED_IMAGE_SCALE = 1.5;
@@ -99,3 +105,24 @@ export const originalImageUrl = (el: Element) => {
 };
 
 export const NSFW_VEIL: Record<NsfwStatus, string> = { Explicit: '露骨内容', Suggestive: '暗示性内容', Pending: '正在分类…', Unclassified: '没能分类' };
+
+// The viewer's picture, as wide as it is shown at the screen's pixel ratio (Cosmos' getViewerElementMediaImageUrl asks
+// its image server for that): the copy that fits, then the others in case one does not load (a copy made for the width
+// needs the original on the computer), the original last. A GIF shows itself whole.
+export function viewerImageSources(el: Element, displayWidth: number): string[] {
+  const want = Math.round(displayWidth * PixelRatio.get());
+  const video = el.mediaKind === 'video';
+  const copies = video ? posterCopies(el, want) : el.animated ? [] : imageCopies(el, want);
+  const first = fittingCopy(copies, want);
+  const rest = video ? [el.posterThumbUrl, el.posterSmallUrl, el.posterUrl] : [el.thumbUrl, el.smallUrl, el.mediaUrl];
+  const urls = [el.animated && !video ? el.mediaUrl : first, ...rest].filter((u): u is string => !!u);
+  return [...new Set(urls)].map((u) => absoluteUrl(u));
+}
+
+// the host a link or an import came from (Cosmos' getLinkFallbackDomain), for the viewer's 访问原站 arrow
+export function sourceHost(el: Element): string | null {
+  const url = el.sourceUrl;
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  const m = /^https?:\/\/([^/?#]+)/i.exec(url);
+  return m ? m[1].replace(/^www\./, '') : null;
+}

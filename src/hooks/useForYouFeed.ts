@@ -71,23 +71,27 @@ export function useForYouFeed(userId: string | null) {
     }
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const loadMore = useCallback(async () => {
-    if (busy.current || state.done || !state.firstResolved || !items.current.length) return;
+  // resolves with the elements it added (the viewer pages on with them)
+  const loadMore = useCallback(async (): Promise<Element[]> => {
+    if (busy.current || state.done || !state.firstResolved || !items.current.length) return [];
     const my = token.current;
     busy.current = true;
     setState((s) => ({ ...s, loading: true }));
     try {
       const page = await fetchPage(FOR_YOU_FEED_PAGE_SIZE, false);
-      if (my !== token.current) return;
+      if (my !== token.current) return [];
       const have = new Set(items.current.map((e) => e.id));
-      const next = [...items.current, ...page.items.filter((e) => !have.has(e.id))];
+      const added = page.items.filter((e) => !have.has(e.id));
+      const next = [...items.current, ...added];
       items.current = next;
       setState((s) => ({ ...s, items: next, loading: false, done: !page.meta.nextPageCursor }));
+      return added;
     } catch (e) {
       if (my === token.current) setState((s) => ({ ...s, loading: false, error: e instanceof Error ? e.message : String(e) }));
     } finally {
       if (my === token.current) busy.current = false;
     }
+    return [];
   }, [state.done, state.firstResolved]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

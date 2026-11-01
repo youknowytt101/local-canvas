@@ -59,6 +59,55 @@ export function PlusIcon({ color, size = 24, strokeWidth }: IconProps) {
   );
 }
 
+export function ShareIcon({ color, size = 24, strokeWidth }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M8 6.75L12 2.75L16 6.75M12 3.5V14M8 9.75C7.54 9.75 7.3 9.75 7.11 9.78C5.76 9.95 4.7 11.01 4.53 12.36C4.5 12.55 4.5 12.79 4.5 13.25L4.5 15.45C4.5 17.13 4.5 17.97 4.83 18.61C5.11 19.18 5.57 19.64 6.14 19.92C6.78 20.25 7.62 20.25 9.3 20.25H14.7C16.38 20.25 17.22 20.25 17.86 19.92C18.43 19.64 18.89 19.18 19.17 18.61C19.5 17.97 19.5 17.13 19.5 15.45V13.25C19.5 12.79 19.5 12.55 19.47 12.36C19.3 11.01 18.24 9.95 16.89 9.78C16.7 9.75 16.46 9.75 16 9.75" />
+    </Svg>
+  );
+}
+
+export function MoreIcon({ color, size = 24 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {[5, 12, 19].map((cx) => <Circle key={cx} cx={cx} cy={12} r={2} fill={color} />)}
+    </Svg>
+  );
+}
+
+export function CheckIcon({ color, size = 24, strokeWidth }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M6.35 13L10.36 16.85C12.48 13.3 14.88 10 17.6 6.85" />
+    </Svg>
+  );
+}
+
+export function ChevronUpIcon({ color, size = 24, strokeWidth }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M4.25 14.75L12 7L19.75 14.75" />
+    </Svg>
+  );
+}
+
+export function ChevronLeftIcon({ color, size = 24, strokeWidth }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M14.75 19.75L7 12L14.75 4.25" />
+    </Svg>
+  );
+}
+
+// lucide's arrow-up-right (Cosmos' SourceLabel)
+export function ArrowUpRight({ color, size = 24, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M7 7h10v10M7 17 17 7" />
+    </Svg>
+  );
+}
+
 export function BellIcon({ color, size = 24, strokeWidth }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

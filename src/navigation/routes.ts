@@ -14,6 +14,7 @@ export const Routes = {
   SEARCH_ROOT: 'SearchRoot',
   SETTINGS: 'Settings',
   SETTINGS_ROOT: 'SettingsRoot',
+  ELEMENTS_VIEWER: 'ElementsViewer',
 } as const;
 
 export type BottomTabRouteName = typeof Routes.HOME | typeof Routes.EXPLORE | typeof Routes.SHOP | typeof Routes.PROFILE;

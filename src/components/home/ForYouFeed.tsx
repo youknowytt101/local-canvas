@@ -10,7 +10,7 @@
 //     request); leaving (another page, Following, the background) acknowledges it (AcknowledgeForYouViewed)
 //   - pressing the tab again scrolls it back to the top and shows the header
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ActivityIndicator, AppState, RefreshControl, useWindowDimensions, View, type ViewToken } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
@@ -18,6 +18,7 @@ import { gql } from '../../lib/auth';
 import { FEED_IMAGE_SCALE, type Element } from '../../lib/elements';
 import { viewedPosition } from '../../lib/feedCache';
 import { ListImpressions, impressionsScrollEnded } from '../../lib/impressions';
+import { openElementViewer } from '../../lib/openElementViewer';
 import { useForYouFeed } from '../../hooks/useForYouFeed';
 import type { PageScrollHandlers } from '../../hooks/useHomeChrome';
 import { ElementTile } from '../elements/ElementTile';
@@ -45,6 +46,7 @@ export function ForYouFeed({ userId, active, contentTopInset, bottomInset, scrol
   const feed = useForYouFeed(userId);
   const tileWidth = (width - (NUM_COLUMNS + 1) * DEFAULT_GRID_GAP) / NUM_COLUMNS;
   const showing = active && focused;
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
 
   // ---------- impressions ----------
   const impressions = useMemo(() => new ListImpressions<Element>(
@@ -100,11 +102,21 @@ export function ForYouFeed({ userId, active, contentTopInset, bottomInset, scrol
   // the page left: its tiles are off screen
   useEffect(() => { if (!showing) impressions.setVisible([]); }, [impressions, showing]);
 
+  // useOpenElementViewer: the viewer gets the whole list and pages on with it (more For You as it nears the end)
+  const feedRef = useRef(feed);
+  feedRef.current = feed;
+  const onPress = useCallback((el: Element) => {
+    const f = feedRef.current;
+    openElementViewer(navigation, {
+      elements: f.items, initialIndex: Math.max(0, f.items.findIndex((e) => e.id === el.id)), hasMore: !f.done,
+      loadMore: () => feedRef.current.loadMore(), userInteractionSource: 'ForYou',
+    });
+  }, [navigation]);
   const renderItem = useCallback(({ item }: { item: Element }) => (
     <View style={styles.cell}>
-      <ElementTile element={item} width={tileWidth} imageScale={FEED_IMAGE_SCALE} onMediaReady={onMediaReady} />
+      <ElementTile element={item} width={tileWidth} imageScale={FEED_IMAGE_SCALE} onMediaReady={onMediaReady} onPress={onPress} />
     </View>
-  ), [tileWidth, onMediaReady]);
+  ), [tileWidth, onMediaReady, onPress]);
 
   const empty = feed.items.length === 0;
   return (

@@ -1,0 +1,216 @@
+// Cosmos' ElementsViewerScreen (module 2653): ElementViewerHeader over one scroll — the ElementCarousel of the list it
+// was opened from, then the elements similar to the one on screen as a masonry grid (MasonryGrid, imageScale 2,
+// half a screen drawn ahead, impressions as SimilarElements). The bar is the element's (useElementViewerTabBarState):
+// 保存 with 分享 / 更多, until the scroll passes ELEMENT_VIEWER_HIDE_TAB_BAR_RATIO (0.15) of the carousel's height, then
+// the round scroll-to-top.
+//   - useViewerPagination: when 5 or fewer elements are left after the one on screen and the list has more, it asks
+//     for more once
+//   - useViewerImagePrefetch: the pictures of the next and the previous ones (+1, −1, +2, −2)
+//   - useTrackElementView: the element on screen is being viewed while the viewer is focused
+//   - a similar one opens a viewer of the similar list on top (a "rabbit hole"); from the second one on, the header's
+//     cross closes them all at once (isInRabbitHole: the screen under is a viewer too)
+// For now: 保存 shows whether it is saved and the save sheet comes in step 4; 更多 (ElementMenuSheet) and the
+// connections sheet too; 分享 opens the system's share with the element's address on the computer (Cosmos opens its
+// ShareElementScreen).
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { useFocusEffect, useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, Share, useWindowDimensions, View, type ViewToken } from 'react-native';
+import type PagerView from 'react-native-pager-view';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { BAR_BOTTOM_OFFSET, TAB_BAR_HEIGHT_DEFAULT } from '../../components/bar/constants';
+import { ElementCarousel } from '../../components/elements/ElementCarousel';
+import { ElementTile } from '../../components/elements/ElementTile';
+import { ViewerSourceContext } from '../../components/elements/viewerContext';
+import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
+import { ChevronLeftIcon, CloseIcon } from '../../components/icons';
+import { useSimilarElements } from '../../hooks/useSimilarElements';
+import { useTrackElementView } from '../../hooks/useTrackElementView';
+import { GRID_IMAGE_SCALE, viewerImageSources, type Element } from '../../lib/elements';
+import { ListImpressions } from '../../lib/impressions';
+import { openElementViewer } from '../../lib/openElementViewer';
+import { serverUrl } from '../../lib/server';
+import { Routes } from '../../navigation/routes';
+import { useBarStore } from '../../stores/useBarStore';
+import { useElementViewerStore } from '../../stores/useElementViewerStore';
+
+const ELEMENT_VIEWER_HIDE_TAB_BAR_RATIO = 0.15;
+const HEADER_CONTENT_HEIGHT = 64;
+const PAGINATION_THRESHOLD = 5;
+const PREFETCH_ORDER = [1, -1, 2, -2];
+const VIEWABILITY = { itemVisiblePercentThreshold: 1 };
+
+type Params = { viewerId: string; initialIndex: number };
+
+export function ElementsViewerScreen() {
+  const route = useRoute<RouteProp<{ ElementsViewer: Params }, 'ElementsViewer'>>();
+  const { viewerId, initialIndex } = route.params;
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
+  const { theme } = useUnistyles();
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const focused = useIsFocused();
+  const viewer = useElementViewerStore((s) => s.viewers[viewerId]);
+  const elements = viewer?.elements ?? [];
+  const [index, setIndex] = useState(initialIndex);
+  const element = elements[index] ?? null;
+  const source = viewer?.userInteractionSource ?? 'Unspecified';
+  const listRef = useRef<FlashListRef<Element>>(null);
+  const pagerRef = useRef<PagerView>(null);
+
+  const headerHeight = insets.top + HEADER_CONTENT_HEIGHT;
+  const carouselHeight = height - headerHeight;
+  const bottomOverlayClearance = insets.bottom + BAR_BOTTOM_OFFSET + TAB_BAR_HEIGHT_DEFAULT;
+  const tileWidth = (width - 3 * DEFAULT_GRID_GAP) / 2;
+
+  useTrackElementView(element, focused, source);
+  const similar = useSimilarElements(element?.id ?? null);
+
+  // ---------- useViewerPagination ----------
+  const loadingMore = useRef(false);
+  useEffect(() => {
+    useElementViewerStore.getState().setCurrentIndex(viewerId, index);
+    if (!viewer?.hasMore || !viewer.loadMore || loadingMore.current || elements.length - 1 - index > PAGINATION_THRESHOLD) return;
+    loadingMore.current = true;
+    viewer.loadMore().then((more) => {
+      useElementViewerStore.getState().appendElements(viewerId, more ?? [], !!more?.length);
+    }, () => undefined).finally(() => { loadingMore.current = false; });
+  }, [index, elements.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---------- useViewerImagePrefetch ----------
+  useEffect(() => {
+    const urls = PREFETCH_ORDER.map((d) => elements[index + d]).filter((e): e is Element => !!e && e.type !== 'note')
+      .map((e) => viewerImageSources(e, width)[0]).filter(Boolean);
+    if (urls.length) void Image.prefetch(urls);
+  }, [index, elements.length, width]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---------- the bar ----------
+  const [mode, setMode] = useState<'actions' | 'scrollToTop'>('actions');
+  const scrollToTop = useCallback(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }), []);
+  useFocusEffect(useCallback(() => {
+    useBarStore.getState().setActiveState({ type: 'element' });
+    return () => {
+      const bar = useBarStore.getState();
+      if (bar.elementViewerBarState?.viewerId !== viewerId) return;
+      bar.setElementViewerBarState(null);
+      bar.setActiveState({ type: 'default' });
+    };
+  }, [viewerId]));
+  const saved = !!element?.isConnectedByUser;
+  useEffect(() => {
+    if (!focused || !element) return;
+    useBarStore.getState().setElementViewerBarState({
+      viewerId, mode, saved,
+      onSave: () => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); },
+      onShare: () => { void Share.share({ message: `${serverUrl()}/e/${element.id}` }); },
+      onMore: () => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); },
+      onScrollToTop: scrollToTop,
+    });
+  }, [focused, element?.id, mode, saved]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---------- the similar grid ----------
+  const impressions = useMemo(() => new ListImpressions<Element>(
+    (el) => ({ targetType: 'Element', targetId: el.id, userInteractionSource: 'SimilarElements', slateId: el.slateId })), []);
+  useEffect(() => () => impressions.dispose(), [impressions]);
+  useEffect(() => { impressions.reset(); }, [impressions, element?.id]);
+  useEffect(() => { impressions.setEnabled(focused); if (!focused) impressions.setVisible([]); }, [impressions, focused]);
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken<Element>[] }) => {
+    impressions.setVisible(viewableItems.filter((v) => v.item).map((v) => [v.item!.id, v.item!]));
+  }).current;
+  const onMediaReady = useCallback((id: string) => impressions.markMediaReady(id), [impressions]);
+  const similarItems = useRef(similar.items);
+  similarItems.current = similar.items;
+  const openSimilar = useCallback((el: Element) => {
+    const list = similarItems.current;
+    openElementViewer(navigation, { elements: list, initialIndex: Math.max(0, list.findIndex((e) => e.id === el.id)), hasMore: false, userInteractionSource: 'SimilarElements' });
+  }, [navigation]);
+  const renderItem = useCallback(({ item }: { item: Element }) => (
+    <View style={styles.cell}>
+      <ElementTile element={item} width={tileWidth} imageScale={GRID_IMAGE_SCALE} onMediaReady={onMediaReady} onPress={openSimilar} />
+    </View>
+  ), [tileWidth, onMediaReady, openSimilar]);
+
+  // ---------- the header ----------
+  const state = navigation.getState();
+  const myIndex = state.routes.findIndex((r) => r.key === route.key);
+  const isInRabbitHole = myIndex > 0 && state.routes[myIndex - 1]?.name === Routes.ELEMENTS_VIEWER;
+  const closeAll = () => {
+    let n = 0;
+    for (let i = myIndex; i >= 0 && state.routes[i].name === Routes.ELEMENTS_VIEWER; i--) n++;
+    navigation.dispatch({ type: 'POP', payload: { count: n } });
+  };
+
+  // the list goes when the screen does (not on a re-run of effects)
+  useEffect(() => navigation.addListener('beforeRemove', () => useElementViewerStore.getState().closeViewer(viewerId)), [navigation, viewerId]);
+
+  if (!viewer) return <View style={styles.screen} />;
+  return (
+    <ViewerSourceContext.Provider value={source}>
+      <View style={styles.screen}>
+        <FlashList
+          ref={listRef}
+          data={similar.items}
+          masonry
+          numColumns={2}
+          keyExtractor={(e: Element) => e.id}
+          renderItem={renderItem}
+          onEndReached={similar.loadMore}
+          onEndReachedThreshold={1}
+          drawDistance={height * 0.5}
+          viewabilityConfig={VIEWABILITY}
+          onViewableItemsChanged={onViewableItemsChanged}
+          scrollEventThrottle={16}
+          onScroll={(e) => {
+            const next = e.nativeEvent.contentOffset.y > carouselHeight * ELEMENT_VIEWER_HIDE_TAB_BAR_RATIO ? 'scrollToTop' : 'actions';
+            if (next !== mode) setMode(next);
+          }}
+          contentContainerStyle={{ paddingTop: headerHeight, paddingHorizontal: DEFAULT_GRID_GAP / 2, paddingBottom: bottomOverlayClearance + DEFAULT_GRID_GAP }}
+          ListHeaderComponent={
+            <View style={styles.fullBleed}>
+              <ElementCarousel
+                ref={pagerRef}
+                elements={elements}
+                index={index}
+                initialIndex={initialIndex}
+                height={carouselHeight}
+                width={width}
+                bottomOverlayClearance={bottomOverlayClearance}
+                focused={focused}
+                onIndexChange={setIndex}
+              />
+            </View>
+          }
+          ListFooterComponent={similar.loading ? <View style={styles.footer}><ActivityIndicator color={theme.colors.tertiary} /></View> : null}
+        />
+        <View style={[styles.header, { paddingTop: insets.top, height: headerHeight }]}>
+          <Pressable style={styles.headerButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="返回" hitSlop={4}>
+            <ChevronLeftIcon color={theme.colors.primary} />
+          </Pressable>
+          <View style={styles.headerTitle} />
+          {isInRabbitHole ? (
+            <Pressable style={[styles.headerButton, styles.closeAll]} onPress={closeAll} accessibilityRole="button" accessibilityLabel="关闭" hitSlop={4}>
+              <CloseIcon color={theme.colors.primary} size={16} />
+            </Pressable>
+          ) : <View style={styles.headerButton} />}
+        </View>
+      </View>
+    </ViewerSourceContext.Provider>
+  );
+}
+
+const styles = StyleSheet.create((theme) => ({
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  fullBleed: { marginHorizontal: -DEFAULT_GRID_GAP / 2, marginBottom: DEFAULT_GRID_GAP },
+  cell: { paddingHorizontal: DEFAULT_GRID_GAP / 2, paddingBottom: DEFAULT_GRID_GAP },
+  footer: { paddingVertical: theme.spacing.lg, alignItems: 'center' },
+  header: {
+    position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: theme.spacing.md, backgroundColor: theme.colors.background,
+  },
+  headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { flex: 1, alignItems: 'center' },
+  closeAll: { borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.elevated },
+}));

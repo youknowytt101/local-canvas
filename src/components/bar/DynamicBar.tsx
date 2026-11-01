@@ -22,11 +22,12 @@ import {
   BAR_HIDDEN_SCREENS, BAR_HIDE_DURATION, BAR_PILL_RADIUS, BAR_SHADOW, BAR_SHOW_DURATION, GLOBAL_SEARCH_ACTION_GAP,
   GLOBAL_SEARCH_ACTION_SIZE, GLOBAL_SEARCH_BAR_HEIGHT, GLOBAL_SEARCH_HORIZONTAL_INSET, GLOBAL_SEARCH_KEYBOARD_HORIZONTAL_INSET,
   GLOBAL_SEARCH_MORPH_EXIT_SPRING_CONFIG, GLOBAL_SEARCH_MORPH_SPRING_CONFIG, TAB_BAR_ACTION_GAP, TAB_BAR_HOME_HEIGHT,
-  TAB_BAR_SEARCH_ACTION_SIZE, TAB_BAR_SIZE_SPRING_CONFIG, getEdgeToEdgeBarWidth, getGlobalSearchBarWidth,
+  TAB_BAR_ELEMENT_ACTION_BAR_WIDTH, TAB_BAR_ELEMENT_SCROLL_TO_TOP_SIZE, TAB_BAR_HEIGHT_DEFAULT, TAB_BAR_SEARCH_ACTION_SIZE, TAB_BAR_SIZE_SPRING_CONFIG, getEdgeToEdgeBarWidth, getGlobalSearchBarWidth,
   getGlobalSearchKeyboardShift, type BarContent,
 } from './constants';
 import { DefaultTabsContent } from './DefaultTabsContent';
 import { DynamicBarSearchAction } from './DynamicBarSearchAction';
+import { ElementActionTabBarContent, ElementSideActions, ScrollToTopTabBarContent } from './ElementActionTabBarContent';
 import { GlobalSearchTabBarContent } from './GlobalSearchTabBarContent';
 import type { ContentTransition } from './useContentAnimation';
 
@@ -35,6 +36,14 @@ type Targets = { contentIndex: number; width: number; height: number; translateX
 // getBarTargets, for the contents built so far. The default pill leaves room for the accessory and is moved left by
 // half of it (getDefaultBarOffsetX); search the same with the search sizes.
 function getBarTargets(type: BarContent, isHidden: boolean, windowWidth: number): Targets {
+  // the element viewer: the 162 wide 保存, or the round scroll-to-top; the accessory goes
+  if (type === 'element' || type === 'scroll-to-top') {
+    const width = type === 'element' ? TAB_BAR_ELEMENT_ACTION_BAR_WIDTH : TAB_BAR_ELEMENT_SCROLL_TO_TOP_SIZE;
+    return {
+      contentIndex: BAR_CONTENT_INDEX[type], width, height: TAB_BAR_HEIGHT_DEFAULT, translateX: 0, accessorySize: TAB_BAR_SEARCH_ACTION_SIZE,
+      visibility: isHidden ? 0 : 1, accessoryVisibility: 0,
+    };
+  }
   const search = type === 'global-search';
   const actionSize = search ? GLOBAL_SEARCH_ACTION_SIZE : TAB_BAR_SEARCH_ACTION_SIZE;
   const actionGap = search ? GLOBAL_SEARCH_ACTION_GAP : TAB_BAR_ACTION_GAP;
@@ -59,7 +68,8 @@ export function DynamicBar() {
   const { theme } = useUnistyles();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-  const type = useBarStore((s) => s.activeState.type);
+  // the viewer's bar is 'element' with its mode: actions, or scrolled down to the similar ones
+  const type = useBarStore((s) => (s.activeState.type === 'element' && s.elementViewerBarState?.mode === 'scrollToTop' ? 'scroll-to-top' : s.activeState.type));
   const tabBarSuppressed = useBarStore((s) => s.tabBarSuppressed);
   const activeScreen = useBarStore((s) => s.activeScreen);
   const hasTabs = useTabBarStore((s) => s.tabNavProps != null);
@@ -144,9 +154,12 @@ export function DynamicBar() {
           <View style={styles.content}>
             <DefaultTabsContent activeContentIndex={activeContentIndex} contentTransition={contentTransition} />
             <GlobalSearchTabBarContent activeContentIndex={activeContentIndex} contentTransition={contentTransition} />
+            <ElementActionTabBarContent activeContentIndex={activeContentIndex} contentTransition={contentTransition} />
+            <ScrollToTopTabBarContent activeContentIndex={activeContentIndex} contentTransition={contentTransition} />
           </View>
           <View style={styles.innerBorder} />
         </Animated.View>
+        <ElementSideActions activeContentIndex={activeContentIndex} contentTransition={contentTransition} windowWidth={windowWidth} />
         <Animated.View style={[styles.accessory, accessoryStyle]}>
           <View style={styles.shadow} />
           <View style={styles.accessoryContent}>

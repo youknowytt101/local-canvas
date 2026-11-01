@@ -7,7 +7,7 @@
 // from 0.75) — its numbers are read, how they combine is not; the header's text for a profile says 个人主页 (the name
 // the user chose for it, 6.136) where Cosmos' Chinese pack has 轮廓.
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View, type ViewToken } from 'react-native';
@@ -16,6 +16,7 @@ import { useFollowingFeed, type FollowingItem } from '../../hooks/useFollowingFe
 import type { PageScrollHandlers } from '../../hooks/useHomeChrome';
 import { FEED_IMAGE_SCALE, tileImageUrl, tileRatio, type Element } from '../../lib/elements';
 import { ListImpressions } from '../../lib/impressions';
+import { openElementViewer } from '../../lib/openElementViewer';
 import { absoluteUrl } from '../../lib/server';
 import { UserRound } from '../icons';
 import { HomeFeedEmptyState } from './HomeFeedEmptyState';
@@ -82,6 +83,7 @@ export function FollowingFeed({ userId, active, contentTopInset, bottomInset, sc
 
 function FeedItem({ item }: { item: FollowingItem }) {
   const { theme } = useUnistyles();
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const who = item.collaborator;
   const name = who ? who.fullName || who.username : item.source?.target || item.cluster?.name || '一个来源';
   const target = item.cluster?.isPublicElementsCluster ? '他们的 个人主页' : item.cluster?.name ?? '';
@@ -104,7 +106,8 @@ function FeedItem({ item }: { item: FollowingItem }) {
           const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, CAROUSEL_HEIGHT * Math.max(MIN_RATIO, tileRatio(el.width, el.height))));
           const url = tileImageUrl(el, w, FEED_IMAGE_SCALE);
           return (
-            <Pressable key={el.id} style={[styles.tile, { width: w, backgroundColor: el.color ?? theme.colors.elevated }]}>
+            <Pressable key={el.id} style={[styles.tile, { width: w, backgroundColor: el.color ?? theme.colors.elevated }]}
+              onPress={() => openElementViewer(navigation, { elements: item.items, initialIndex: item.items.indexOf(el), hasMore: false, userInteractionSource: 'Following' })}>
               {url ? <Image source={{ uri: url }} placeholder={el.blurHash ? { blurhash: el.blurHash } : undefined} contentFit="cover"
                 blurRadius={el.nsfw?.treatment === 'blur' ? 30 : 0} style={styles.tileImage} /> : null}
             </Pressable>

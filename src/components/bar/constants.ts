@@ -12,6 +12,14 @@ export const GLOBAL_SEARCH_HORIZONTAL_INSET = 20;
 export const GLOBAL_SEARCH_KEYBOARD_HORIZONTAL_INSET = 12;
 export const TAB_BAR_TABLET_BREAKPOINT = 768;
 export const TAB_BAR_ACTION_GAP = 10;
+export const TAB_BAR_ELEMENT_ACTION_BAR_WIDTH = 162;
+export const TAB_BAR_ELEMENT_ACTION_BAR_BUTTON_SIZE = 60;
+export const TAB_BAR_ELEMENT_SAVE_CROSSFADE_DURATION = 375;
+export const TAB_BAR_ELEMENT_SAVE_SHRINK_SCALE = 0.7;
+export const TAB_BAR_ELEMENT_SAVE_ICON_GAP = 6;
+export const TAB_BAR_ELEMENT_SAVED_CENTER_OFFSET = -2;
+export const TAB_BAR_ELEMENT_SCROLL_TO_TOP_SIZE = 62;
+export const TAB_BAR_HEIGHT_DEFAULT = 62;
 export const TAB_BAR_SIZE_SPRING_CONFIG = { damping: 30, stiffness: 340, overshootClamping: true };
 export const GLOBAL_SEARCH_MORPH_SPRING_CONFIG = { duration: 325, dampingRatio: 0.835 };
 export const GLOBAL_SEARCH_MORPH_EXIT_SPRING_CONFIG = { duration: 325, dampingRatio: 0.92 };
@@ -34,8 +42,9 @@ export const BAR_HIDDEN_SCREENS = new Set([
   'PremiumPaywall', 'CropProfilePicture', 'InfiniteCanvas', 'Login',
 ]);
 
-// BAR_CONTENT_INDEX: the cross-fade interpolates between these numbers (only the two contents built so far)
-export const BAR_CONTENT_INDEX = { default: 0, 'global-search': 1 } as const;
+// BAR_CONTENT_INDEX: the cross-fade interpolates between these numbers (the contents built so far; the others —
+// message 2, cluster 4, organize 5, profile elements 6, cluster-see-similar 8 — come with their screens)
+export const BAR_CONTENT_INDEX = { default: 0, 'global-search': 1, element: 3, 'scroll-to-top': 7 } as const;
 export type BarContent = keyof typeof BAR_CONTENT_INDEX;
 
 // dynamicBarLayoutTs1 (module 2206, worklet source): the pill beside a round action of `actionSize`, `actionGap` apart,
