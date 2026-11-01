@@ -6,8 +6,8 @@
 // the meta (regular, tertiary), spacing.sm between rows. A collection opens it; one's own row opens the profile.
 // From /api/elements/:id/connections (all of them at once: no paging).
 // Near Cosmos: the tabs switch without the swipe (SwipeableTabViewComponent); no 关注 button on the rows (the people
-// list does not say whom one follows) and no pull to refresh; other people's rows open nothing yet (their profile is
-// still to come).
+// list does not say whom one follows) and no pull to refresh; a row opens that person's profile (one's own: the Profile
+// tab).
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
@@ -26,7 +26,7 @@ export const ELEMENT_CONNECTIONS_SHEET = 'element-connections';
 
 type Person = { id: string; username: string; fullName?: string; avatarUrl?: string | null; isSelf?: boolean };
 export type ElementConnections = { profiles: { totalCount: number; items: Person[] }; clusters: { totalCount: number; items: Collection[] } };
-type Handlers = { onOpenCluster: (id: string) => void; onOpenProfile: () => void };
+type Handlers = { onOpenCluster: (id: string) => void; onOpenProfile: (userId?: string) => void };
 
 type State = { elementId: string | null; known: ElementConnections | null; handlers: Handlers | null; open: (elementId: string, known: ElementConnections | null, handlers: Handlers) => void };
 export const useElementConnectionsStore = create<State>((set) => ({
@@ -78,7 +78,7 @@ export function ElementConnectionsSheet() {
         image={<Avatar user={p} size={40} />}
         title={p.fullName || p.username}
         meta={`@${p.username}`}
-        onPress={p.isSelf ? () => { void close(); handlers?.onOpenProfile(); } : undefined}
+        onPress={() => { void close(); handlers?.onOpenProfile(p.isSelf ? undefined : p.id); }}
       />
     ));
   return (

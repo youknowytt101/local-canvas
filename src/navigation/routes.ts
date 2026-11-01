@@ -16,6 +16,8 @@ export const Routes = {
   SETTINGS_ROOT: 'SettingsRoot',
   ELEMENTS_VIEWER: 'ElementsViewer',
   USER_CLUSTER: 'UserCluster',
+  USER_PROFILE: 'UserProfile',
+  PROFILE_CONNECTIONS: 'ProfileConnections',
 } as const;
 
 export type BottomTabRouteName = typeof Routes.HOME | typeof Routes.EXPLORE | typeof Routes.SHOP | typeof Routes.PROFILE;

@@ -25,11 +25,11 @@ type Props = ProfileListProps & {
   onCreate: () => void;
 };
 
-export function ProfileClusterGrid({ collections, listRef, onOpen, onLongPress, onCreate, headerHeight, headerScrollMax, viewport, bottomInset, onScroll, refreshing, onRefresh }: Props) {
+export function ProfileClusterGrid({ collections, listRef, onOpen, onLongPress, onCreate, headerHeight, headerScrollMax, viewport, bottomInset, onScroll, isMe, refreshing, onRefresh }: Props) {
   const { theme } = useUnistyles();
   const { width } = useWindowDimensions();
   const cardWidth = (width - (NUM_COLUMNS + 1) * DEFAULT_GRID_GAP) / NUM_COLUMNS;
-  const data: Item[] = collections?.length ? [...collections, CREATE] : [];
+  const data: Item[] = collections?.length ? (isMe ? [...collections, CREATE] : collections) : [];
   return (
     <FlatList
       ref={listRef}
@@ -49,7 +49,12 @@ export function ProfileClusterGrid({ collections, listRef, onOpen, onLongPress, 
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} progressViewOffset={headerHeight} tintColor={theme.colors.tertiary} />}
       ListEmptyComponent={
         collections == null ? <View style={styles.loading}><ActivityIndicator color={theme.colors.tertiary} /></View> : (
-          <View style={styles.emptyState}>
+          !isMe ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.name}>没有公开收藏</Text>
+              <Text style={styles.meta}>有些收藏可能是私人的</Text>
+            </View>
+          ) : <View style={styles.emptyState}>
             <Text style={styles.name}>创建您的第一个收藏</Text>
             <Text style={styles.meta}>你整理元素的地方</Text>
             <Button text="创建收藏" size="small" onPress={onCreate} style={styles.emptyAction} />

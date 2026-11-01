@@ -59,7 +59,9 @@ export function ElementMetaRow({ element }: { element: Element }) {
             hitSlop={8}
             onPress={() => useElementConnectionsStore.getState().open(element.id, connections, {
               onOpenCluster: (id) => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_CLUSTER, params: { clusterId: id } } }),
-              onOpenProfile: () => navigation.navigate(Routes.PROFILE),
+              onOpenProfile: (userId) => (userId
+                ? navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_PROFILE, params: { userId } } })
+                : navigation.navigate(Routes.PROFILE)),
             })}
           >
             <View style={styles.stack}>

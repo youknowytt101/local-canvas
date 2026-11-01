@@ -25,7 +25,7 @@ type Props = ProfileListProps & {
   listRef: React.RefObject<FlashListRef<Element> | null>;
 };
 
-export function ProfileElementGrid({ list, listRef, headerHeight, headerScrollMax, viewport, bottomInset, onScroll, refreshing, onRefresh }: Props) {
+export function ProfileElementGrid({ list, listRef, headerHeight, headerScrollMax, viewport, bottomInset, onScroll, isMe, refreshing, onRefresh }: Props) {
   const { theme } = useUnistyles();
   const { width } = useWindowDimensions();
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -38,10 +38,10 @@ export function ProfileElementGrid({ list, listRef, headerHeight, headerScrollMa
     const l = listNow.current;
     openElementViewer(navigation, {
       elements: l.items, initialIndex: Math.max(0, l.items.findIndex((e) => e.id === el.id)), hasMore: !l.done,
-      loadMore: () => listNow.current.loadMore(), userInteractionSource: 'ProfileOwn',
-      remove: { kind: 'profile' }, onRemoved: (id) => listNow.current.removeId(id),
+      loadMore: () => listNow.current.loadMore(), userInteractionSource: isMe ? 'ProfileOwn' : 'ProfileOther',
+      ...(isMe ? { remove: { kind: 'profile' as const }, onRemoved: (id: string) => listNow.current.removeId(id) } : {}),
     });
-  }, [navigation]);
+  }, [navigation, isMe]);
   const renderItem = useCallback(({ item }: { item: Element }) => (
     <View style={styles.cell}>
       <ElementTile element={item} width={tileWidth} imageScale={PROFILE_IMAGE_SCALE} onPress={onPress} />
@@ -71,8 +71,8 @@ export function ProfileElementGrid({ list, listRef, headerHeight, headerScrollMa
         list.loading ? <View style={styles.loading}><ActivityIndicator color={theme.colors.tertiary} /></View>
           : list.done ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>您的品味，尽显</Text>
-              <Text style={styles.emptyHint}>保存元素以塑造您的个人资料。</Text>
+              <Text style={styles.emptyTitle}>{isMe ? '您的品味，尽显' : '个人资料上没有元素'}</Text>
+              <Text style={styles.emptyHint}>{isMe ? '保存元素以塑造您的个人资料。' : '保存的内容可以存在于集合中或私有。'}</Text>
             </View>
           ) : null
       }

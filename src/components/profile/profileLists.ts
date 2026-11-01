@@ -9,6 +9,7 @@ export type ProfileListProps = {
   onScroll: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
   refreshing: boolean;
   onRefresh: () => void;
+  isMe: boolean; // one's own profile (ProfileOwn) or someone else's (ProfileOther)
 };
 
 // Cosmos' useUserClusters order: the pinned ones first (the one pinned last first among them), the rest as they come

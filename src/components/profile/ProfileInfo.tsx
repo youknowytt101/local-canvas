@@ -6,6 +6,7 @@
 //     "N 粉丝 · N 正在关注" (regular; the counts primary, the words tertiary)
 //   - actionButtonsContainer, spacing.md down: 创建 (primary) and 编辑主页 (outline) sharing the row, then a round outline
 //     button per social link (getSocialLinks: instagram, x, tiktok, spotify, the website), spacing.xs apart
+// On someone else's the row starts with 关注 (primary) / 正在关注 (outline) instead (common.follow / following).
 // The words 创建 / 编辑主页 are the user's (6.135; 2.33's pack has 添加 / 编辑个人资料).
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
@@ -43,9 +44,12 @@ export function Avatar({ user, size }: { user: Pick<ProfileUser, 'username' | 'f
   );
 }
 
-type Props = { user: ProfileUser; onCreate?: () => void; onEdit?: () => void; onFollowers?: () => void; onFollowing?: () => void };
+type Props = {
+  user: ProfileUser; isMe?: boolean; isFollowed?: boolean; onFollow?: () => void;
+  onCreate?: () => void; onEdit?: () => void; onFollowers?: () => void; onFollowing?: () => void;
+};
 
-export function ProfileInfo({ user, onCreate, onEdit, onFollowers, onFollowing }: Props) {
+export function ProfileInfo({ user, isMe = true, isFollowed, onFollow, onCreate, onEdit, onFollowers, onFollowing }: Props) {
   const { theme } = useUnistyles();
   const st = user.statistics;
   const [faces, setFaces] = useState<ProfileUser[]>([]);
@@ -91,8 +95,14 @@ export function ProfileInfo({ user, onCreate, onEdit, onFollowers, onFollowing }
         </View>
       ) : null}
       <View style={styles.actions}>
-        <Button text="创建" onPress={onCreate} style={styles.actionButton} />
-        <Button text="编辑主页" variant="outline" onPress={onEdit} style={styles.actionButton} />
+        {isMe ? (
+          <>
+            <Button text="创建" onPress={onCreate} style={styles.actionButton} />
+            <Button text="编辑主页" variant="outline" onPress={onEdit} style={styles.actionButton} />
+          </>
+        ) : (
+          <Button text={isFollowed ? '正在关注' : '关注'} variant={isFollowed ? 'outline' : 'primary'} onPress={onFollow} style={styles.actionButton} />
+        )}
         {socials.map(([label, href, icon]) => (
           <Pressable key={label} style={styles.social} onPress={() => void Linking.openURL(href)} accessibilityRole="link" accessibilityLabel={label}>{icon}</Pressable>
         ))}

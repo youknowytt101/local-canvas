@@ -1,4 +1,5 @@
-// Cosmos' ProfileScreen (module 3294) for one's own profile:
+// Cosmos' ProfileScreen (module 3294), one's own (the Profile tab's root, ProfileOwn) or anyone else's (pushed as
+// UserProfile with a userId, ProfileOther: GetUserProfile, UserClusters, UserPublicElements):
 //   - a header row HEADER_CONTENT_HEIGHT (64) high under the status bar, 16 in: share on the left (showShare), search and
 //     settings on the right, each a 40 round button with a 1 px surfaceBorder outline
 //   - under it a pager (Pager) of two pages, 个人主页 (ProfileElementGrid, the profile's elements) and 收藏集
@@ -9,10 +10,15 @@
 //     same way (useProfileTabScrollSync), so the header does not jump.
 //   - the Profile tab pressed again scrolls the page on screen back to the top (useOwnProfileTabPress)
 //   - coming back to it reads the profile again (counts, bio, …); the lists follow when their counts changed
+//   - someone else's: the way back instead of search / settings, share on the right; ProfileInfo's 关注 / 正在关注;
+//     his public collections (no create card) and the elements of his profile; the empty states
+//     profile.emptyClustersTitle / Hint and emptyElementsTitle / Hint; nothing to take out
+//   - the follower / following counts open ProfileConnectionsScreen
 // Near Cosmos: dragging on the header scrolls the page under it without a fling of its own (Cosmos hands the gesture
-// to the list); the search (step 5), 创建 (step 6) and 编辑主页 (step 8) are not wired yet.
+// to the list); the search (step 5), 创建 (step 6) and 编辑主页 (step 8) are not wired yet; someone else's menu
+// (UserProfileMenus: copy link, canvas, block, report) is not here yet.
 import type { FlashListRef } from '@shopify/flash-list';
-import { useFocusEffect, useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, Share, View, type FlatList, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -24,7 +30,7 @@ import { BAR_BOTTOM_OFFSET, TAB_BAR_HOME_HEIGHT } from '../../components/bar/con
 import type { Collection } from '../../components/clusters/CollectionCard';
 import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
 import { HEADER_CONTENT_HEIGHT } from '../../components/home/HomeHeader';
-import { SearchIcon, SettingsIcon, ShareIcon } from '../../components/icons';
+import { ChevronLeftIcon, SearchIcon, SettingsIcon, ShareIcon } from '../../components/icons';
 import { ProfileClusterGrid, type ProfileClusterGridItem } from '../../components/profile/ProfileClusterGrid';
 import { ProfileElementGrid } from '../../components/profile/ProfileElementGrid';
 import { ProfileInfo, type ProfileUser } from '../../components/profile/ProfileInfo';
@@ -32,7 +38,8 @@ import { useCreateClusterStore } from '../../components/sheets/CreateClusterShee
 import { ProfileTabBar } from '../../components/profile/ProfileTabBar';
 import { pinnedFirst } from '../../components/profile/profileLists';
 import { usePagedList } from '../../hooks/usePagedList';
-import { get } from '../../lib/api';
+import { api, get } from '../../lib/api';
+import { showToast } from '../../stores/useToastStore';
 import type { Element } from '../../lib/elements';
 import { serverUrl } from '../../lib/server';
 import { Routes } from '../../navigation/routes';
@@ -43,27 +50,52 @@ const HEADER_CONTROL_SIZE = 40;
 const HEADER_HORIZONTAL_PADDING = 16;
 const ELEMENTS_PAGE_SIZE = 40;
 
+export type UserProfileParams = { userId?: string };
+
 export function ProfileScreen() {
   const { theme } = useUnistyles();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const me = useSessionStore((s) => s.me);
-  const [profile, setProfile] = useState<ProfileUser | null>(me ? { ...me } : null);
+  const routeUserId = useRoute<RouteProp<{ p: UserProfileParams | undefined }, 'p'>>().params?.userId;
+  const isRoot = !routeUserId;
+  const isMe = isRoot || routeUserId === me?.id;
+  const userId = routeUserId ?? me?.id ?? '';
+  const enc = encodeURIComponent(userId);
+  const [profile, setProfile] = useState<(ProfileUser & { isFollowed?: boolean }) | null>(isMe && me ? { ...me } : null);
   const [collections, setCollections] = useState<Collection[] | null>(null);
-  const elements = usePagedList<Element>('/api/elements', ELEMENTS_PAGE_SIZE);
+  const elements = usePagedList<Element>(isMe ? '/api/elements' : `/api/elements?user=${enc}`, ELEMENTS_PAGE_SIZE);
   const [refreshing, setRefreshing] = useState(false);
 
   // ---------- reading it ----------
   const lastCounts = useRef<string | null>(null);
   const loadCollections = useCallback(async () => {
+    if (!isMe) { setCollections((await get<{ items: Collection[] }>(`/api/users/${enc}/clusters`)).items); return; }
     const all = await get<Collection[]>('/api/clusters');
     setCollections(pinnedFirst(all.filter((c) => !c.parentId)));
-  }, []);
+  }, [isMe, enc]);
   const loadProfile = useCallback(async () => {
-    const p = await get<ProfileUser>('/api/me');
+    const p = await get<ProfileUser & { isFollowed?: boolean }>(isMe ? '/api/me' : `/api/users/${enc}`);
     setProfile(p);
     return p;
-  }, []);
+  }, [isMe, enc]);
+
+  // ProfileInfoActionButtons on someone else's: 关注 / 正在关注 (toast.followed / unfollowed)
+  const toggleFollow = async () => {
+    if (!profile) return;
+    const on = !profile.isFollowed;
+    setProfile({ ...profile, isFollowed: on });
+    try {
+      const r = await api<{ statistics: { numberOfFollowers: number; numberOfFollowing: number } }>(on ? 'POST' : 'DELETE', `/api/users/${enc}/follow`);
+      setProfile((p) => (p ? { ...p, isFollowed: on, statistics: p.statistics && { ...p.statistics, numberOfFollowers: r.statistics.numberOfFollowers } } : p));
+      showToast({ text: on ? '已关注' : '取消关注' });
+    } catch (e) {
+      setProfile((p) => (p ? { ...p, isFollowed: !on } : p));
+      showToast({ text: e instanceof Error ? e.message : '关注用户失败' });
+    }
+  };
+  const openConnections = (tab: 'followers' | 'following') =>
+    navigation.dispatch({ type: 'PUSH', payload: { name: Routes.PROFILE_CONNECTIONS, params: { userId, tab, name: profile?.fullName || profile?.username } } });
   const elementsRef = useRef(elements);
   elementsRef.current = elements;
   useFocusEffect(useCallback(() => {
@@ -123,7 +155,7 @@ export function ProfileScreen() {
     pager.current?.setPage(i);
   };
 
-  useTabDoubleTap(Routes.PROFILE, () => scrollPageTo(pageRef.current, 0, true));
+  useTabDoubleTap(Routes.PROFILE, () => { if (isRoot) scrollPageTo(pageRef.current, 0, true); });
 
   // dragging on the header scrolls the page under it
   const dragStart = useRef(0);
@@ -146,17 +178,29 @@ export function ProfileScreen() {
   return (
     <View style={styles.screen}>
       <View style={[styles.headerRow, { paddingTop: insets.top, height: insets.top + HEADER_CONTENT_HEIGHT }]}>
-        <Pressable style={button} onPress={share} accessibilityRole="button" accessibilityLabel="分享">
-          <ShareIcon color={theme.colors.primary} size={20} />
-        </Pressable>
-        <View style={styles.headerEnd}>
-          <Pressable style={button} accessibilityRole="button" accessibilityLabel="搜索">
-            <SearchIcon color={theme.colors.primary} size={20} />
+        {isRoot ? (
+          <Pressable style={button} onPress={share} accessibilityRole="button" accessibilityLabel="分享">
+            <ShareIcon color={theme.colors.primary} size={20} />
           </Pressable>
-          <Pressable style={button} onPress={() => navigation.navigate(Routes.SETTINGS)} accessibilityRole="button" accessibilityLabel="设置">
-            <SettingsIcon color={theme.colors.primary} size={20} />
+        ) : (
+          <Pressable style={button} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="返回">
+            <ChevronLeftIcon color={theme.colors.primary} size={20} />
           </Pressable>
-        </View>
+        )}
+        {isRoot ? (
+          <View style={styles.headerEnd}>
+            <Pressable style={button} accessibilityRole="button" accessibilityLabel="搜索">
+              <SearchIcon color={theme.colors.primary} size={20} />
+            </Pressable>
+            <Pressable style={button} onPress={() => navigation.navigate(Routes.SETTINGS)} accessibilityRole="button" accessibilityLabel="设置">
+              <SettingsIcon color={theme.colors.primary} size={20} />
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable style={button} onPress={share} accessibilityRole="button" accessibilityLabel="分享">
+            <ShareIcon color={theme.colors.primary} size={20} />
+          </Pressable>
+        )}
       </View>
       <View style={styles.body} onLayout={(e) => setViewport(e.nativeEvent.layout.height)}>
         <PagerView
@@ -168,7 +212,7 @@ export function ProfileScreen() {
           onPageSelected={(e) => { const i = e.nativeEvent.position; pageRef.current = i; activeSv.set(i); }}
         >
           <View key="elements" style={styles.page}>
-            <ProfileElementGrid {...listProps} list={elements} listRef={elementList} onScroll={onScroll[0]} />
+            <ProfileElementGrid {...listProps} list={elements} listRef={elementList} onScroll={onScroll[0]} isMe={isMe} />
           </View>
           <View key="collections" style={styles.page}>
             <ProfileClusterGrid
@@ -176,6 +220,7 @@ export function ProfileScreen() {
               collections={collections}
               listRef={clusterList}
               onScroll={onScroll[1]}
+              isMe={isMe}
               onOpen={(c) => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_CLUSTER, params: { clusterId: c.id } } })}
               onCreate={() => useCreateClusterStore.getState().open(() => { void loadCollections(); void loadProfile(); })}
             />
@@ -183,7 +228,12 @@ export function ProfileScreen() {
         </PagerView>
         <GestureDetector gesture={headerPan}>
           <Animated.View style={[styles.foldingHeader, headerStyle]} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-            {profile ? <ProfileInfo user={profile} /> : <View style={styles.infoPlaceholder} />}
+            {profile ? (
+              <ProfileInfo
+                user={profile} isMe={isMe} isFollowed={profile.isFollowed} onFollow={toggleFollow}
+                onFollowers={() => openConnections('followers')} onFollowing={() => openConnections('following')}
+              />
+            ) : <View style={styles.infoPlaceholder} />}
             <View style={styles.tabs} onLayout={(e) => setTabBarHeight(e.nativeEvent.layout.height)}>
               <ProfileTabBar
                 pagerX={pagerX}

@@ -30,7 +30,9 @@ export function Button({ text, onPress, variant = 'primary', size = 'regular', f
   const scale = useSharedValue(1);
   const pressed = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const inactive = disabled || loading;
-  const textColor = disabled ? theme.colors.inverted : variant === 'primary' ? theme.colors.inverted : variant === 'invertedPrimary' ? theme.colors.surfaceInverted : variant === 'destructive' ? theme.colors.alert : theme.colors.primary;
+  // the text's colour is worked out here, not as a style variant: Unistyles did not repaint it when the variant
+  // changed on a mounted button (关注 → 正在关注 stayed white on white)
+  const textColor = disabled ? (variant === 'sheetFilled' ? theme.colors.tertiary : theme.colors.inverted) : variant === 'primary' ? theme.colors.inverted : variant === 'invertedPrimary' ? theme.colors.surfaceInverted : variant === 'destructive' ? theme.colors.alert : theme.colors.primary;
   return (
     <AnimatedPressable
       accessibilityRole="button"
@@ -42,7 +44,7 @@ export function Button({ text, onPress, variant = 'primary', size = 'regular', f
       style={[styles.button, disabled && styles.disabledBackground(variant), pressed, style]}
     >
       <View style={styles.textContainer}>
-        {loading ? <ActivityIndicator size="small" color={textColor} /> : <Text style={styles.text} numberOfLines={1}>{text}</Text>}
+        {loading ? <ActivityIndicator size="small" color={textColor} /> : <Text style={{ ...theme.typography.buttonMedium, color: textColor }} numberOfLines={1}>{text}</Text>}
       </View>
     </AnimatedPressable>
   );
@@ -90,21 +92,4 @@ const styles = StyleSheet.create((theme) => ({
     }[variant],
   }),
   textContainer: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xxs },
-  text: {
-    ...theme.typography.buttonMedium,
-    variants: {
-      variant: {
-        primary: { color: theme.colors.inverted },
-        invertedPrimary: { color: theme.colors.surfaceInverted },
-        secondary: { color: theme.colors.primary },
-        glass: { color: theme.colors.primary },
-        sheetFilled: { color: theme.colors.primary },
-        transparent: { color: theme.colors.primary },
-        outline: { color: theme.colors.primary },
-        destructive: { color: theme.colors.alert },
-      },
-      disabled: { true: { color: theme.colors.inverted }, false: {} },
-    },
-    compoundVariants: [{ disabled: true, variant: 'sheetFilled', styles: { color: theme.colors.tertiary } }],
-  },
 }));

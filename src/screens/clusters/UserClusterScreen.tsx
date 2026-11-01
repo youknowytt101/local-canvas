@@ -137,7 +137,11 @@ export function UserClusterScreen() {
     if (prev?.name === Routes.USER_CLUSTER && prev.params?.clusterId === parent.id) navigation.goBack();
     else openCluster(parent.id);
   };
-  const onOwnerPress = () => { if (cluster?.ownerId === meId) navigation.navigate(Routes.PROFILE); };
+  const onOwnerPress = () => {
+    if (!cluster?.ownerId) return;
+    if (cluster.ownerId === meId) navigation.navigate(Routes.PROFILE);
+    else navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_PROFILE, params: { userId: cluster.ownerId } } });
+  };
 
   const topInset = insets.top + HEADER_CONTENT_HEIGHT;
   const bottomInset = insets.bottom + BAR_BOTTOM_OFFSET + TAB_BAR_HOME_HEIGHT + DEFAULT_GRID_GAP;
