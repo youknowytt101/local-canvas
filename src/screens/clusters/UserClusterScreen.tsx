@@ -27,6 +27,7 @@ import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
 import { HEADER_CONTENT_HEIGHT } from '../../components/home/HomeHeader';
 import { ChevronLeftIcon, MoreIcon } from '../../components/icons';
 import { useClusterMenuStore } from '../../components/sheets/ClusterMenuSheet';
+import { useCollaboratorsStore } from '../../components/sheets/CollaboratorsSheet';
 import { useCreateClusterStore } from '../../components/sheets/CreateClusterSheet';
 import { SIMILAR_PAGE_SIZE } from '../../hooks/useSimilarElements';
 import { usePagedList } from '../../hooks/usePagedList';
@@ -165,6 +166,12 @@ export function UserClusterScreen() {
                   cluster={cluster} parent={parent} subClusters={subClusters} width={width}
                   onParentPress={onParentPress} onOwnerPress={onOwnerPress} onOpenSub={(s) => openCluster(s.id)}
                   onChanged={(patch) => setCluster((c) => (c ? { ...c, ...patch } : c))}
+                  onPeoplePress={() => useCollaboratorsStore.getState().open(cluster.id, cluster.role === 'Owner', {
+                    onOpenPerson: (userId) => (userId === meId ? navigation.navigate(Routes.PROFILE)
+                      : navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_PROFILE, params: { userId } } })),
+                    onChanged: () => { void load(); },
+                  })}
+                  onInvite={() => useCollaboratorsStore.getState().openInvite(cluster.id)}
                 />
               }
             />

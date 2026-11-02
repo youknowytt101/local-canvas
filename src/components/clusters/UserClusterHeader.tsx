@@ -9,12 +9,15 @@
 //   - the description (ClusterDescription): regular, primary, centred, two lines and then 更多, spacing.lg under it
 //   - on someone else's: 关注 (primary) / 正在关注 (outline), spacing.xxxl under it
 //   - the sub-collections
-// Near Cosmos: the avatars are initials (no pictures here); no add-collaborator circle yet (inviting comes later); the
+//   pressed, the people (CollaboratorsSheet); the owner's last circle is addAvatarColumn (elevated, AddUserIcon 20:
+//   cluster.inviteCollaborators), the invite link
+// Near Cosmos: the avatars are initials (no pictures here); the
 // description opens without the spring and cross-fade, 更多 under the two lines (Cosmos ends the second line with it);
 // the sub-collections are cards two to a row (Cosmos' SubCluster list is not read).
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import Svg, { Path } from 'react-native-svg';
+import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { api, get } from '../../lib/api';
 import { showToast } from '../../stores/useToastStore';
 import { Button } from '../Button';
@@ -40,9 +43,12 @@ type Props = {
   onOwnerPress: () => void;
   onOpenSub: (c: Collection) => void;
   onChanged: (patch: Partial<ClusterDetail>) => void;
+  onPeoplePress: () => void; // CollaboratorsSheet
+  onInvite: () => void; // the add circle: the invite link
 };
 
-export function UserClusterHeader({ cluster: c, parent, subClusters, width, onParentPress, onOwnerPress, onOpenSub, onChanged }: Props) {
+export function UserClusterHeader({ cluster: c, parent, subClusters, width, onParentPress, onOwnerPress, onOpenSub, onChanged, onPeoplePress, onInvite }: Props) {
+  const { theme } = useUnistyles();
   const [people, setPeople] = useState<Person[]>([]);
   const [open, setOpen] = useState(false);
   const [clipped, setClipped] = useState(false);
@@ -82,11 +88,16 @@ export function UserClusterHeader({ cluster: c, parent, subClusters, width, onPa
         <Text style={styles.subtitle}>· {formatClusterElementCount(c.count, c.isPrivate)}</Text>
       </View>
       {people.length ? (
-        <View style={styles.avatarRow}>
+        <Pressable style={styles.avatarRow} onPress={onPeoplePress} accessibilityRole="button" accessibilityLabel="协作者">
           {people.map((p, i) => (
             <View key={p.userId} style={[styles.avatarColumn, i > 0 && styles.overlap]}><Avatar user={{ username: p.username }} size={29} /></View>
           ))}
-        </View>
+          {c.role === 'Owner' ? (
+            <Pressable style={[styles.avatarColumn, styles.overlap, styles.addAvatarColumn]} onPress={onInvite} accessibilityRole="button" accessibilityLabel="邀请合作者">
+              <AddUserIcon color={theme.colors.primary} />
+            </Pressable>
+          ) : null}
+        </Pressable>
       ) : <View style={styles.avatarSpacer} />}
       {c.description ? (
         <Pressable style={styles.description} onPress={() => setOpen((o) => !o)} disabled={!clipped && !open}>
@@ -127,6 +138,7 @@ const styles = StyleSheet.create((theme) => ({
   avatarSpacer: { height: theme.spacing.lg },
   avatarColumn: { width: 32, height: 32, borderRadius: 16, borderWidth: 1.5, borderColor: theme.colors.background, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   overlap: { marginLeft: -theme.spacing.sm },
+  addAvatarColumn: { backgroundColor: theme.colors.elevated },
   description: { alignItems: 'center', marginBottom: theme.spacing.lg },
   descriptionText: { ...theme.typography.regular, color: theme.colors.primary, textAlign: 'center' },
   more: { ...theme.typography.regular, color: theme.colors.tertiary },
@@ -136,3 +148,12 @@ const styles = StyleSheet.create((theme) => ({
     marginBottom: theme.spacing.lg,
   },
 }));
+
+// lucide's user-plus (Cosmos' AddUserIcon), 20
+function AddUserIcon({ color }: { color: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <Path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6" stroke={color} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </Svg>
+  );
+}

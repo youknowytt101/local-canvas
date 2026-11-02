@@ -4,12 +4,11 @@
 //   - everyone: 复制链接 (common.copyLink, toast 链接已复制) / 分享收藏 (cluster.shareCluster: the system's share)
 //   - a collaborator: 离开收藏 (alert colour; asked first; POST /leave, toast 已离开收藏夹, back)
 //   - the owner: 固定收藏 · 取消固定收藏 (the top level only: /api/profile/pin | unpin, toast 已固定到个人资料 /
-//     已从个人资料取消固定) / 编辑收藏 (the create sheet in its edit mode) / 邀请协作者 (the collection's invite link, by
-//     the system's share) / on a sub-collection 从“父”中移除 (asked first; PATCH parentId null, toast 已移出“父”)
+//     已从个人资料取消固定) / 编辑收藏 (the create sheet in its edit mode) / 邀请协作者 (the invite link sheet) / on a sub-collection 从“父”中移除 (asked first; PATCH parentId null, toast 已移出“父”)
+//   - someone else's: 举报 (alert colour; one question, then the report)
 //   - then the owner's 删除收藏 (alert colour; asked first, the elements stay; DELETE, back)
-// The questions use the web page's words. Not here yet: 查看画布 (step 7), 整理 (OrganizeClusterElementsScreen),
-// someone else's 举报, the collaborators sheet behind 邀请协作者 (Cosmos opens InviteCollaboratorSheet; here the link is
-// shared straight away). Near Cosmos: the questions are the system's alert.
+// The questions use the web page's words, asked with the system's alert as Cosmos does. Not here yet: 查看画布 (step 7);
+// 整理 is on the bar (OrganizeClusterScreen).
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
 import * as Clipboard from 'expo-clipboard';
 import { Fragment, type ReactNode } from 'react';
@@ -23,7 +22,10 @@ import { serverUrl } from '../../lib/server';
 import { showToast } from '../../stores/useToastStore';
 import type { ClusterDetail } from '../clusters/UserClusterHeader';
 import { ShareIcon } from '../icons';
+import { useCollaboratorsStore } from './CollaboratorsSheet';
 import { useCreateClusterStore } from './CreateClusterSheet';
+import { reportTarget } from './ReportSheet';
+import { FlagIcon } from './UserMenuSheet';
 
 export const CLUSTER_MENU_SHEET = 'cluster-menu';
 
@@ -76,6 +78,9 @@ export function ClusterMenuSheet() {
         },
       }]);
     }
+    if (!c.role) {
+      groups.push([{ label: '举报', icon: <FlagIcon color={alert} />, danger: true, onPress: async () => { await close(); reportTarget('cluster', c.id); } }]);
+    }
     if (c.role === 'Owner') {
       const owner: Item[] = [];
       if (!parent) {
@@ -98,13 +103,7 @@ export function ClusterMenuSheet() {
       });
       owner.push({
         label: '邀请协作者', icon: <AddUserIcon color={color} />,
-        onPress: async () => {
-          await close();
-          try {
-            const r = await api<{ link: string }>('POST', `${path}/invite-link`);
-            void Share.share({ message: r.link.startsWith('http') ? r.link : `${serverUrl()}${r.link}`, title: c.name });
-          } catch (e) { fail(e, '无法创建邀请链接'); }
-        },
+        onPress: async () => { await close(); useCollaboratorsStore.getState().openInvite(c.id); },
       });
       if (parent) {
         owner.push({

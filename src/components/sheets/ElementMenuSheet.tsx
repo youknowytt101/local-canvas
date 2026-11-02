@@ -5,7 +5,8 @@
 //   - 分享通过 (useOpenElementShare): the system's share with that address (Cosmos opens its own share screen)
 //   - 不感兴趣 (useDislikeElement): POST /api/elements/dislike, toast 收到反馈
 // Not yet: 保存到相机胶卷 (needs a media-library module in the native build), 查看画布 (step 7), 添加来源 / 编辑来源,
-// 举报, 删除 (All Elements is not here yet).
+// 删除 (All Elements is not here yet).
+//   - 举报 (profile.report, Flag): the report sheet (ReportSheet), before 移除
 //   - 移除 (useElementViewerRemoveAction), last and in the alert colour, for something one has (isConnectedByUser) opened
 //     from one's profile or a collection one may change: asked first (profile / cluster.removeElementsDescription,
 //     the web page's words), then taken out of it (POST /api/elements/connections disconnect), toast
@@ -21,6 +22,8 @@ import { recordElementEvent } from '../../hooks/useTrackElementView';
 import { api, get } from '../../lib/api';
 import type { Element } from '../../lib/elements';
 import type { RemoveTarget } from '../../stores/useElementViewerStore';
+import { useReportStore } from './ReportSheet';
+import { FlagIcon } from './UserMenuSheet';
 import { serverUrl } from '../../lib/server';
 import { showToast } from '../../stores/useToastStore';
 import Svg, { Path } from 'react-native-svg';
@@ -76,6 +79,7 @@ export function ElementMenuSheet() {
         },
       },
     ],
+    [{ label: '举报', icon: <FlagIcon color={color} />, onPress: async () => { await close(); useReportStore.getState().open(element.id); } }],
     ...(remove && element.isConnectedByUser ? [[{
       label: '移除', icon: <TrashIcon color={theme.colors.alert} />, danger: true,
       onPress: async () => {

@@ -10,13 +10,13 @@
 //     same way (useProfileTabScrollSync), so the header does not jump.
 //   - the Profile tab pressed again scrolls the page on screen back to the top (useOwnProfileTabPress)
 //   - coming back to it reads the profile again (counts, bio, …); the lists follow when their counts changed
-//   - someone else's: the way back instead of search / settings, share on the right; ProfileInfo's 关注 / 正在关注;
+//   - someone else's: the way back instead of search / settings, share and 更多 (UserMenuSheet) on the right; ProfileInfo's 关注 / 正在关注;
 //     his public collections (no create card) and the elements of his profile; the empty states
 //     profile.emptyClustersTitle / Hint and emptyElementsTitle / Hint; nothing to take out
 //   - the follower / following counts open ProfileConnectionsScreen
 // Near Cosmos: dragging on the header scrolls the page under it without a fling of its own (Cosmos hands the gesture
-// to the list); the search (step 5), 创建 (step 6) and 编辑主页 (step 8) are not wired yet; someone else's menu
-// (UserProfileMenus: copy link, canvas, block, report) is not here yet.
+// to the list); the search (step 5), 创建 (step 6) and 编辑主页 (step 8) are not wired yet; on someone else's menu
+// (UserProfileMenus) there is no 查看画布 or 屏蔽 yet.
 import type { FlashListRef } from '@shopify/flash-list';
 import { useFocusEffect, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -30,7 +30,8 @@ import { BAR_BOTTOM_OFFSET, TAB_BAR_HOME_HEIGHT } from '../../components/bar/con
 import type { Collection } from '../../components/clusters/CollectionCard';
 import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
 import { HEADER_CONTENT_HEIGHT } from '../../components/home/HomeHeader';
-import { ChevronLeftIcon, SearchIcon, SettingsIcon, ShareIcon } from '../../components/icons';
+import { ChevronLeftIcon, MoreIcon, SearchIcon, SettingsIcon, ShareIcon } from '../../components/icons';
+import { useUserMenuStore } from '../../components/sheets/UserMenuSheet';
 import { ProfileClusterGrid, type ProfileClusterGridItem } from '../../components/profile/ProfileClusterGrid';
 import { ProfileElementGrid } from '../../components/profile/ProfileElementGrid';
 import { ProfileInfo, type ProfileUser } from '../../components/profile/ProfileInfo';
@@ -197,9 +198,14 @@ export function ProfileScreen() {
             </Pressable>
           </View>
         ) : (
-          <Pressable style={button} onPress={share} accessibilityRole="button" accessibilityLabel="分享">
-            <ShareIcon color={theme.colors.primary} size={20} />
-          </Pressable>
+          <View style={styles.headerEnd}>
+            <Pressable style={button} onPress={share} accessibilityRole="button" accessibilityLabel="分享">
+              <ShareIcon color={theme.colors.primary} size={20} />
+            </Pressable>
+            <Pressable style={button} onPress={() => useUserMenuStore.getState().open(userId)} accessibilityRole="button" accessibilityLabel="更多">
+              <MoreIcon color={theme.colors.primary} size={20} />
+            </Pressable>
+          </View>
         )}
       </View>
       <View style={styles.body} onLayout={(e) => setViewport(e.nativeEvent.layout.height)}>
