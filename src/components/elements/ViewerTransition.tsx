@@ -3,7 +3,9 @@
 // 6.177 — a container growing out of the tile with the page's background in it read as a grey box over the grid).
 // Drawn bottom to top:
 //   - the page it was opened from (Android: that page itself, under this transparent modal; iOS: its snapshot), the
-//     tile the picture flies out of or into out of sight there (the system zoom hides its source the same way)
+//     tile the picture flies out of or into out of sight there (the system zoom hides its source the same way): a
+//     grid's tile hidden (Android), or covered by a hole of the background's colour (the snapshot's, and the canvas'
+//     cards, which it draws itself)
 //   - a black scrim, Material's 32 %, over all of it alike, which comes first (by SCRIM_IN of the way)
 //   - the viewer's page where it will be, coming in after it (from PAGE_FROM of the way): its own background is what
 //     everything behind turns into
@@ -28,16 +30,16 @@ import Animated, {
 } from 'react-native-reanimated';
 import { StyleSheet } from 'react-native-unistyles';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
+import type { ImageRef } from 'expo-image';
 import {
-  hiddenTileKey, hiddenViewerMedia, isViewerMediaShown, measureInWindow, viewerMediaView, watchViewerMedia, type Rect,
-  type TransitionTile, type ViewerTransition,
+  hiddenTileKey, hiddenViewerMedia, isViewerMediaShown, measureInWindow, TILE_RADIUS, viewerMediaView, watchViewerMedia,
+  type Rect, type TransitionTile, type ViewerTransition,
 } from '../../lib/viewerTransition';
 
 const SCRIM = 0.32; // MaterialContainerTransform's scrim, #52000000
 const SCRIM_IN = 0.35; // the scrim is all there this much of the way in, ...
 const PAGE_FROM = 0.2; // ... and the page starts coming in here
 const PAGE_IN = 0.98; // the page this far in: its media takes over from the picture
-const TILE_RADIUS = 3; // the tile's borderRadius.element (the viewer's media has square corners)
 const TILE_BLUR = 30; // ElementTile's and ElementViewerMedia's blurRadius for a picture under the veil
 const MEDIA_BLUR = 42;
 const OPEN = { duration: 450, dampingRatio: 1 };
@@ -58,7 +60,8 @@ type Drag = { on: boolean; fx: number; fy: number; dx: number; dy: number; edge:
 // rather than laid out again every frame: a new size had the picture decoded again, ten times on the way)
 // uris: the media's sources in the order it tries them (ElementViewerMedia goes on to the next if one does not load)
 export type FlyImage = { uris: string[]; blurred: boolean; w: number; h: number };
-type FlySource = { uri: string; placeholder: string | null; blur: number; w: number; h: number };
+type FlySource = { uri: string; picture?: ImageRef; placeholder: string | null; blur: number; w: number; h: number };
+type Hole = Rect & { r: number };
 
 function at(r: Rect, corner: number, v: number): Geo {
   'worklet';
@@ -110,9 +113,11 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
 ) {
   const { width: W, height: H } = useWindowDimensions();
   const T = transition.from.rect;
+  const TR = transition.from.radius;
   const live = !transition.backdrop; // the page under it is drawn (Android)
+  const drawn = transition.from.drawn; // the page draws its own cards (the canvas): they are covered by the hole
   const p = useSharedValue(0);
-  const fromGeo = useSharedValue<Geo>(at(T, TILE_RADIUS, 0));
+  const fromGeo = useSharedValue<Geo>(at(T, TR, 0));
   const toGeo = useSharedValue<Geo>(at(initialMedia, 0, 1));
   const opening = useSharedValue(true); // out of the tile: where it goes follows the media's place as it is found
   const media = useSharedValue<Rect>(initialMedia);
@@ -122,8 +127,8 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
   const dragMediaId = useSharedValue('');
   const start = useSharedValue({ x: 0, y: 0 });
   const enabled = useSharedValue(false); // open and not going: it can be dragged
-  // the snapshot's tile covered (iOS), while the picture flies out of it or into it
-  const hole = useSharedValue<Rect | null>(null);
+  // the snapshot's tile (iOS) or the canvas' card covered, while the picture flies out of it or into it
+  const hole = useSharedValue<Hole | null>(null);
   const fly = useSharedValue(transition.from.image ? 1 : 0); // the picture in sight
   const flyReady = useSharedValue(false); // ...and it has shown what it has now
   const pageRef = useRef<View>(null);
@@ -140,8 +145,8 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
   };
   // the tile the picture flies out of or into, out of sight
   const hideTile = (tile: TransitionTile | null) => {
-    hole.value = tile?.rect ?? null;
-    if (live) hiddenTileKey.value = tile?.key ?? -1;
+    hole.value = tile ? { ...tile.rect, r: tile.radius } : null;
+    if (live) hiddenTileKey.value = tile && !tile.drawn ? tile.key : -1;
   };
   useEffect(() => () => {
     if (live) hiddenTileKey.value = -1;
@@ -157,12 +162,15 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
   const flySource = useMemo((): FlySource | null => {
     if (!mediaPicture && currentId === initialElementId) {
       const { image, blurred } = transition.from;
+      const { picture } = transition;
+      // a drawn card's picture only when decoded in time (it would load on the way and appear part way)
+      if (drawn) return image && picture ? { uri: image, picture, placeholder: null, blur: 0, w: initialMedia.w, h: initialMedia.h } : null;
       return image ? { uri: image, placeholder: null, blur: blurred ? TILE_BLUR : 0, w: initialMedia.w, h: initialMedia.h } : null;
     }
     const picture = currentId && currentTile ? flyImage(currentId) : null;
     const uri = picture?.uris[Math.min(tried, picture.uris.length - 1)];
     return picture && uri ? { uri, placeholder: currentTile!.image, blur: picture.blurred ? MEDIA_BLUR : 0, w: picture.w, h: picture.h } : null;
-  }, [mediaPicture, currentId, currentTile, tried, initialElementId, initialMedia, transition.from, flyImage]);
+  }, [mediaPicture, currentId, currentTile, tried, initialElementId, initialMedia, transition, drawn, flyImage]);
   const onFlyError = () => { if (mediaPicture || currentId !== initialElementId) setFailed({ id: currentId, n: tried + 1 }); };
   const flyUri = flySource?.uri ?? null;
   const flyBase = useSharedValue({ w: initialMedia.w, h: initialMedia.h });
@@ -182,7 +190,7 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
   const geo = useDerivedValue<Geo>(() => {
     const d = drag.value;
     if (d.on) return dragged(d, dragMedia.value, W, H);
-    if (opening.value) return mix(at(T, TILE_RADIUS, 0), at(media.value, 0, 1), p.value);
+    if (opening.value) return mix(at(T, TR, 0), at(media.value, 0, 1), p.value);
     return mix(fromGeo.value, toGeo.value, p.value);
   });
 
@@ -219,19 +227,19 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
   const flyTo = (tile: TransitionTile | null, elementId: string | null, m: Rect, vy: number, done: () => void) => {
     enabled.value = false;
     const target = tile?.rect ?? null;
-    const key = tile?.key ?? -1;
+    const key = tile && !tile.drawn ? tile.key : -1; // a drawn card is only covered
+    const radius = tile?.radius ?? TILE_RADIUS;
     // there: the tile shows again under the picture, and the screen goes a frame later, so no frame lacks both
-    const land = () => requestAnimationFrame(done);
-    scheduleOnUI(() => {
+    const land = () => requestAnimationFrame(done);    scheduleOnUI(() => {
       'worklet';
       const g = geo.value;
       const from = p.value === 1 && !drag.value.on ? at(m, 0, 1) : g;
       const flies = target !== null && flyReady.value; // its picture is drawn, ready over the media
       fly.value = flies ? 1 : 0;
       hiddenViewerMedia.value = flies ? elementId ?? '' : '';
-      hole.value = flies ? target : null;
+      hole.value = flies && target ? { ...target, r: radius } : null;
       if (live) hiddenTileKey.value = flies ? key : -1;
-      const to = flies && target ? at(target, TILE_RADIUS, 0) : { ...from, v: 0 };
+      const to = flies && target ? at(target, radius, 0) : { ...from, v: 0 };
       drag.value = { ...drag.value, on: false };
       opening.value = false;
       fromGeo.value = from;
@@ -338,7 +346,7 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
   const pageStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.max(0, (geo.value.v - PAGE_FROM) / (1 - PAGE_FROM))) }));
   const holeStyle = useAnimatedStyle(() => {
     const r = hole.value;
-    return r ? { left: r.x, top: r.y, width: r.w, height: r.h } : { left: 0, top: 0, width: 0, height: 0 };
+    return r ? { left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: r.r } : { left: 0, top: 0, width: 0, height: 0, borderRadius: 0 };
   });
   const flyStyle = useAnimatedStyle(() => {
     const g = geo.value;
@@ -354,13 +362,12 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
   return (
     <View style={[styles.root, !live && styles.opaque]}>
       {transition.backdrop ? (
-        <>
-          <Canvas style={RNStyleSheet.absoluteFill} pointerEvents="none">
-            <SkiaImage image={transition.backdrop} x={0} y={0} width={W} height={H} fit="fill" />
-          </Canvas>
-          <Animated.View style={[styles.hole, holeStyle]} pointerEvents="none" />
-        </>
+        <Canvas style={RNStyleSheet.absoluteFill} pointerEvents="none">
+          <SkiaImage image={transition.backdrop} x={0} y={0} width={W} height={H} fit="fill" />
+        </Canvas>
       ) : null}
+      {/* over the snapshot, or over the live canvas (it is frozen under the viewer: its cards cannot hide themselves) */}
+      {!live || drawn ? <Animated.View style={[styles.hole, holeStyle]} pointerEvents="none" /> : null}
       <Animated.View style={[RNStyleSheet.absoluteFill, styles.scrim, scrimStyle]} pointerEvents="none" />
       <GestureDetector gesture={gesture}>
         {/* faded as one (Android otherwise fades each view on its own: the header's background over the page's) */}
@@ -371,7 +378,7 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
       {flySource ? (
         <Animated.View style={[styles.fly, { width: flySource.w, height: flySource.h }, flyStyle]} pointerEvents="none">
           <Image
-            source={{ uri: flySource.uri }}
+            source={flySource.picture ?? { uri: flySource.uri }}
             placeholder={flySource.placeholder ? { uri: flySource.placeholder } : undefined}
             placeholderContentFit="cover"
             contentFit="cover"
@@ -390,7 +397,7 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
 const styles = StyleSheet.create((theme) => ({
   root: { flex: 1 },
   opaque: { backgroundColor: theme.colors.background },
-  hole: { position: 'absolute', borderRadius: TILE_RADIUS, backgroundColor: theme.colors.background },
+  hole: { position: 'absolute', backgroundColor: theme.colors.background },
   scrim: { backgroundColor: '#000000' },
   fly: { position: 'absolute', left: 0, top: 0, overflow: 'hidden', transformOrigin: 'left top' },
 }));

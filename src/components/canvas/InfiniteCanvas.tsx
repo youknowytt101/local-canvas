@@ -16,6 +16,8 @@
 //     to 1, or 2 when already at 1 or more, TIMING_MS out-cubic) and makes it the seed (handleTapRequest →
 //     onFocusElement); while that seed loads, every card but the tapped one is a placeholder and taps on others do
 //     nothing (focus lock, isRefiningSimilar). A tap on the seed zooms to MAX_SCALE, and once there opens it
+//   - a card opened says where it and the cards in sight are (lib/viewerTransition's noteOpenedCard): the viewer's
+//     picture flies out of it and back into the card of the element on screen (the person's choice, HANDOFF 6.178)
 //   - holding still LONG_PRESS_MS is a long press (onLongPressElement); a pressed card gives a little (useCanvasPressFocus)
 //   - from OPEN_PILL_SCALE (gone again under OPEN_PILL_HIDE_SCALE) the loaded cards nearest the middle carry 打开
 //     (CanvasOpenPillOverlay)
@@ -54,6 +56,7 @@ import {
 import { StripCache } from '../../lib/canvas/strips';
 import { prefetchPreviews } from '../../lib/previewFiles';
 import { videoBudget, watchVideoBudget } from '../../lib/videoBudget';
+import { noteOpenedCard, type DrawnCard } from '../../lib/viewerTransition';
 import { NoteElement } from '../elements/NoteElement';
 import { PreviewVideo, previewUrlOf } from '../elements/PreviewVideo';
 
@@ -535,6 +538,35 @@ export function InfiniteCanvas(props: Props) {
     focusWorldPoint(inst.x + it.width / 2, inst.y + it.height / 2);
   }, [focusRequest?.id, dataset]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ---------- opening a card ----------
+  // where it and the cards in sight are in the window, one of each other element (its copy nearest the middle): the
+  // viewer's picture flies out of it and back into the card of the element on screen (lib/viewerTransition; the camera
+  // stays where it is under the viewer)
+  const rootRef = useRef<View>(null);
+  const origin = useRef({ x: 0, y: 0 }); // the canvas in the window
+  const openCard = useCallback((inst: CanvasInstance) => {
+    const s = camS.get();
+    const ox = camX.get() + origin.current.x;
+    const oy = camY.get() + origin.current.y;
+    const card = (i: CanvasInstance): DrawnCard => ({
+      elementId: i.element.id, rect: { x: ox + i.x * s, y: oy + i.y * s, w: i.item.width * s, h: i.item.height * s },
+      image: canvasImageUrls(i.element)[0] ?? null, radius: theme.borderRadius.element * s,
+    });
+    const sz = sizeRef.current;
+    const mx = origin.current.x + (sz?.W ?? 0) / 2;
+    const my = origin.current.y + (sz?.H ?? 0) / 2;
+    const nearest = new Map<string, { c: DrawnCard; d: number }>();
+    for (const i of instancesRef.current) {
+      if (i.key === inst.key || !hasPicture(i.element)) continue;
+      const c = card(i);
+      const d = (c.rect.x + c.rect.w / 2 - mx) ** 2 + (c.rect.y + c.rect.h / 2 - my) ** 2;
+      const was = nearest.get(c.elementId);
+      if (!was || d < was.d) nearest.set(c.elementId, { c, d });
+    }
+    noteOpenedCard(card(inst), [...nearest.values()].map((n) => n.c));
+    cb.current.onOpenElement(inst.element);
+  }, [camS, camX, camY, theme.borderRadius.element]);
+
   // ---------- taps, presses ----------
   const handleTap = useCallback((fx: number, fy: number) => {
     const inst = hit(fx, fy);
@@ -552,9 +584,9 @@ export function InfiniteCanvas(props: Props) {
       cb.current.onFocusElement({ element: inst.element, elementIndex: inst.elementIndex, sourceIndex: inst.item.sourceIndex });
       return;
     }
-    if (camS.get() >= C.MAX_SCALE - 0.01) cb.current.onOpenElement(inst.element);
+    if (camS.get() >= C.MAX_SCALE - 0.01) openCard(inst);
     else focusWorldPoint(cx, cy, C.MAX_SCALE);
-  }, [camS, focusWorldPoint, hit]);
+  }, [camS, focusWorldPoint, hit, openCard]);
 
   const handleLongPress = useCallback((fx: number, fy: number) => {
     const inst = hit(fx, fy);
@@ -576,8 +608,8 @@ export function InfiniteCanvas(props: Props) {
     const key = zoomKeyRef.current;
     const inst = (key && instancesRef.current.find((i) => i.key === key)) || hit(fx, fy);
     setZoomKey(null);
-    if (inst) cb.current.onOpenElement(inst.element);
-  }, [hit]);
+    if (inst) openCard(inst);
+  }, [hit, openCard]);
   const clearZoomKey = useCallback(() => setZoomKey(null), []);
 
   // ---------- gestures ----------
@@ -761,6 +793,7 @@ export function InfiniteCanvas(props: Props) {
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     if (!size || Math.round(size.W) !== Math.round(width) || Math.round(size.H) !== Math.round(height)) setSize({ W: width, H: height });
+    rootRef.current?.measureInWindow((x, y) => { if (Number.isFinite(x) && Number.isFinite(y)) origin.current = { x, y }; });
   };
 
   // CanvasOpenPillOverlayTsx2: shown from OPEN_PILL_SCALE, hidden under OPEN_PILL_HIDE_SCALE or while a pinch opens
@@ -796,7 +829,7 @@ export function InfiniteCanvas(props: Props) {
   );
 
   return (
-    <View style={styles.fill} onLayout={onLayout}>
+    <View ref={rootRef} style={styles.fill} onLayout={onLayout} collapsable={false}>
       <GestureDetector gesture={gesture}>
         <View style={styles.fill} collapsable={false}>
           <Canvas style={styles.fill}>
@@ -819,7 +852,7 @@ export function InfiniteCanvas(props: Props) {
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         {pills.map((inst) => (
           <OpenPill key={inst.key} inst={inst} camX={camX} camY={camY} camS={camS} opacity={pillOpacity} visible={pillVisible}
-            onOpen={() => cb.current.onOpenElement(inst.element)} />
+            onOpen={() => openCard(inst)} />
         ))}
       </View>
     </View>

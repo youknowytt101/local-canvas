@@ -30,10 +30,10 @@ import { Routes } from './routes';
 
 const screenOptions = { headerShown: false } as const;
 const CANVAS_OPTIONS = { animation: 'fade', freezeOnBlur: true } as const;
-// getElementsViewerOptions: a viewer opened from the canvas fades in (openAnimation 'fade'); one growing from a tile
-// ('zoom', lib/viewerTransition, not in Cosmos) is pushed and popped without an animation and without the swipe back:
-// it grows and shrinks itself, and is dragged back down (or from the left edge) instead. On Android as a transparent
-// modal, so that the page it grew from is still drawn under it
+// getElementsViewerOptions: a viewer opened from the canvas without its card fades in (openAnimation 'fade'); one
+// opening out of a grid's tile or a canvas' card ('zoom', lib/viewerTransition, not in Cosmos) is pushed and popped
+// without an animation and without the swipe back: it runs its own transition, and is dragged back down (or from the
+// left edge) instead. On Android as a transparent modal, so that the page it opened from is still drawn under it
 const ZOOM_OPTIONS = TRANSITION_OVER_LIVE_PAGE
   ? { animation: 'none' as const, presentation: 'transparentModal' as const }
   : { animation: 'none' as const, gestureEnabled: false };

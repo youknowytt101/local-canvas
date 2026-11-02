@@ -18,7 +18,8 @@
 //     out what is there (mergeCanvasPageElements) and stopping on a cursor that comes back the same
 //     (resolveNextCanvasPageCursor). The For You list stays as it was meanwhile (freezeForYouElements)
 //   - a long press is the save sheet (useElementMoveLongPress); opening a card opens the viewer on the dataset's
-//     elements, with the 'fade' animation, the source Canvas
+//     elements, the source Canvas, with the card's picture flying out of it and back into it (lib/viewerTransition,
+//     the person's choice, HANDOFF 6.178), else with the 'fade' animation
 import { useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -33,9 +34,8 @@ import { CANVAS as C } from '../../lib/canvas/constants';
 import { toCanvasElements, type CanvasDataset } from '../../lib/canvas/layout';
 import type { Element } from '../../lib/elements';
 import type { FeedPage } from '../../lib/feedCache';
+import { openElementViewer } from '../../lib/openElementViewer';
 import { serverUrl } from '../../lib/server';
-import { Routes } from '../../navigation/routes';
-import { useElementViewerStore } from '../../stores/useElementViewerStore';
 import { useForYouCanvasStore } from '../../stores/useForYouCanvasStore';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 
@@ -197,10 +197,7 @@ export function InfiniteCanvasScreen() {
     const d = dataset;
     if (!d) return;
     const initialIndex = Math.max(0, d.elements.findIndex((e) => String(e.id) === String(element.id)));
-    const viewerId = useElementViewerStore.getState().openViewer({
-      elements: d.elements, initialIndex, hasMore: false, userInteractionSource: 'Canvas',
-    });
-    navigation.dispatch({ type: 'PUSH', payload: { name: Routes.ELEMENTS_VIEWER, params: { viewerId, initialIndex, openAnimation: 'fade' } } });
+    openElementViewer(navigation, { elements: d.elements, initialIndex, hasMore: false, userInteractionSource: 'Canvas' }, 'fade');
   }, [dataset, navigation]);
   const onLongPressElement = useCallback((element: Element) => { useMoveSheetStore.getState().open(element); }, []);
 

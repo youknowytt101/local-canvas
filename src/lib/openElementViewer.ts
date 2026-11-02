@@ -10,7 +10,8 @@ import { playViewerVideo } from './viewerVideoPlayers';
 
 let opening = false; // a second tap while the first is being snapshotted opens nothing
 
-export function openElementViewer(navigation: NavigationProp<ParamListBase>, list: Omit<ViewerList, 'currentIndex'>) {
+// otherwise: the push without a tile to grow out of (the canvas' viewer fades in: getElementsViewerOptions)
+export function openElementViewer(navigation: NavigationProp<ParamListBase>, list: Omit<ViewerList, 'currentIndex'>, otherwise?: 'fade') {
   if (opening) return;
   opening = true;
   const el = list.elements[list.initialIndex];
@@ -18,7 +19,8 @@ export function openElementViewer(navigation: NavigationProp<ParamListBase>, lis
   playViewerVideo(el); // it starts now, not when the viewer has rendered
   const push = (grow: boolean) => {
     opening = false;
-    const params = { viewerId, initialIndex: list.initialIndex, ...(grow ? { openAnimation: 'zoom' as const } : {}) };
+    const openAnimation = grow ? 'zoom' as const : otherwise;
+    const params = { viewerId, initialIndex: list.initialIndex, ...(openAnimation ? { openAnimation } : {}) };
     navigation.dispatch({ type: 'PUSH', payload: { name: Routes.ELEMENTS_VIEWER, params } });
   };
   prepareViewerTransition(el, viewerId).then(push, () => push(false));

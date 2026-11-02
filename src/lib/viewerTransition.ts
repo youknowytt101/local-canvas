@@ -15,23 +15,32 @@
 //   - without a tile just pressed and on screen (or without a snapshot on iOS) the viewer is pushed as before
 // A grid's tiles register here (mountTile) with the screen they are on and say when they are pressed (notePressedTile);
 // only the tiles of the page the viewer is opened from and in sight there count (the pages under it and the other tabs
-// keep theirs mounted, often of the same elements). The viewer's media boxes register too (mountViewerMedia), so that
-// the viewer can measure the one on screen.
+// keep theirs mounted, often of the same elements). The canvas draws its cards itself: it says where the card it opens
+// and those in sight are (noteOpenedCard), its picture is decoded before the push (it is not in expo-image's cache),
+// and the cards are covered by the viewer rather than hidden (the canvas is frozen under it). The viewer's media boxes
+// register too (mountViewerMedia), so that the viewer can measure the one on screen.
 import { makeImageFromView, type SkImage } from '@shopify/react-native-skia';
+import { Image, type ImageRef } from 'expo-image';
 import type { RefObject } from 'react';
 import { Dimensions, Platform, type View } from 'react-native';
 import { makeMutable, useAnimatedStyle } from 'react-native-reanimated';
 import type { Element } from './elements';
+import { absoluteUrl } from './server';
 
 export type Rect = { x: number; y: number; w: number; h: number };
 // screen: the key of the route it is drawn in; image: its picture, already loaded
 type Tile = { key: number; elementId: string; screen: string | null; view: View | null; image: string | null; blurred: boolean };
-export type TransitionTile = { key: number; elementId: string; rect: Rect; image: string | null; blurred: boolean };
+// radius: its corners on screen; drawn: a card the page draws itself (the canvas), covered rather than hidden
+export type TransitionTile = { key: number; elementId: string; rect: Rect; image: string | null; blurred: boolean; radius: number; drawn: boolean };
 export type ViewerTransition = {
   from: TransitionTile; // the tile it opened from, in the window
   tiles: TransitionTile[]; // the tiles in sight on that page, where they are
   backdrop: SkImage | null; // iOS: the page under it
+  picture: ImageRef | null; // a drawn card's picture, decoded ahead (it is not in expo-image's cache)
 };
+// a card the canvas draws: which element, where it is in the window, its picture and corners
+export type DrawnCard = { elementId: string; rect: Rect; image: string | null; radius: number };
+export const TILE_RADIUS = 3; // ElementTile's borderRadius.element
 
 // Android keeps the page under the viewer drawn (a transparent modal); iOS snapshots it
 export const TRANSITION_OVER_LIVE_PAGE = Platform.OS === 'android';
@@ -43,12 +52,15 @@ const viewerMedia = new Map<string, View>(); // the viewer's media boxes mounted
 const mediaShown = new Set<string>(); // ...that have shown their picture
 const mediaListeners = new Set<(elementId: string) => void>();
 let pressed: { tile: Tile; at: number } | null = null;
+let opened: { from: DrawnCard; others: DrawnCard[]; at: number } | null = null;
 let root: RefObject<View | null> | null = null;
 const transitions = new Map<string, ViewerTransition>();
 
 export const mountTile = (tile: Tile) => { tiles.set(tile.key, tile); };
 export const unmountTile = (key: number) => { tiles.delete(key); };
 export const notePressedTile = (tile: Tile) => { pressed = { tile, at: Date.now() }; };
+// the canvas opens the card from: from, with one card in sight of each other element (the one nearest the middle)
+export const noteOpenedCard = (from: DrawnCard, others: DrawnCard[]) => { opened = { from, others, at: Date.now() }; };
 // the view holding every screen and nothing drawn over them (not the bar): what is snapshotted
 export const setTransitionRoot = (ref: RefObject<View | null>) => { root = ref; };
 
@@ -102,32 +114,55 @@ function snapshot(): Promise<SkImage | null> {
   });
 }
 
+// a drawn card's picture in memory, or null when it is slower than the snapshot may be
+function decode(url: string | null): Promise<ImageRef | null> {
+  if (!url) return Promise.resolve(null);
+  const load = Image.loadAsync(absoluteUrl(url)).catch(() => null);
+  return Promise.race([load, timeout<ImageRef>(SNAPSHOT_WAIT_MS)]).then((ref) => {
+    if (!ref) void load.then((late) => late?.release());
+    return ref;
+  });
+}
+
 // the viewer about to open on this element: true once its transition is ready (the tile just pressed and the others
-// measured, on iOS the page snapshotted), false to push it as before
+// measured, or the canvas' card with its picture decoded; on iOS the page snapshotted), false to push it as before
 export async function prepareViewerTransition(el: Element, viewerId: string): Promise<boolean> {
   const press = pressed;
+  const card = opened;
   pressed = null;
+  opened = null;
+  if (card && Date.now() - card.at < PRESS_FRESH_MS && card.from.elementId === el.id) {
+    const [picture, backdrop] = await Promise.all([decode(card.from.image), snapshot()]);    if (!onScreen(card.from.rect) || (!TRANSITION_OVER_LIVE_PAGE && !backdrop)) {
+      backdrop?.dispose();
+      picture?.release();
+      return false;
+    }
+    const drawn = (c: DrawnCard, key: number): TransitionTile => ({ ...c, key, blurred: false, drawn: true });
+    const tilesInSight = card.others.filter((c) => onScreen(c.rect)).map((c, i) => drawn(c, -2 - i));
+    transitions.set(viewerId, { from: drawn(card.from, -1), tiles: tilesInSight, backdrop, picture });
+    return true;
+  }
   const tile = press && Date.now() - press.at < PRESS_FRESH_MS && press.tile.elementId === el.id && tiles.has(press.tile.key) ? press.tile : null;
   if (!tile) return false;
   const all = [...tiles.values()].filter((t) => t.screen === tile.screen);
   const [rects, backdrop] = await Promise.all([Promise.all(all.map((t) => measureInWindow(t.view))), snapshot()]);
   const measured = all.flatMap((t, i) => (rects[i] && onScreen(rects[i]!)
-    ? [{ key: t.key, elementId: t.elementId, rect: rects[i]!, image: t.image, blurred: t.blurred }] : []));
+    ? [{ key: t.key, elementId: t.elementId, rect: rects[i]!, image: t.image, blurred: t.blurred, radius: TILE_RADIUS, drawn: false }] : []));
   const from = measured.find((t) => t.key === tile.key);
   if (!from || (!TRANSITION_OVER_LIVE_PAGE && !backdrop)) {
     backdrop?.dispose();
     return false;
   }
   // as it was pressed (what it shows can have changed since it was mounted)
-  transitions.set(viewerId, { from: { ...from, image: tile.image, blurred: tile.blurred }, backdrop, tiles: measured });
+  transitions.set(viewerId, { from: { ...from, image: tile.image, blurred: tile.blurred }, backdrop, tiles: measured, picture: null });
   return true;
 }
 
 export const viewerTransitionFor = (viewerId: string) => transitions.get(viewerId) ?? null;
 
-// the viewer has gone: its snapshot is let go (a frame may still be drawing it)
+// the viewer has gone: its snapshot and picture are let go (a frame may still be drawing them)
 export function forgetViewerTransition(viewerId: string) {
   const t = transitions.get(viewerId);
   transitions.delete(viewerId);
-  if (t?.backdrop) setTimeout(() => t.backdrop?.dispose(), 500);
+  if (t?.backdrop || t?.picture) setTimeout(() => { t.backdrop?.dispose(); t.picture?.release(); }, 500);
 }
