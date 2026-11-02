@@ -1,8 +1,11 @@
 // The viewer's video players, kept outside React so that nothing waits for a render. Cosmos mounts a player when a page
 // becomes active (VideoElement's useVideoPlayer) and its setup only runs on the player's first event; here the page's
-// whole render stands in front of both (500 - 800 ms measured, HANDOFF 6.165), so:
-//   - pressing a tile (openElementViewer) or a page being selected (ElementsViewerScreen) starts the player at once
-//   - the pages next to it are prepared, paused on their first frame, so they are there when swiped to
+// whole render stands in front of both (500 - 800 ms measured, HANDOFF 6.165), and on a page's selection the slide
+// still has half a second to go, so:
+//   - a finger going down on a tile gets its player ready (prewarmViewerVideo), letting go starts it (openElementViewer)
+//   - the pages next to the one on screen are prepared and drawn, paused on their first frame (the two-player
+//     pre-rendering of short video apps), and the one a swipe is bringing in starts as soon as the finger moves
+//     (peekViewerVideo), silent until its page is selected: it is already moving as it comes in
 //   - what a player was told is applied again on its first events (VideoElement's applyPlayerState): on iOS the item
 //     only arrives after the player is made
 //   - a player's first frame is remembered here, so a view mounted late does not miss it
@@ -15,6 +18,7 @@ import { absoluteUrl } from './server';
 // others hold a few seconds, not the whole file
 const BUFFER = { minBufferMs: 2000, maxBufferMs: 8000, bufferForPlaybackMs: 250, bufferForPlaybackAfterRebufferMs: 1000, preferredForwardBufferDurationMs: 4000 };
 const RELEASE_DELAY = 300; // the views still showing it go first
+const PREWARM_MS = 1500;
 
 export type ViewerVideoEntry = {
   id: string;
@@ -23,6 +27,7 @@ export type ViewerVideoEntry = {
   player: VideoPlayer;
   ready: boolean;
   playing: boolean;
+  peeking: boolean;
   onReady: Set<() => void>;
 };
 
@@ -39,7 +44,7 @@ const subscribe = (l: () => void) => { listeners.add(l); return () => { listener
 function apply(entry: ViewerVideoEntry) {
   const p = entry.player;
   p.loop = true;
-  p.muted = muted;
+  p.muted = muted || entry.peeking;
   if (entry.playing) p.play();
   else p.pause();
 }
@@ -70,7 +75,7 @@ function prepare(el: Element): ViewerVideoEntry | null {
   if (have) return have;
   const urls = el.mediaKind === 'video' && !veiled(el) ? [el.mediaUrl, el.previewUrl].filter((u): u is string => !!u).map((u) => absoluteUrl(u)) : [];
   if (!urls.length) return null;
-  const entry = { id: el.id, urls, at: 0, ready: false, playing: false, onReady: new Set() } as unknown as ViewerVideoEntry;
+  const entry = { id: el.id, urls, at: 0, ready: false, playing: false, peeking: false, onReady: new Set() } as unknown as ViewerVideoEntry;
   attach(entry);
   entries.set(el.id, entry);
   return entry;
@@ -83,22 +88,58 @@ function drop(entry: ViewerVideoEntry) {
   setTimeout(() => player.release(), RELEASE_DELAY);
 }
 
+function rewind(entry: ViewerVideoEntry) {
+  entry.playing = false;
+  entry.peeking = false;
+  entry.player.pause();
+  entry.player.seekTo(0);
+}
+
 // the element on screen plays, the one before it goes back to its start and waits
 export function playViewerVideo(el: Element | null | undefined) {
   if (el && active === el.id && entries.get(el.id)?.playing) return;
   for (const entry of entries.values()) {
-    if (entry.id === el?.id || !entry.playing) continue;
-    entry.playing = false;
-    entry.player.pause();
-    entry.player.seekTo(0);
+    if (entry.id !== el?.id && entry.playing) rewind(entry);
   }
   const entry = el ? prepare(el) : null;
   active = entry?.id ?? null;
   if (entry) {
     entry.playing = true;
+    entry.peeking = false;
     apply(entry);
   }
   changed();
+}
+
+// a swipe is bringing this page in: it starts now if it is prepared
+export function peekViewerVideo(el: Element | null | undefined) {
+  const entry = el ? entries.get(el.id) : null;
+  if (!entry || entry.playing) return;
+  entry.playing = true;
+  entry.peeking = true;
+  apply(entry);
+}
+
+// the swipe has ended: a page it did not stop on goes back and waits
+export function settleViewerVideos() {
+  for (const entry of entries.values()) {
+    if (entry.peeking && entry.id !== active) rewind(entry);
+  }
+}
+
+// a finger is down on this tile: its player gets going, and lets go of its decoder if nothing comes of it
+let prewarmed: string | null = null;
+let prewarmTimer: ReturnType<typeof setTimeout> | undefined;
+const coldAgain = (id: string | null) => {
+  const entry = id ? entries.get(id) : null;
+  if (entry && !entry.playing && id !== active) drop(entry);
+};
+export function prewarmViewerVideo(el: Element) {
+  clearTimeout(prewarmTimer);
+  if (prewarmed !== el.id) coldAgain(prewarmed);
+  prewarmed = el.id;
+  prepare(el);
+  prewarmTimer = setTimeout(() => { coldAgain(prewarmed); prewarmed = null; }, PREWARM_MS);
 }
 
 // the pages next to the one on screen are ready before they are swiped to; any others let go of their decoders

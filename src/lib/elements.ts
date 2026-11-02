@@ -32,6 +32,7 @@ export type Element = {
   posterSmallUrl?: string | null;
   posterSmallWidth?: number | null;
   previewUrl?: string | null;
+  videoStrip?: { url: string; frames: number; cols: number; rows: number; fps: number } | null; // the canvas' loop (derive.js makeStrip)
   mp4Url?: string | null;
   animated?: boolean;
   blurHash?: string | null;

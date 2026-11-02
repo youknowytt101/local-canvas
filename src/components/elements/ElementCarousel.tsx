@@ -4,8 +4,9 @@
 // AI description → a spacer that grows, so the element sits in the middle of the screen between the header and the
 // bar (bottomOverlayClearance). When the element with its description is taller than that, the carousel grows to it
 // (Cosmos measures carouselHeight too) and the description is reached by scrolling. Only the pages near the one on
-// screen are drawn (two each side).
-import { forwardRef, useState } from 'react';
+// screen are drawn (two each side), the ones next to it attached to the window, so a video there has its surface and
+// first frame before it is swiped to (offscreenPageLimit).
+import { forwardRef, useRef, useState } from 'react';
 import { View } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { StyleSheet } from 'react-native-unistyles';
@@ -15,6 +16,7 @@ import { ELEMENT_VIEWER_HEADER_HEIGHT, ELEMENT_VIEWER_HEADER_MEDIA_GAP, ElementM
 import { ElementViewerMedia } from './ElementViewerMedia';
 
 const DRAWN_AROUND = 2;
+const PEEK_OFFSET = 0.01;
 const MIN_TOP = 12; // topSpacer's minHeight (spacing.sm)
 
 type Props = {
@@ -25,6 +27,8 @@ type Props = {
   width: number;
   bottomOverlayClearance: number;
   onIndexChange: (index: number) => void;
+  onIncoming: (index: number) => void; // a swipe has started bringing this page in
+  onSettled: () => void; // the swipe has ended
 };
 
 // getMaxMediaHeight (module 2440): the viewer's height less the bar's clearance and the meta row with its gap
@@ -34,14 +38,24 @@ export const getMaxMediaHeight = (viewerHeight: number, bottomOverlayClearance: 
 };
 
 export const ElementCarousel = forwardRef<PagerView, Props>(function ElementCarousel(
-  { elements, index, initialIndex, height, width, bottomOverlayClearance, onIndexChange }, ref,
+  { elements, index, initialIndex, height, width, bottomOverlayClearance, onIndexChange, onIncoming, onSettled }, ref,
 ) {
   const maxHeight = getMaxMediaHeight(height, bottomOverlayClearance, height / 2);
   const [contentHeights, setContentHeights] = useState<Record<string, number>>({});
   const active = elements[index];
+  const selected = useRef(initialIndex);
   const pagerHeight = Math.max(height, active && contentHeights[active.id] ? contentHeights[active.id] + MIN_TOP + bottomOverlayClearance : 0);
   return (
-    <PagerView ref={ref} style={{ height: pagerHeight, width }} initialPage={initialIndex} onPageSelected={(e) => onIndexChange(e.nativeEvent.position)}>
+    <PagerView ref={ref} style={{ height: pagerHeight, width }} initialPage={initialIndex} offscreenPageLimit={1}
+      onPageSelected={(e) => { selected.current = e.nativeEvent.position; onIndexChange(e.nativeEvent.position); }}
+      onPageScroll={(e) => {
+        const { position, offset } = e.nativeEvent;
+        const on = selected.current;
+        if (position === on && offset > PEEK_OFFSET) onIncoming(on + 1);
+        else if (position === on - 1 && offset < 1 - PEEK_OFFSET) onIncoming(on - 1);
+      }}
+      onPageScrollStateChanged={(e) => { if (e.nativeEvent.pageScrollState === 'idle') onSettled(); }}
+    >
       {elements.map((element, i) => (
         <View key={element.id} style={[styles.page, { paddingBottom: bottomOverlayClearance }]}>
           {Math.abs(i - index) <= DRAWN_AROUND ? (

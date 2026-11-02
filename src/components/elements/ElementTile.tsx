@@ -16,6 +16,7 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { StyleSheet } from 'react-native-unistyles';
 import { NSFW_VEIL, originalImageUrl, tileImageUrl, tileRatio, type Element } from '../../lib/elements';
+import { prewarmViewerVideo } from '../../lib/viewerVideoPlayers';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 import { NoteElement } from './NoteElement';
 
@@ -74,6 +75,7 @@ export const ElementTile = memo(function ElementTile({ element, width, imageScal
 
   return (
     <Pressable
+      onPressIn={element.mediaKind === 'video' ? () => prewarmViewerVideo(element) : undefined}
       onPress={() => onPress?.(element)}
       onLongPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); useMoveSheetStore.getState().open(element); }}
       accessibilityRole="button"

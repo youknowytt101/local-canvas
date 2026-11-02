@@ -19,7 +19,7 @@
 //     (resolveNextCanvasPageCursor). The For You list stays as it was meanwhile (freezeForYouElements)
 //   - a long press is the save sheet (useElementMoveLongPress); opening a card opens the viewer on the dataset's
 //     elements, with the 'fade' animation, the source Canvas
-import { useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, View } from 'react-native';
@@ -61,6 +61,7 @@ export function InfiniteCanvasScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const params = (useRoute<RouteProp<{ c: InfiniteCanvasParams }, 'c'>>().params ?? {}) as InfiniteCanvasParams;
+  const focused = useIsFocused();
   const source = params.source ?? 'for-you';
 
   // ---------- the entry dataset ----------
@@ -205,6 +206,7 @@ export function InfiniteCanvasScreen() {
   return (
     <View style={styles.screen}>
       <InfiniteCanvas
+        active={focused}
         dataset={dataset}
         seedId={similar?.seed.id ?? null}
         refining={refining}

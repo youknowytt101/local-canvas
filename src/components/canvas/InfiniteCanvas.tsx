@@ -24,7 +24,9 @@
 //     outermost copy in view shows the last page; any loads the next once the middle of the screen has moved
 //     PAGINATION_DISTANCE × scale from where the last was asked for (useInfiniteCanvasPagination)
 // Kept as the person chose on the web page (HANDOFF 6.130): a note is its text (NoteElement) in its slot, over the
-// canvas, not a coloured placeholder; a video plays over its cover (Cosmos only draws the cover), muted and looping,
+// canvas, not a coloured placeholder; every video on screen loops its strip of first frames over its cover, moving or
+// not, without a decoder (StripCard, HANDOFF 6.165; Cosmos only draws the cover), and the ones nearest the middle also
+// get a real player, muted and looping,
 // as the web page's board-clip: nothing starts while the camera moves and what plays is paused, at rest the ones
 // nearest the middle play within VIDEO_PLAY_BUDGET (app.js syncPlayback).
 import {
@@ -48,6 +50,7 @@ import {
   atlasKey, buildLayout, canvasImageUrls, canvasVideoUrls, createInstance, homeCamera, visibleInstances,
   type Camera, type CanvasDataset, type CanvasInstance, type CanvasLayout, type SlotCache,
 } from '../../lib/canvas/layout';
+import { StripCache } from '../../lib/canvas/strips';
 import { absoluteUrl } from '../../lib/server';
 import { NoteElement } from '../elements/NoteElement';
 
@@ -65,6 +68,7 @@ type Props = {
   onOpenElement: (element: Element) => void;
   onLongPressElement: (element: Element) => void;
   onCamera?: (camera: Camera) => void; // cacheCamera
+  active?: boolean; // the screen is in front: nothing plays or loops under a viewer
 };
 
 const TIMING = { duration: C.TIMING_MS, easing: Easing.out(Easing.cubic) };
@@ -83,6 +87,7 @@ const hasPicture = (el: Element) => canvasImageUrls(el).length > 0;
 const isNoteCard = (el: Element) => !hasPicture(el);
 
 export function InfiniteCanvas(props: Props) {
+  const active = props.active ?? true;
   const { dataset, seedId, refining, focusRequest, hasMore, loadingMore, initialCamera } = props;
   const { theme } = useUnistyles();
   const cb = useRef(props);
@@ -200,6 +205,19 @@ export function InfiniteCanvas(props: Props) {
   const [zoomKey, setZoomKey] = useState<string | null>(null);
   const [pills, setPills] = useState<CanvasInstance[]>([]);
   const [clips, setClips] = useState<CanvasInstance[]>([]); // the videos that may play
+  const [stripInsts, setStripInsts] = useState<CanvasInstance[]>([]); // the videos looping their strips
+  const [stripVersion, setStripVersion] = useState(0);
+  const strips = useMemo(() => new StripCache(C.STRIP_CACHE, () => setStripVersion((v) => v + 1)), []);
+  useEffect(() => () => strips.dispose(), [strips]);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  const stripClock = useSharedValue(0);
+  const stripFrames = useFrameCallback((info) => {
+    const f = Math.floor((info.timeSinceFirstFrame * C.STRIP_FPS) / 1000);
+    if (f !== stripClock.get()) stripClock.set(f);
+  }, active);
+  useEffect(() => { stripFrames.setActive(active); }, [active, stripFrames]);
+  useEffect(() => { cull(); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
   const clipsRef = useRef(clips);
   const clipTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const clipPending = useRef(''); // the keys of the ones waiting to start
@@ -267,10 +285,20 @@ export function InfiniteCanvas(props: Props) {
         .sort((a, b) => a.d - b.d).slice(0, C.OPEN_PILL_RENDER_LIMIT).map((p) => p.i);
       setPills(near);
     } else setPills([]);
+    // the strips: every video in view, the nearest the middle first
+    const looping = activeRef.current
+      ? inView.filter((i) => i.element.videoStrip && hasPicture(i.element) && !(refiningRef.current && i.key !== lockKeyRef.current)).slice(0, C.STRIP_MAX)
+      : [];
+    strips.ask(looping.map((i) => i.element.videoStrip!.url));
+    setStripInsts((was) => (was.length === looping.length && was.every((w, n) => w.key === looping[n].key) ? was : looping));
     // the videos that play (the web page's syncPlayback): none start while the camera moves; at rest the ones nearest
     // the middle with VIDEO_VISIBLE_FRACTION of them in view, up to each lane's budget, not the placeholders of a refocus.
     // The ones that stop go at once, the new ones come VIDEO_SETTLE_MS later, once the others have let go of their decoders
-    if (busy.get()) {
+    if (!activeRef.current) {
+      clearTimeout(clipTimer.current);
+      clipPending.current = '';
+      showClips([]); // covered by a viewer: its decoders are for the viewer
+    } else if (busy.get()) {
       clearTimeout(clipTimer.current);
       clipPending.current = '';
       showClips(clipsRef.current.map((c) => list.find((i) => i.key === c.key)).filter((i): i is CanvasInstance => !!i));
@@ -632,6 +660,10 @@ export function InfiniteCanvas(props: Props) {
         {scene.textures.map(([id, g]) => (
           <Atlas key={id} image={g.image} sprites={g.sprites} transforms={g.transforms} sampling={SAMPLING} />
         ))}
+        {stripInsts.map((inst) => {
+          const image = strips.get(inst.element.videoStrip!.url);
+          return image && inst.key !== scene.top?.inst.key ? <StripCard key={inst.key} inst={inst} image={image} clock={stripClock} radius={r} /> : null;
+        })}
       </Group>
       {scene.top ? (
         <Group transform={topTransform}>
@@ -656,7 +688,7 @@ export function InfiniteCanvas(props: Props) {
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
             {clips.map((inst) => (
               <ClipCard key={inst.key} inst={inst} camX={camX} camY={camY} camS={camS} reveal={revealOpacity} fade={fade}
-                focus={inst.key === special} pressScale={pressScale} playing={!moving} />
+                focus={inst.key === special} pressScale={pressScale} playing={active} />
             ))}
             {scene.notes.map((inst) => (
               <NoteCard key={inst.key} inst={inst} camX={camX} camY={camY} camS={camS} reveal={revealOpacity} fade={fade}
@@ -711,7 +743,34 @@ function NoteCard(props: CardProps) {
   );
 }
 
-// a video on the canvas plays over its cover (the web page's board-clip, kept by the person's choice): muted and
+// a video's strip over its cover: its frames in turn, each cut to the card's shape, the cards out of step with each
+// other so a screen of them does not tick together
+function StripCard({ inst, image, clock, radius }: { inst: CanvasInstance; image: SkImage; clock: SharedValue<number>; radius: number }) {
+  const { x, y } = inst;
+  const { width, height } = inst.item;
+  const { frames, cols, rows } = inst.element.videoStrip!;
+  const fw = image.width() / cols;
+  const fh = image.height() / rows;
+  const scale = Math.max(width / fw, height / fh);
+  const sw = width / scale;
+  const sh = height / scale;
+  const ox = (fw - sw) / 2;
+  const oy = (fh - sh) / 2;
+  const start = useMemo(() => [...inst.element.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 7) % frames, [inst.element.id, frames]);
+  const sprites = useDerivedValue(() => {
+    const f = (clock.get() + start) % frames;
+    return [Skia.XYWHRect((f % cols) * fw + ox, Math.floor(f / cols) * fh + oy, sw, sh)];
+  });
+  const transforms = useMemo(() => [Skia.RSXform(scale, 0, x, y)], [scale, x, y]);
+  const clip = useMemo(() => Skia.RRectXY(Skia.XYWHRect(x, y, width, height), radius, radius), [x, y, width, height, radius]);
+  return (
+    <Group clip={clip}>
+      <Atlas image={image} sprites={sprites} transforms={transforms} sampling={SAMPLING} />
+    </Group>
+  );
+}
+
+// a video on the canvas plays over its strip (the web page's board-clip, kept by the person's choice): muted and
 // looping, its preview first and the original if that does not play; it stays see-through until its first frame is
 // ready (VideoElementTsx1's videoReadyMap; the web page's .live), so the cover shows till then. Its VideoView is
 // VideoElement's (a texture, no picture in picture, no controls)

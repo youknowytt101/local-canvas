@@ -94,3 +94,18 @@ index 8a25759..5f169b7 100644
      set(value) {
        if (field == value) return
        field = value
+diff --git a/node_modules/react-native-video/ios/hybrids/VideoPlayer/HybridVideoPlayer.swift b/node_modules/react-native-video/ios/hybrids/VideoPlayer/HybridVideoPlayer.swift
+index 0000000..0000001 100644
+--- a/node_modules/react-native-video/ios/hybrids/VideoPlayer/HybridVideoPlayer.swift
++++ b/node_modules/react-native-video/ios/hybrids/VideoPlayer/HybridVideoPlayer.swift
+@@ -115,7 +115,10 @@
+     self.eventEmitter = HybridVideoPlayerEventEmitter()
+ 
+     // Initialize AVPlayer with empty item
+     self.player = AVPlayer()
++    // start as soon as there is something to show: this app reads from a computer on the same Wi-Fi, and AVPlayer's
++    // default waits until it reckons the whole clip will play through (the viewer's video should start at once)
++    self.player.automaticallyWaitsToMinimizeStalling = false
+ 
+     super.init()
+     self.playerObserver = VideoPlayerObserver(delegate: self)

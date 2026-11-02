@@ -1,6 +1,7 @@
 // Cosmos' canvas constants (ATLAS_IMAGE_CANCEL_POLL_MS.js, the constants module, taken in export order; resetInteractionState,
 // createCanvasPanGesture, createCanvasLongPressGesture, useCanvasPressFocus, getCanvasOpenPillItems, CanvasOpenPillOverlay,
 // useInitialCanvasReveal, InfiniteCanvas). The web page's public/board.js has the same numbers (HANDOFF 6.33–6.36).
+import { Platform } from 'react-native';
 export const CANVAS = {
   PAGE_SIZE: 120,
   MAX_RENDER_ELEMENTS: 2880,
@@ -77,12 +78,19 @@ export const CANVAS = {
   ATLAS_PADDING: 2,
   // InfiniteCanvasScreen: the seed history keeps this many
   SEED_HISTORY_LIMIT: 5,
-  // Not in Cosmos (videos play on the canvas by the person's choice, HANDOFF 6.130): the web page's playback budget
-  // (app.js PLAY_BUDGET, syncPlayback) — at rest, the videos nearest the middle with this much of them in view play,
-  // so many from each lane. Far smaller than the web page's 20 / 2: every one is a player and a hardware decoder of
-  // its own here, and the Android emulator's H.264 decoder allows 4 at a time (more and the resource manager takes
-  // decoders back from players that are playing, which then go black)
-  VIDEO_PLAY_BUDGET: { preview: 3, original: 1 },
+  // Not in Cosmos (videos play on the canvas by the person's choice, HANDOFF 6.130, 6.165). Two tiers:
+  //   - every video on screen, moving or not, loops its strip of first frames (StripCard): a texture each, no decoder.
+  //     At most STRIP_MAX, the nearest the middle; the textures kept are STRIP_CACHE
+  //   - at rest, the ones nearest the middle with this much of them in view also get a real player over the strip,
+  //     so many from each lane (the web page's PLAY_BUDGET, syncPlayback). Far smaller than the web page's 20 / 2: every
+  //     one is a player and a hardware decoder of its own here, and the Android emulator's H.264 decoder allows 4 at a
+  //     time (more and the resource manager takes decoders back from players that are playing, which then go black)
+  STRIP_FPS: 8, // what derive.js makes them at
+  STRIP_MAX: 32,
+  STRIP_CACHE: 48,
+  VIDEO_PLAY_BUDGET: Platform.OS === 'ios' ? { preview: 6, original: 1 }
+    : /sdk_gphone|generic|emulator/i.test(String((Platform.constants as { Fingerprint?: string }).Fingerprint)) ? { preview: 2, original: 1 }
+      : { preview: 4, original: 1 },
   // the new ones start this long after the camera rests, the ones that stopped having let go of their decoders by then
   // (the web page waits SETTLE_MS for a scroll to settle)
   VIDEO_SETTLE_MS: 400,

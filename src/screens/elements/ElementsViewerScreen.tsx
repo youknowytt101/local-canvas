@@ -32,7 +32,7 @@ import { GRID_IMAGE_SCALE, viewerImageSources, type Element } from '../../lib/el
 import { ListImpressions } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { serverUrl } from '../../lib/server';
-import { holdViewerVideos, leaveViewerVideo, playViewerVideo } from '../../lib/viewerVideoPlayers';
+import { holdViewerVideos, leaveViewerVideo, peekViewerVideo, playViewerVideo, settleViewerVideos } from '../../lib/viewerVideoPlayers';
 import { Routes } from '../../navigation/routes';
 import { useBarStore } from '../../stores/useBarStore';
 import { useElementViewerStore } from '../../stores/useElementViewerStore';
@@ -68,21 +68,33 @@ export function ElementsViewerScreen() {
   const bottomOverlayClearance = insets.bottom + BAR_BOTTOM_OFFSET + TAB_BAR_HEIGHT_DEFAULT;
   const tileWidth = (width - 3 * DEFAULT_GRID_GAP) / 2;
 
-  // the video on screen plays at once, ahead of the page's render (lib/viewerVideoPlayers); the ones next to it are
-  // prepared once that is done
+  // the video on screen plays at once, ahead of the page's render (lib/viewerVideoPlayers); the one a swipe is bringing
+  // in starts with the finger; the ones next to it are prepared once the slide has ended (making a player holds up the
+  // main thread)
   const elementsNow = useRef(elements);
   elementsNow.current = elements;
+  const selectedNow = useRef(initialIndex);
+  const prepareAround = useCallback(() => {
+    const i = selectedNow.current;
+    holdViewerVideos([elementsNow.current[i - 1], elementsNow.current[i + 1]]);
+  }, []);
   const onIndexChange = useCallback((i: number) => {
+    selectedNow.current = i;
     playViewerVideo(elementsNow.current[i]);
     startTransition(() => setIndex(i));
   }, []);
+  const onIncoming = useCallback((i: number) => peekViewerVideo(elementsNow.current[i]), []);
+  const onSettled = useCallback(() => {
+    settleViewerVideos();
+    prepareAround();
+  }, [prepareAround]);
   const elementId = element?.id ?? null;
   useEffect(() => {
     if (!focused) { leaveViewerVideo(elementId); return undefined; }
-    playViewerVideo(elementsNow.current[index]);
-    const t = setTimeout(() => holdViewerVideos([elementsNow.current[index - 1], elementsNow.current[index + 1]]), VIDEO_NEIGHBOURS_DELAY);
+    playViewerVideo(elementsNow.current[selectedNow.current]);
+    const t = setTimeout(prepareAround, VIDEO_NEIGHBOURS_DELAY);
     return () => clearTimeout(t);
-  }, [focused, elementId, index]);
+  }, [focused, prepareAround, elementId]);
   const lastElementId = useRef(elementId);
   lastElementId.current = elementId;
   useEffect(() => () => leaveViewerVideo(lastElementId.current), []);
@@ -189,6 +201,7 @@ export function ElementsViewerScreen() {
           onEndReached={similar.loadMore}
           onEndReachedThreshold={1}
           drawDistance={height * 0.5}
+          maintainVisibleContentPosition={{ disabled: true }} // the similar list is replaced on every page: the carousel stays where it is
           viewabilityConfig={VIEWABILITY}
           onViewableItemsChanged={onViewableItemsChanged}
           scrollEventThrottle={16}
@@ -208,6 +221,8 @@ export function ElementsViewerScreen() {
                 width={width}
                 bottomOverlayClearance={bottomOverlayClearance}
                 onIndexChange={onIndexChange}
+                onIncoming={onIncoming}
+                onSettled={onSettled}
               />
             </View>
           }
