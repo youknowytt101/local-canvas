@@ -25,13 +25,18 @@ import {
 } from '../screens/settings/SettingsPages';
 import { BrandProfileScreen } from '../screens/shop/BrandProfileScreen';
 import { ShopProductScreen } from '../screens/shop/ShopProductScreen';
+import { MORPH_FADE_MS } from '../lib/viewerMorph';
 import { Routes } from './routes';
 
 const screenOptions = { headerShown: false } as const;
 const CANVAS_OPTIONS = { animation: 'fade', freezeOnBlur: true } as const;
-// getElementsViewerOptions: a viewer opened from the canvas fades in (openAnimation 'fade')
-const getElementsViewerOptions = ({ route }: { route: { params?: object } }) =>
-  ((route.params as { openAnimation?: string } | undefined)?.openAnimation === 'fade' ? { animation: 'fade' as const } : {});
+// getElementsViewerOptions: a viewer opened from the canvas fades in (openAnimation 'fade'); one growing from a tile
+// fades in over MORPH_FADE_MS with the page staying under it (lib/viewerMorph, not in Cosmos)
+const getElementsViewerOptions = ({ route }: { route: { params?: object } }) => {
+  const open = (route.params as { openAnimation?: string } | undefined)?.openAnimation;
+  if (open === 'morph') return { animation: 'fade' as const, animationDuration: MORPH_FADE_MS };
+  return open === 'fade' ? { animation: 'fade' as const } : {};
+};
 
 const HomeStack = createNativeStackNavigator();
 export function HomeNavigator() {

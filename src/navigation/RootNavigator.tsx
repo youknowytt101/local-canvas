@@ -10,6 +10,7 @@ import { useMemo } from 'react';
 import { useUnistyles } from 'react-native-unistyles';
 import { AppToast } from '../components/AppToast';
 import { DynamicBar } from '../components/bar/DynamicBar';
+import { ViewerMorphOverlay } from '../components/elements/ViewerMorphOverlay';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { ServerScreen } from '../screens/auth/ServerScreen';
 import { useBarStore } from '../stores/useBarStore';
@@ -57,6 +58,7 @@ export function RootNavigator() {
         {phase === 'onboarding' ? <Stack.Screen name={Routes.ONBOARDING} component={OnboardingNavigator} /> : null}
         {phase === 'main' ? <Stack.Screen name={Routes.MAIN} component={MainNavigator} /> : null}
       </Stack.Navigator>
+      {phase === 'main' ? <ViewerMorphOverlay /> : null}
       {phase === 'main' ? <DynamicBar /> : null}
       <AppToast />
     </NavigationContainer>

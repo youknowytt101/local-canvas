@@ -10,6 +10,8 @@
 // light haptic and opens the save sheet (useElementMoveLongPress). Pressing opens the viewer.
 // A video plays its preview, silent and looping, over its picture when lib/gridVideos says so: the web page's grids, by
 // the person's choice (HANDOFF 6.169). Cosmos' do not play (MasonryGrid passes allowVideoPlayback false to ElementMedia).
+// A tile with a picture grows into the viewer it opens and the viewer shrinks back into it (lib/viewerMorph, the
+// person's choice, HANDOFF 6.170): it says where it is when pressed, and is out of sight while its picture flies.
 import { useIsFocused } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -21,12 +23,14 @@ import { canvasVideoUrls } from '../../lib/canvas/layout';
 import { NSFW_VEIL, originalImageUrl, tileImageUrl, tileRatio, type Element } from '../../lib/elements';
 import { watchGridVideo, type GridVideoState } from '../../lib/gridVideos';
 import { absoluteUrl } from '../../lib/server';
+import { mountTile, notePressedTile, unmountTile, useMorphHidesTile } from '../../lib/viewerMorph';
 import { prewarmViewerVideo } from '../../lib/viewerVideoPlayers';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 import { NoteElement } from './NoteElement';
 import { PreviewVideo } from './PreviewVideo';
 
 const revealed = new Set<string>(); // 查看 pressed: shown as it is until the app is closed
+let tileSerial = 0;
 
 function GridVideo({ element }: { element: Element }) {
   const view = useRef<View>(null);
@@ -59,6 +63,14 @@ export const ElementTile = memo(function ElementTile({ element, width, imageScal
   const url = failed ? originalImageUrl(element) : tileImageUrl(element, width, imageScale);
   const blurred = element.nsfw?.treatment === 'blur' && !shown;
   const ready = () => onMediaReady?.(element.id);
+  const box = useRef<View>(null);
+  const [key] = useState(() => ++tileSerial);
+  const flying = useMorphHidesTile(key);
+  const morphTile = () => ({ key, elementId: element.id, view: box.current, image: element.type !== 'note' ? url : null, blurred });
+  useEffect(() => {
+    mountTile(morphTile());
+    return () => unmountTile(key);
+  }); // eslint-disable-line react-hooks/exhaustive-deps -- what it shows can change with any render
 
   let content;
   if (element.type === 'note') {
@@ -99,13 +111,16 @@ export const ElementTile = memo(function ElementTile({ element, width, imageScal
 
   return (
     <Pressable
-      onPressIn={element.mediaKind === 'video' ? () => prewarmViewerVideo(element) : undefined}
+      onPressIn={() => {
+        notePressedTile(morphTile());
+        if (element.mediaKind === 'video') prewarmViewerVideo(element);
+      }}
       onPress={() => onPress?.(element)}
       onLongPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); useMoveSheetStore.getState().open(element); }}
       accessibilityRole="button"
       accessibilityLabel={element.title || undefined}
     >
-      <Animated.View entering={FadeIn.duration(300)} style={styles.tileInner}>{content}</Animated.View>
+      <Animated.View ref={box} entering={FadeIn.duration(300)} style={[styles.tileInner, flying && styles.flying]}>{content}</Animated.View>
     </Pressable>
   );
 });
@@ -116,6 +131,7 @@ const styles = StyleSheet.create((theme) => ({
     borderColor: theme.colors.surfaceBorder, overflow: 'hidden', position: 'relative',
   },
   media: { width: '100%', height: '100%' },
+  flying: { opacity: 0 },
   bare: { padding: theme.spacing.sm, minHeight: 80, justifyContent: 'flex-end' },
   title: { ...theme.typography.regularPlus, color: theme.colors.primary },
   veil: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.xs },

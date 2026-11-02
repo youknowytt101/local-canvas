@@ -10,13 +10,15 @@
 //     cover
 //   - a note: NoteElement (its Markdown, the whole width, spacing.md in)
 //   - content filtering: 'blur' blurs it under the veil with 查看, as in the grid
+// Out of sight while a tile's picture flies into it or out of it (lib/viewerMorph); its box says where it is.
 import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { StyleSheet } from 'react-native-unistyles';
 import { VideoView } from 'react-native-video';
 import { NSFW_VEIL, tileImageUrl, tileRatio, viewerImageSources, type Element } from '../../lib/elements';
+import { landMorph, mountViewerMedia, useMorphHidesViewerMedia } from '../../lib/viewerMorph';
 import { playViewerVideo, useIsActiveViewerVideo, useViewerVideo, viewerRevealed, type ViewerVideoEntry } from '../../lib/viewerVideoPlayers';
 import { NoteElement } from './NoteElement';
 import { VideoScrubber } from './VideoScrubber';
@@ -37,6 +39,12 @@ type Props = { element: Element; maxWidth: number; maxHeight: number; inset: num
 export function ElementViewerMedia({ element, maxWidth, maxHeight, inset }: Props) {
   const [shown, setShown] = useState(viewerRevealed.has(element.id));
   const blurred = element.nsfw?.treatment === 'blur' && !shown;
+  const box = useRef<View>(null);
+  const flying = useMorphHidesViewerMedia(element.id);
+  useEffect(() => {
+    mountViewerMedia(element.id, box.current);
+    return () => mountViewerMedia(element.id, null);
+  }, [element.id]);
 
   if (element.type === 'note') {
     return <NoteElement text={element.text ?? ''} />;
@@ -47,7 +55,8 @@ export function ElementViewerMedia({ element, maxWidth, maxHeight, inset }: Prop
   }
   const size = getSnappedContainFittedSize(maxWidth, maxHeight, aspect, inset);
   return (
-    <View style={[styles.box, size, { backgroundColor: element.color ?? undefined }]}>
+    <View ref={box} collapsable={false} onLayout={() => landMorph(element.id, box.current)}
+      style={[styles.box, size, { backgroundColor: element.color ?? undefined }, flying && styles.flying]}>
       <ViewerImage element={element} width={size.width} blurred={blurred} />
       {element.mediaKind === 'video' && !blurred ? <ViewerVideo element={element} /> : null}
       {blurred ? (
@@ -117,6 +126,7 @@ function ViewerVideoSurface({ entry }: { entry: ViewerVideoEntry }) {
 
 const styles = StyleSheet.create((theme) => ({
   box: { alignSelf: 'center', overflow: 'hidden' },
+  flying: { opacity: 0 },
   fill: { width: '100%', height: '100%' },
   cover: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   link: { marginHorizontal: theme.spacing.md, padding: theme.spacing.lg, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.elevated },

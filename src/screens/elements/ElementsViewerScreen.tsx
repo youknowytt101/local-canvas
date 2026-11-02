@@ -13,6 +13,7 @@
 // ShareElementScreen).
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useFocusEffect, useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image } from 'expo-image';
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, useWindowDimensions, View, type ViewToken } from 'react-native';
@@ -32,6 +33,7 @@ import { GRID_IMAGE_SCALE, viewerImageSources, type Element } from '../../lib/el
 import { ListImpressions } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { serverUrl } from '../../lib/server';
+import { closeWithMorph, morphViewerFaded } from '../../lib/viewerMorph';
 import { holdViewerVideos, leaveViewerVideo, peekViewerVideo, playViewerVideo, settleViewerVideos } from '../../lib/viewerVideoPlayers';
 import { Routes } from '../../navigation/routes';
 import { useBarStore } from '../../stores/useBarStore';
@@ -39,13 +41,13 @@ import { useElementViewerStore } from '../../stores/useElementViewerStore';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 
 const ELEMENT_VIEWER_HIDE_TAB_BAR_RATIO = 0.15;
-const HEADER_CONTENT_HEIGHT = 64;
+export const ELEMENT_VIEWER_HEADER_CONTENT_HEIGHT = 64;
 const PAGINATION_THRESHOLD = 5;
 const PREFETCH_ORDER = [1, -1, 2, -2];
 const VIEWABILITY = { itemVisiblePercentThreshold: 1 };
 const VIDEO_NEIGHBOURS_DELAY = 300;
 
-type Params = { viewerId: string; initialIndex: number };
+type Params = { viewerId: string; initialIndex: number; openAnimation?: 'fade' | 'morph' };
 
 export function ElementsViewerScreen() {
   const route = useRoute<RouteProp<{ ElementsViewer: Params }, 'ElementsViewer'>>();
@@ -63,7 +65,7 @@ export function ElementsViewerScreen() {
   const listRef = useRef<FlashListRef<Element>>(null);
   const pagerRef = useRef<PagerView>(null);
 
-  const headerHeight = insets.top + HEADER_CONTENT_HEIGHT;
+  const headerHeight = insets.top + ELEMENT_VIEWER_HEADER_CONTENT_HEIGHT;
   const carouselHeight = height - headerHeight;
   const bottomOverlayClearance = insets.bottom + BAR_BOTTOM_OFFSET + TAB_BAR_HEIGHT_DEFAULT;
   const tileWidth = (width - 3 * DEFAULT_GRID_GAP) / 2;
@@ -185,7 +187,14 @@ export function ElementsViewerScreen() {
   };
 
   // the list goes when the screen does (not on a re-run of effects)
-  useEffect(() => navigation.addListener('beforeRemove', () => useElementViewerStore.getState().closeViewer(viewerId)), [navigation, viewerId]);
+  useEffect(() => (navigation as unknown as NativeStackNavigationProp<ParamListBase>).addListener('transitionEnd', (e) => {
+    if (!e.data.closing) morphViewerFaded(); // a tile's picture waiting on it hands over
+  }), [navigation]);
+  useEffect(() => navigation.addListener('beforeRemove', () => {
+    // one that grew from a tile shrinks back into it (lib/viewerMorph) as it fades out
+    if (route.params.openAnimation === 'morph') closeWithMorph(elementsNow.current[selectedNow.current]);
+    useElementViewerStore.getState().closeViewer(viewerId);
+  }), [navigation, viewerId, route.params.openAnimation]);
 
   if (!viewer) return <View style={styles.screen} />;
   return (

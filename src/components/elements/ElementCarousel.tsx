@@ -18,7 +18,7 @@ import { ELEMENT_VIEWER_HEADER_HEIGHT, ELEMENT_VIEWER_HEADER_MEDIA_GAP, ElementM
 import { ElementViewerMedia } from './ElementViewerMedia';
 
 const DRAWN_AROUND = 2;
-const MIN_TOP = 12; // topSpacer's minHeight (spacing.sm)
+export const MIN_TOP = 12; // topSpacer's minHeight (spacing.sm)
 
 type Props = {
   elements: Element[];
