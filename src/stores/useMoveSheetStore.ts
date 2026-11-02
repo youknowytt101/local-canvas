@@ -9,23 +9,34 @@ export const MOVE_SHEET = 'move';
 // move mode (useMoveElements' move: organizing a collection): these elements go to the chosen place and leave `from`
 export type MoveRequest = { elementIds: string[]; fromClusterId: string; onMoved: () => void };
 
+// destination mode (presentMoveSheetForDraft: what is about to be made, photos picked on the profile): a row is where it
+// goes — the profile (null) or a collection — and the sheet closes
+export type DestinationRequest = { onChoose: (cluster: { id: string; name: string } | null) => void };
+
 type MoveSheetState = {
   element: Element | null;
   move: MoveRequest | null;
+  destination: DestinationRequest | null;
   open: (element: Element) => void;
   openMove: (first: Element, move: MoveRequest) => void;
+  openDestination: (destination: DestinationRequest) => void;
   close: () => void;
 };
 
 export const useMoveSheetStore = create<MoveSheetState>((set) => ({
   element: null,
   move: null,
+  destination: null,
   open: (element) => {
-    set({ element, move: null });
+    set({ element, move: null, destination: null });
     void TrueSheet.present(MOVE_SHEET).catch(() => undefined);
   },
   openMove: (first, move) => {
-    set({ element: first, move });
+    set({ element: first, move, destination: null });
+    void TrueSheet.present(MOVE_SHEET).catch(() => undefined);
+  },
+  openDestination: (destination) => {
+    set({ element: null, move: null, destination });
     void TrueSheet.present(MOVE_SHEET).catch(() => undefined);
   },
   close: () => { void TrueSheet.dismiss(MOVE_SHEET).catch(() => undefined); },

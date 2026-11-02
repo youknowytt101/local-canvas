@@ -5,8 +5,8 @@
 //     time 相似 is pressed). Going to the similar page the collection rises by PAGE_DISTANCE (64) and fades while the
 //     similar page comes up the same way, PAGE_TRANSITION_DURATION_MS (280); 相似 again goes back
 //   - the bar (useClusterActionBarState): one's own or one worked on gets 整理 / 添加 / 相似 / 分享, anyone else's 看相似
-//     - 整理: OrganizeClusterScreen; 添加: the owner's top-level collection opens 新子系列, made inside it,
-//       otherwise 新系列 (Cosmos opens its create sheet, whose other items — import, upload — come in step 6)
+//     - 整理: OrganizeClusterScreen; 添加: the create sheet (照片 / 链接 / 笔记 made in here; 创建子集合, inside it for its
+//       owner at the top level; sub-collections here go one level deep, so elsewhere it makes a top-level one)
 //     - 分享: the system's share with the collection's address on the computer (Cosmos opens its share sheet)
 //   - empty: one's own 建议要素 · 开始策划您的收藏 (Cosmos shows suggested elements under it), anyone else's
 //     无元素 · 该集合为空; no similar ones: 没有相似元素 · 稍后再来查看。
@@ -31,7 +31,8 @@ import { ClusterSearchBar, ClusterSearchOverlay, useClusterSearch } from '../../
 import { ChevronLeftIcon, MoreIcon, SearchIcon } from '../../components/icons';
 import { useClusterMenuStore } from '../../components/sheets/ClusterMenuSheet';
 import { useCollaboratorsStore } from '../../components/sheets/CollaboratorsSheet';
-import { useCreateClusterStore } from '../../components/sheets/CreateClusterSheet';
+import { useCreateSheetStore } from '../../components/sheets/CreateSheets';
+import { onUploadDone } from '../../lib/uploads';
 import { SIMILAR_PAGE_SIZE } from '../../hooks/useSimilarElements';
 import { usePagedList } from '../../hooks/usePagedList';
 import { get } from '../../lib/api';
@@ -96,6 +97,8 @@ export function UserClusterScreen() {
     });
   }, [load]));
 
+  useEffect(() => onUploadDone((id) => { if (id === clusterId) { void load(); void elementsRef.current.refresh(); } }), [clusterId, load]);
+
   // ---------- the two pages ----------
   const progress = useSharedValue(0);
   useEffect(() => { progress.set(withTiming(similarOn ? 1 : 0, { duration: PAGE_TRANSITION_DURATION_MS })); }, [similarOn, progress]);
@@ -123,7 +126,10 @@ export function UserClusterScreen() {
       onOrganize: () => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.ORGANIZE_CLUSTER, params: { clusterId } } }),
       onAdd: () => {
         const sub = cluster.role === 'Owner' && !cluster.parentId;
-        useCreateClusterStore.getState().open(() => { void load(); }, sub ? { id: cluster.id, name: cluster.name } : null);
+        useCreateSheetStore.getState().open({
+          isOnProfile: false, clusterId: cluster.id, subParent: sub ? { id: cluster.id, name: cluster.name } : null, firstCollection: false,
+          onChanged: () => { void load(); void elementsRef.current.refresh(); },
+        });
       },
       onSimilar: toggleSimilar,
       onShare: () => { void Share.share({ message: `${serverUrl()}/collections/${cluster.id}`, title: cluster.name }); },

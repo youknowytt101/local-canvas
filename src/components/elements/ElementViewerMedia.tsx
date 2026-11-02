@@ -6,8 +6,7 @@
 //     its grid copy while it loads
 //   - a video: plays on the page on screen only (react-native-video 7), looping, from silent, with the player's own
 //     controls; elsewhere its cover. Near Cosmos: its own controls (VideoElement) are not drawn
-//   - a note: its text, the whole width, spacing.md in (NoteElement on the details view); shown as plain text until the
-//     rich notes come (step 6)
+//   - a note: NoteElement (its Markdown, the whole width, spacing.md in)
 //   - content filtering: 'blur' blurs it under the veil with 查看, as in the grid
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
@@ -16,6 +15,7 @@ import { StyleSheet } from 'react-native-unistyles';
 import { useEvent, useVideoPlayer, VideoView } from 'react-native-video';
 import { NSFW_VEIL, tileImageUrl, tileRatio, viewerImageSources, type Element } from '../../lib/elements';
 import { absoluteUrl } from '../../lib/server';
+import { NoteElement } from './NoteElement';
 
 const revealed = new Set<string>();
 
@@ -37,7 +37,7 @@ export function ElementViewerMedia({ element, active, maxWidth, maxHeight, inset
   const blurred = element.nsfw?.treatment === 'blur' && !shown;
 
   if (element.type === 'note') {
-    return <View style={styles.note}><Text style={styles.noteText}>{element.text?.replace(/^#+\s*/gm, '').replace(/[*_`>]/g, '') ?? ''}</Text></View>;
+    return <NoteElement text={element.text ?? ''} />;
   }
   const aspect = element.mediaKind === 'video' && !element.width ? 9 / 16 : tileRatio(element.width, element.height);
   if (!element.mediaUrl && !element.posterUrl) {
@@ -103,8 +103,6 @@ function ViewerVideo({ element }: { element: Element }) {
 const styles = StyleSheet.create((theme) => ({
   box: { alignSelf: 'center', overflow: 'hidden' },
   fill: { width: '100%', height: '100%' },
-  note: { width: '100%', paddingHorizontal: theme.spacing.md, paddingBottom: theme.spacing.md, backgroundColor: theme.colors.background },
-  noteText: { ...theme.typography.textElementBody, lineHeight: 25, color: theme.colors.primary },
   link: { marginHorizontal: theme.spacing.md, padding: theme.spacing.lg, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.elevated },
   linkText: { ...theme.typography.largePlus, color: theme.colors.primary },
   veil: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.xs },

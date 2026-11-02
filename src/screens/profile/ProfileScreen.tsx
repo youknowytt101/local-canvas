@@ -35,6 +35,8 @@ import { useUserMenuStore } from '../../components/sheets/UserMenuSheet';
 import { ProfileClusterGrid, type ProfileClusterGridItem } from '../../components/profile/ProfileClusterGrid';
 import { ProfileElementGrid } from '../../components/profile/ProfileElementGrid';
 import { ProfileInfo, type ProfileUser } from '../../components/profile/ProfileInfo';
+import { useCreateSheetStore } from '../../components/sheets/CreateSheets';
+import { onUploadDone } from '../../lib/uploads';
 import { useCreateClusterStore } from '../../components/sheets/CreateClusterSheet';
 import { ProfileTabBar } from '../../components/profile/ProfileTabBar';
 import { pinnedFirst } from '../../components/profile/profileLists';
@@ -176,6 +178,8 @@ export function ProfileScreen() {
 
   const st = profile?.statistics;
   const bottomInset = insets.bottom + BAR_BOTTOM_OFFSET + TAB_BAR_HOME_HEIGHT + DEFAULT_GRID_GAP;
+  // one's own uploads land on the profile (and in its collections' counts)
+  useEffect(() => (isMe ? onUploadDone(() => { void refresh(); }) : undefined), [isMe]); // eslint-disable-line react-hooks/exhaustive-deps
   const listProps = { headerHeight, headerScrollMax, viewport, bottomInset, refreshing, onRefresh: () => void refresh() };
   const button = [styles.headerButton, { width: HEADER_CONTROL_SIZE, height: HEADER_CONTROL_SIZE }];
   return (
@@ -243,6 +247,10 @@ export function ProfileScreen() {
               <ProfileInfo
                 user={profile} isMe={isMe} isFollowed={profile.isFollowed} onFollow={toggleFollow}
                 onFollowers={() => openConnections('followers')} onFollowing={() => openConnections('following')}
+                onCreate={() => useCreateSheetStore.getState().open({
+                  isOnProfile: true, clusterId: null, subParent: null, firstCollection: (collections?.length ?? profile.statistics?.numberOfClusters ?? 0) === 0,
+                  onChanged: () => { void refresh(); },
+                })}
               />
             ) : <View style={styles.infoPlaceholder} />}
             <View style={styles.tabs} onLayout={(e) => setTabBarHeight(e.nativeEvent.layout.height)}>

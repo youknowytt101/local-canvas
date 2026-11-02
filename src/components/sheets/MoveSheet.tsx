@@ -13,6 +13,8 @@
 //   - move mode (organizing a collection's 移动): the collection they are in is left out; a row moves the chosen
 //     elements there and out of it (connect + disconnect in one request), closes the sheet and says 已移至X
 //     (toast.movedToCluster)
+//   - destination mode (presentMoveSheetForDraft, photos picked on the profile): no ticks; a row is where they go and the
+//     sheet closes
 // Near Cosmos: the new collection's name is typed in the sheet's last row (Cosmos opens its create sheet); the tree's
 // connecting lines are not drawn; the saved row's button shows a tick on the inverted colour.
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
@@ -49,6 +51,7 @@ export function MoveSheet() {
   const navigation = useNavigation();
   const element = useMoveSheetStore((s) => s.element);
   const move = useMoveSheetStore((s) => s.move);
+  const destination = useMoveSheetStore((s) => s.destination);
   const me = useSessionStore((s) => s.me);
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -73,11 +76,17 @@ export function MoveSheet() {
       setOnProfile(!!fresh.isUserPublicElement);
     }
   };
+  const loadLists = async () => {
+    const [list, prof] = await Promise.all([get<Cluster[] | { items: Cluster[] }>('/api/clusters'), get<Profile>('/api/profile/cluster')]).catch(() => [null, null] as const);
+    if (list) setClusters(Array.isArray(list) ? list : list.items);
+    if (prof) setProfile(prof);
+  };
   useEffect(() => {
     setQuery('');
     setNaming(null);
     if (element) void load(element);
-  }, [element?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    else if (destination) { setInClusters(new Set()); setOnProfile(false); void loadLists(); }
+  }, [element?.id, destination]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ClusterSubtree: each collection, then its sub-collections under it
   const rows = useMemo(() => {
@@ -92,6 +101,11 @@ export function MoveSheet() {
 
   // c: a collection, or null for the profile
   const toggle = async (c: Cluster | null) => {
+    if (destination) {
+      await TrueSheet.dismiss(MOVE_SHEET).catch(() => undefined);
+      destination.onChoose(c ? { id: c.id, name: c.name } : null);
+      return;
+    }
     if (!element || busy) return;
     if (move) {
       const to = c ? c.id : profile?.id;
@@ -163,7 +177,7 @@ export function MoveSheet() {
       cornerRadius={24}
       grabber
       backgroundColor={theme.colors.sheetBackground}
-      onDidDismiss={() => useMoveSheetStore.setState({ element: null, move: null })}
+      onDidDismiss={() => useMoveSheetStore.setState({ element: null, move: null, destination: null })}
       footer={
         <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
           {naming == null ? (
@@ -195,14 +209,14 @@ export function MoveSheet() {
         <ScrollView nestedScrollEnabled contentContainerStyle={{ paddingTop: compact ? theme.spacing.md : 0, paddingBottom: ROW_HEIGHT + insets.bottom + 16 }}>
           {!query ? (
             <Row
-              title="个人资料" subtitle={profileSubtitle} on={!move && onProfile} onPress={() => void toggle(null)}
+              title="个人资料" subtitle={profileSubtitle} on={!move && !destination && onProfile} onPress={() => void toggle(null)}
               thumbnail={me?.avatarUrl ? <Image source={{ uri: absoluteUrl(me.avatarUrl) }} style={[styles.thumbnail, styles.thumbRound]} />
                 : <View style={[styles.thumbnail, styles.thumbRound]}><UserRound color={theme.colors.tertiary} size={20} /></View>}
             />
           ) : null}
           {rows.map((c) => (
             <Row
-              key={c.id} title={c.name} subtitle={`${c.count} 元素${c.isPrivate ? ' · 私人的' : ''}`} on={!move && inClusters.has(c.id)}
+              key={c.id} title={c.name} subtitle={`${c.count} 元素${c.isPrivate ? ' · 私人的' : ''}`} on={!move && !destination && inClusters.has(c.id)}
               indent={c.parentId ? SUBCLUSTER_LEADING_INSET : ROW_LEADING_INSET} onPress={() => void toggle(c)}
               thumbnail={c.covers?.[0] ? <Image source={{ uri: absoluteUrl(c.covers[0]) }} style={styles.thumbnail} /> : <View style={styles.thumbnail} />}
             />

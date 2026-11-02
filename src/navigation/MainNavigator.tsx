@@ -1,9 +1,11 @@
 // Cosmos' MainNavigator (module 2002): a native stack without headers whose first screen is the tabs (MainTabs); search
 // fades in over them (Routes.SEARCH, animation 'fade'), settings is pushed over them. Cosmos' modal screens (crop,
 // invite, edit collection, …) and Explore over the tabs come with their steps. After the stack, SheetHosts: the sheets
-// any screen opens by name.
+// any screen opens by name. Signed in, the uploads cut off last time go on (lib/uploads.ts).
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useEffect } from 'react';
 import { SheetHosts } from '../components/sheets/SheetHosts';
+import { resumeUploads } from '../lib/uploads';
 import { BottomTabNavigator } from './BottomTabNavigator';
 import { Routes } from './routes';
 import { SearchNavigator, SettingsNavigator } from './stacks';
@@ -11,6 +13,7 @@ import { SearchNavigator, SettingsNavigator } from './stacks';
 const Stack = createNativeStackNavigator();
 
 export function MainNavigator() {
+  useEffect(() => resumeUploads(), []);
   return (
     <>
     <Stack.Navigator initialRouteName={Routes.MAIN_TABS} screenOptions={{ headerShown: false }}>

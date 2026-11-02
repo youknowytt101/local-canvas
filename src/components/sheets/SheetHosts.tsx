@@ -7,6 +7,7 @@ import { CollaboratorsSheet, InviteLinkSheet } from './CollaboratorsSheet';
 import { ReportSheet } from './ReportSheet';
 import { UserMenuSheet } from './UserMenuSheet';
 import { CreateClusterSheet } from './CreateClusterSheet';
+import { CreateNoteSheet, CreateSheet, CreateUrlSheet } from './CreateSheets';
 import { ElementConnectionsSheet } from './ElementConnectionsSheet';
 import { ElementMenuSheet } from './ElementMenuSheet';
 import { MoveSheet } from './MoveSheet';
@@ -16,6 +17,9 @@ export function SheetHosts() {
     <>
       <MoveSheet />
       <ElementMenuSheet />
+      <CreateSheet />
+      <CreateUrlSheet />
+      <CreateNoteSheet />
       <CreateClusterSheet />
       <ElementConnectionsSheet />
       <ClusterMenuSheet />
