@@ -79,20 +79,4 @@ export const CANVAS = {
   ATLAS_PADDING: 2,
   // InfiniteCanvasScreen: the seed history keeps this many
   SEED_HISTORY_LIMIT: 5,
-  // Not in Cosmos (videos play on the canvas by the person's choice, HANDOFF 6.130, 6.165). Two tiers:
-  //   - every video on screen, moving or not, loops its strip of first frames (StripCard): a texture each, no decoder.
-  //     At most STRIP_MAX, the nearest the middle; the textures kept are STRIP_CACHE
-  //   - at rest, the ones nearest the middle with this much of them in view also get a real player over the strip,
-  //     so many from each lane as lib/videoBudget allows (the web page's PLAY_BUDGET, syncPlayback, is 20 / 2: every one
-  //     is a decoder of its own on a phone, and fewer as it warms up; 12 made the iPhone's pans stutter, HANDOFF 6.170),
-  //     a few new ones at a time (lib/previewStarts), from their files (lib/previewFiles)
-  STRIP_FPS: 8, // what derive.js makes them at
-  STRIP_MAX: 32,
-  STRIP_CACHE: 36, // decoded, 3.6 MB each
-  VIDEO_START_BATCH: 2,
-  VIDEO_START_GAP_MS: 120,
-  // the new ones start this long after the camera rests, the ones that stopped having let go of their decoders by then
-  // (the web page waits SETTLE_MS for a scroll to settle)
-  VIDEO_SETTLE_MS: 150,
-  VIDEO_VISIBLE_FRACTION: 0.5, // half in view is seen (as the grids, lib/gridVideos)
 } as const;

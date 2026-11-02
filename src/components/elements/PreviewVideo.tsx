@@ -1,5 +1,6 @@
-// A silent looping video over a tile's picture, on the grids and the canvas (the web page's <video> in buildCard /
-// board-clip; Cosmos draws only the cover in both, these play by the person's choice, HANDOFF 6.169), with expo-video:
+// A silent looping video over a tile's picture, on the grids and the canvas' tapped video (the web page's <video> in
+// buildCard / board-clip; Cosmos draws only the cover in both, these play by the person's choice, HANDOFF 6.169 /
+// 6.181), with expo-video:
 //   - its preview plays from its file (lib/previewFiles: fetched once, looped without the network); a video without
 //     one, or whose preview cannot be fetched or played, streams its original through expo-video's disk cache, so
 //     that its loops do not fetch it again either
@@ -7,7 +8,7 @@
 //     once its first frame is drawn; on Android it is given its video only once its view has its Surface, so that its
 //     decoder is never moved onto it (lib/videoSurface)
 //   - nothing hides it: VideoView stays see-through until its first frame (a clear view on iOS, the surface at alpha 0
-//     on Android), so the cover or the strip under it shows till then
+//     on Android), so the cover under it shows till then
 //   - silent, it keeps no screen awake and leaves other apps' sound alone (audioMixingMode 'auto' mixes while nothing
 //     is heard)
 import { createVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
