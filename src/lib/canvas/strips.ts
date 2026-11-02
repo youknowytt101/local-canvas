@@ -55,6 +55,16 @@ export class StripCache {
     }
   }
 
+  // short of memory: only what is on screen now stays
+  trim() {
+    const keep = new Set(this.wanted);
+    for (const [url, image] of [...this.images]) {
+      if (keep.has(url)) continue;
+      this.images.delete(url);
+      setTimeout(() => image.dispose(), DISPOSE_DELAY_MS);
+    }
+  }
+
   dispose() {
     const all = [...this.images.values()];
     this.images.clear();

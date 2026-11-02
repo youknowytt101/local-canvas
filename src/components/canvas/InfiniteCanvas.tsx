@@ -34,7 +34,7 @@ import {
 } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
+import { AppState, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation, Easing, useAnimatedReaction, useAnimatedStyle, useDerivedValue, useFrameCallback, useSharedValue,
@@ -223,6 +223,15 @@ export function InfiniteCanvas(props: Props) {
   const clipPending = useRef(''); // the keys of the ones waiting to start
   const showClips = useCallback((next: CanvasInstance[]) => { clipsRef.current = next; setClips(next); }, []);
   useEffect(() => () => clearTimeout(clipTimer.current), []);
+  useEffect(() => {
+    const sub = AppState.addEventListener('memoryWarning', () => {
+      strips.trim();
+      clearTimeout(clipTimer.current);
+      clipPending.current = '';
+      showClips([]); // the strips stay on screen; the players come back when the camera next rests
+    });
+    return () => sub.remove();
+  }, [strips, showClips]);
   const [moving, setMoving] = useState(false);
   const [revealed, setRevealed] = useState(true);
   const revealWaiting = useRef(false);

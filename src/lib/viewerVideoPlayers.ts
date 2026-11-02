@@ -9,7 +9,12 @@
 //   - what a player was told is applied again on its first events (VideoElement's applyPlayerState): on iOS the item
 //     only arrives after the player is made
 //   - a player's first frame is remembered here, so a view mounted late does not miss it
+//   - nothing competes with the video on screen: only once it has its first frame (or FIRST_FRAME_WAIT_MS has gone) do
+//     the players no longer wanted let go and the pages next to it get prepared; HELD_MAX bounds what a fast run of
+//     swipes can pile up; a memory warning or going to the background lets go of everything but the video on screen
+//     (these four after Douyin's player, HANDOFF 6.166-6.167)
 import { useSyncExternalStore } from 'react';
+import { AppState } from 'react-native';
 import { VideoPlayer } from 'react-native-video';
 import type { Element } from './elements';
 import { absoluteUrl } from './server';
@@ -19,6 +24,8 @@ import { absoluteUrl } from './server';
 const BUFFER = { minBufferMs: 2000, maxBufferMs: 8000, bufferForPlaybackMs: 250, bufferForPlaybackAfterRebufferMs: 1000, preferredForwardBufferDurationMs: 4000 };
 const RELEASE_DELAY = 300; // the views still showing it go first
 const PREWARM_MS = 1500;
+const FIRST_FRAME_WAIT_MS = 1500;
+const HELD_MAX = 4;
 
 export type ViewerVideoEntry = {
   id: string;
@@ -75,6 +82,12 @@ function prepare(el: Element): ViewerVideoEntry | null {
   if (have) return have;
   const urls = el.mediaKind === 'video' && !veiled(el) ? [el.mediaUrl, el.previewUrl].filter((u): u is string => !!u).map((u) => absoluteUrl(u)) : [];
   if (!urls.length) return null;
+  watchApp();
+  // the oldest that is not playing makes way
+  for (const other of [...entries.values()]) {
+    if (entries.size < HELD_MAX) break;
+    if (!other.playing && other.id !== active) drop(other);
+  }
   const entry = { id: el.id, urls, at: 0, ready: false, playing: false, peeking: false, onReady: new Set() } as unknown as ViewerVideoEntry;
   attach(entry);
   entries.set(el.id, entry);
@@ -142,13 +155,38 @@ export function prewarmViewerVideo(el: Element) {
   prewarmTimer = setTimeout(() => { coldAgain(prewarmed); prewarmed = null; }, PREWARM_MS);
 }
 
-// the pages next to the one on screen are ready before they are swiped to; any others let go of their decoders
-export function holdViewerVideos(els: (Element | null | undefined)[]) {
-  const keep = new Set(els.flatMap((el) => (el ? [el.id] : [])));
+// the pages next to the one on screen are ready before they are swiped to, and any others let go of their decoders,
+// once the one on screen has started
+let wanted: (Element | null | undefined)[] = [];
+let holdTimer: ReturnType<typeof setTimeout> | undefined;
+let holdWaitingOn: { entry: ViewerVideoEntry; run: () => void } | null = null;
+
+function cancelHold() {
+  clearTimeout(holdTimer);
+  holdWaitingOn?.entry.onReady.delete(holdWaitingOn.run);
+  holdWaitingOn = null;
+}
+
+function applyHold() {
+  cancelHold();
+  const keep = new Set(wanted.flatMap((el) => (el ? [el.id] : [])));
   if (active) keep.add(active);
   for (const entry of [...entries.values()]) if (!keep.has(entry.id)) drop(entry);
-  els.forEach((el) => { if (el) prepare(el); });
+  wanted.forEach((el) => { if (el) prepare(el); });
   changed();
+}
+
+export function holdViewerVideos(els: (Element | null | undefined)[]) {
+  wanted = els;
+  cancelHold();
+  const entry = active ? entries.get(active) : null;
+  if (!entry || entry.ready) {
+    applyHold();
+    return;
+  }
+  holdWaitingOn = { entry, run: applyHold };
+  entry.onReady.add(applyHold);
+  holdTimer = setTimeout(applyHold, FIRST_FRAME_WAIT_MS);
 }
 
 // the viewer showing this element left the screen. Another viewer's element playing by now is left alone (a similar
@@ -156,8 +194,31 @@ export function holdViewerVideos(els: (Element | null | undefined)[]) {
 export function leaveViewerVideo(elementId: string | null | undefined) {
   if (active !== elementId) return;
   active = null;
+  wanted = [];
+  cancelHold();
   for (const entry of [...entries.values()]) drop(entry);
   changed();
+}
+
+// short of memory or out of sight: only the video on screen stays. Coming back, it plays on and its neighbours return.
+function letGoOfTheRest() {
+  cancelHold();
+  for (const entry of [...entries.values()]) if (entry.id !== active) drop(entry);
+  changed();
+}
+let watching = false;
+function watchApp() {
+  if (watching) return;
+  watching = true;
+  AppState.addEventListener('memoryWarning', letGoOfTheRest);
+  AppState.addEventListener('change', (state) => {
+    if (state === 'background') letGoOfTheRest();
+    else if (state === 'active' && active) {
+      const entry = entries.get(active);
+      if (entry) apply(entry);
+      holdViewerVideos(wanted);
+    }
+  });
 }
 
 export const isViewerMuted = () => muted;

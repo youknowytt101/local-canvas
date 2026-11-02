@@ -22,7 +22,7 @@
 import { useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Share, View } from 'react-native';
+import { ActivityIndicator, AppState, Pressable, Share, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { CanvasSeedHistoryBar, type SeedHistoryItem } from '../../components/canvas/CanvasSeedHistoryBar';
@@ -62,6 +62,11 @@ export function InfiniteCanvasScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const params = (useRoute<RouteProp<{ c: InfiniteCanvasParams }, 'c'>>().params ?? {}) as InfiniteCanvasParams;
   const focused = useIsFocused();
+  const [appActive, setAppActive] = useState(true); // out of sight nothing plays or loops
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => setAppActive(state === 'active'));
+    return () => sub.remove();
+  }, []);
   const source = params.source ?? 'for-you';
 
   // ---------- the entry dataset ----------
@@ -206,7 +211,7 @@ export function InfiniteCanvasScreen() {
   return (
     <View style={styles.screen}>
       <InfiniteCanvas
-        active={focused}
+        active={focused && appActive}
         dataset={dataset}
         seedId={similar?.seed.id ?? null}
         refining={refining}
