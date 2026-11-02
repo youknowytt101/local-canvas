@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["PowerStateModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.powerstate.PowerStateModule"]
+  }
+}

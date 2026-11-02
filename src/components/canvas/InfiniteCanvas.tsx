@@ -29,7 +29,7 @@
 // get a real player, muted and looping,
 // as the web page's board-clip: nothing starts or lets go while the camera moves, and what plays pauses as the web
 // page's does, out of sight so that its strip under it keeps moving (the person wants them moving; decoding them through
-// a pan made it stutter, HANDOFF 6.170); at rest the ones nearest the middle play within VIDEO_PLAY_BUDGET
+// a pan made it stutter, HANDOFF 6.170); at rest the ones nearest the middle play within lib/videoBudget
 // (app.js syncPlayback).
 import {
   Atlas, Blur, Canvas, FilterMode, Group, MipmapMode, Paint, RoundedRect, Skia, type SkImage, type SkRect, type SkRSXform,
@@ -52,9 +52,10 @@ import {
   type Camera, type CanvasDataset, type CanvasInstance, type CanvasLayout, type SlotCache,
 } from '../../lib/canvas/layout';
 import { StripCache } from '../../lib/canvas/strips';
-import { absoluteUrl } from '../../lib/server';
+import { prefetchPreviews } from '../../lib/previewFiles';
+import { videoBudget, watchVideoBudget } from '../../lib/videoBudget';
 import { NoteElement } from '../elements/NoteElement';
-import { PreviewVideo, SHOW_MS } from '../elements/PreviewVideo';
+import { PreviewVideo, previewUrlOf } from '../elements/PreviewVideo';
 
 export type FocusRequest = { id: number; elementId: string; sourceIndex: number };
 type Props = {
@@ -83,7 +84,7 @@ const SAMPLING = { filter: FilterMode.Linear, mipmap: MipmapMode.None };
 // do): the empty cards until the camera has centred the card (TIMING_MS), the colours before the first pictures, and a
 // batch of pictures to the next
 const COLOUR_MIN_MS = 160;
-const CLIP_FADE_IN_MS = SHOW_MS; // none: a video view fading in from 0 flashed black (PreviewVideo)
+const CLIP_FADE_IN_MS = 0; // none: a video view fading in from 0 flashed black on Android (HANDOFF 6.174)
 const CLIP_FADE_OUT_MS = 120;
 const STAGE_MS = 80;
 
@@ -121,6 +122,7 @@ export function InfiniteCanvas(props: Props) {
   const animating = useSharedValue(0);
   const suppressed = useSharedValue(false);
   const busy = useSharedValue(false);
+  const motionOn = useSharedValue(false); // the camera's frame callback is wanted (useCanvasCameraFrame below)
   const revision = useSharedValue(0);
   const zoomOpen = useSharedValue(0);
   const pinch = useSharedValue<Pinch | null>(null);
@@ -130,6 +132,10 @@ export function InfiniteCanvas(props: Props) {
   const pillVisible = useSharedValue(false);
 
   const readCamera = useCallback((): Camera => ({ x: camX.get(), y: camY.get(), s: camS.get() }), [camX, camY, camS]);
+  // the camera's frame callback (useCanvasCameraFrame below), turned on and off from JS
+  const motionRef = useRef<{ setActive: (on: boolean) => void } | null>(null);
+  const restMotion = useCallback(() => { if (!motionOn.get()) motionRef.current?.setActive(false); }, [motionOn]);
+  const startMotion = useCallback(() => { motionRef.current?.setActive(true); }, []);
 
   const stopMotion = () => {
     'worklet';
@@ -144,6 +150,9 @@ export function InfiniteCanvas(props: Props) {
 
   const animateTo = useCallback((to: Camera, config: typeof TIMING, fade = false) => {
     animating.set(1);
+    busy.set(true);
+    motionOn.set(true);
+    motionRef.current?.setActive(true);
     vx.set(0);
     vy.set(0);
     zv.set(0);
@@ -151,7 +160,7 @@ export function InfiniteCanvas(props: Props) {
     camY.set(withTiming(to.y, config));
     camS.set(withTiming(to.s, config, (done) => { if (done) animating.set(0); }));
     if (fade) zoomOpen.set(withTiming(0, config));
-  }, [animating, camX, camY, camS, vx, vy, zv, zoomOpen]);
+  }, [animating, busy, motionOn, camX, camY, camS, vx, vy, zv, zoomOpen]);
 
   // focusWorldPoint: a world point to the middle of the screen; without a scale, to 1 (below 1) or 2, never past MAX_SCALE
   const focusWorldPoint = useCallback((x: number, y: number, scale: number | null = null) => {
@@ -161,8 +170,12 @@ export function InfiniteCanvas(props: Props) {
     animateTo({ x: sz.W / 2 - x * s, y: sz.H / 2 - y * s, s }, TIMING);
   }, [animateTo, camS]);
 
-  // useCanvasCameraFrame: the glide and the zoom's carry-on; a camera that comes to rest works the cards out again
-  useFrameCallback((info) => {
+  // useCanvasCameraFrame: the glide and the zoom's carry-on; a camera that comes to rest works the cards out again.
+  // Cosmos steps it on every frame for as long as the canvas is up; here it runs only while something moves (a finger,
+  // a glide, a zoom's carry-on, an animation) and stops itself at rest, so an idle canvas wakes nothing 120 times a
+  // second and leaves the display free to drop its refresh rate. motionOn is what the UI thread asked for; JS turns the
+  // callback on and off (wakeMotion / restMotion)
+  const motion = useFrameCallback((info) => {
     const dt = Math.min(info.timeSincePreviousFrame ?? 16.67, 64) / 1000;
     let moving = false;
     if (!panning.get() && (vx.get() !== 0 || vy.get() !== 0)) {
@@ -199,7 +212,20 @@ export function InfiniteCanvas(props: Props) {
     const now = moving || panning.get() || pinching.get() || animating.get() === 1;
     if (busy.get() && !now) revision.set(revision.get() + 1);
     busy.set(now);
-  });
+    if (!now && motionOn.get()) {
+      motionOn.set(false);
+      scheduleOnRN(restMotion);
+    }
+  }, false);
+  motionRef.current = motion;
+  // something starts to move (from the UI thread)
+  const wakeMotion = () => {
+    'worklet';
+    busy.set(true);
+    if (motionOn.get()) return;
+    motionOn.set(true);
+    scheduleOnRN(startMotion);
+  };
 
   // ---------- the world (JS) ----------
   const layoutRef = useRef<CanvasLayout | null>(null);
@@ -261,13 +287,18 @@ export function InfiniteCanvas(props: Props) {
   useEffect(() => () => strips.dispose(), [strips]);
   const activeRef = useRef(active);
   activeRef.current = active;
+  // the strips' frame: a timer at STRIP_FPS while any is on screen (each tick draws the canvas once); a frame callback
+  // here woke the UI thread on every frame of the display to count to 8 a second
   const stripClock = useSharedValue(0);
-  const stripFrames = useFrameCallback((info) => {
-    const f = Math.floor((info.timeSinceFirstFrame * C.STRIP_FPS) / 1000);
-    if (f !== stripClock.get()) stripClock.set(f);
-  }, active);
-  useEffect(() => { stripFrames.setActive(active); }, [active, stripFrames]);
-  useEffect(() => { cull(); }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [budget, setBudget] = useState(videoBudget);
+  const stripsOn = active && budget.strips && stripInsts.length > 0;
+  useEffect(() => {
+    if (!stripsOn) return undefined;
+    const t = setInterval(() => stripClock.set(stripClock.get() + 1), 1000 / C.STRIP_FPS);
+    return () => clearInterval(t);
+  }, [stripsOn, stripClock]);
+  useEffect(() => { cull(); }, [active, budget]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => watchVideoBudget(() => setBudget(videoBudget())), []);
   const clipsRef = useRef(clips);
   const clipTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const clipPending = useRef(''); // the keys of the ones waiting to start
@@ -346,11 +377,16 @@ export function InfiniteCanvas(props: Props) {
       setPills(near);
     } else setPills([]);
     // the strips: every video in view, the nearest the middle first
-    const looping = activeRef.current
+    const now = videoBudget();
+    const looping = activeRef.current && now.strips
       ? inView.filter((i) => i.element.videoStrip && hasPicture(i.element) && !(surroundHeld() && i.key !== lockKeyRef.current)).slice(0, C.STRIP_MAX)
       : [];
     strips.ask(looping.map((i) => i.element.videoStrip!.url));
     setStripInsts((was) => (was.length === looping.length && was.every((w, n) => w.key === looping[n].key) ? was : looping));
+    // their preview files are fetched ahead, nearest first, while the camera moves (lib/previewFiles)
+    if (activeRef.current && now.previews > 0) {
+      prefetchPreviews(inView.flatMap((i) => (hasPicture(i.element) && previewUrlOf(i.element) ? [previewUrlOf(i.element)!] : [])).slice(0, now.previews * 2));
+    }
     // the videos that play (the web page's syncPlayback): none start while the camera moves; at rest the ones nearest
     // the middle with VIDEO_VISIBLE_FRACTION of them in view, up to each lane's budget, not the placeholders of a refocus.
     // The ones that stop go at once, the new ones come VIDEO_SETTLE_MS later, once the others have let go of their decoders
@@ -372,7 +408,7 @@ export function InfiniteCanvas(props: Props) {
         // one without a cover is not played (the web page's bare card)
         if (!hasPicture(inst.element) || !canvasVideoUrls(inst.element).length || shown(inst) < C.VIDEO_VISIBLE_FRACTION) continue;
         const lane = inst.element.previewUrl ? 'preview' : 'original';
-        if (lanes[lane].length < C.VIDEO_PLAY_BUDGET[lane]) lanes[lane].push(inst);
+        if (lanes[lane].length < (lane === 'preview' ? now.previews : now.originals)) lanes[lane].push(inst);
       }
       const next = [...lanes.preview, ...lanes.original];
       const kept = next.filter((n) => clipsRef.current.some((c) => c.key === n.key));
@@ -559,6 +595,7 @@ export function InfiniteCanvas(props: Props) {
       .onBegin(() => { if (!pinching.get()) panBlocked.set(false); })
       .onStart(() => {
         panning.set(true);
+        wakeMotion();
         panStart.set({ x: camX.get(), y: camY.get() });
       })
       .onUpdate((e) => {
@@ -589,6 +626,7 @@ export function InfiniteCanvas(props: Props) {
       .onStart((e) => {
         stopMotion();
         pinching.set(true);
+        wakeMotion();
         panBlocked.set(true);
         const s = camS.get();
         const armed = s >= C.OPEN_VIEWER_ARM_SCALE;
@@ -852,16 +890,15 @@ function StripCard({ inst, image, clock, radius }: { inst: CanvasInstance; image
 }
 
 // a video on the canvas plays over its strip (the web page's board-clip, kept by the person's choice): muted and
-// looping, its preview first and the original if that does not play; it stays see-through until its first frame is
-// ready (VideoElementTsx1's videoReadyMap; the web page's .live), so the cover shows till then. Its VideoView is
-// VideoElement's (a texture, no picture in picture, no controls). While the camera moves it is out of sight from the
+// looping, its preview from its file and the original if that does not play (PreviewVideo); it stays see-through until
+// its first frame is drawn (VideoElementTsx1's videoReadyMap; the web page's .live), so the strip or the cover shows
+// till then. No picture in picture, no controls. While the camera moves it is out of sight from the
 // first frame of the move (busy, on the UI thread) until it plays again (playing, from JS), its strip showing instead.
 // It fades out (CLIP_FADE_OUT_MS) and comes back at once: its strip, under it, shows another frame, and a cut from one
 // to the other jumped (HANDOFF 6.172), but fading it back in flashed black (6.174)
 function ClipCard({ playing, busy, ...props }: CardProps & { playing: boolean; busy: SharedValue<boolean> }) {
   const style = useCardStyle(props);
   const { inst } = props;
-  const urls = useMemo(() => canvasVideoUrls(inst.element).map((u) => absoluteUrl(u)), [inst.element]);
   const paused = useSharedValue(!playing);
   useEffect(() => { paused.set(!playing); }, [playing, paused]);
   const shown = useAnimatedStyle(() => {
@@ -871,7 +908,7 @@ function ClipCard({ playing, busy, ...props }: CardProps & { playing: boolean; b
   return (
     <Animated.View style={[styles.clip, { width: inst.item.width, height: inst.item.height }, style]}>
       <Animated.View style={[StyleSheet.absoluteFill, shown]}>
-        <PreviewVideo urls={urls} playing={playing} />
+        <PreviewVideo element={inst.element} playing={playing} />
       </Animated.View>
     </Animated.View>
   );

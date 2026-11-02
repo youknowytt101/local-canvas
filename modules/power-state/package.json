@@ -1,0 +1,9 @@
+{
+  "name": "power-state",
+  "version": "1.0.0",
+  "description": "The phone's thermal state and Low Power Mode, and when they change",
+  "main": "index.ts",
+  "license": "MIT",
+  "author": "local-canvas",
+  "homepage": "https://github.com/youknowytt101/local-canvas"
+}

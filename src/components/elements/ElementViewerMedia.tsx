@@ -5,21 +5,22 @@
 //   - a picture: the copy that fits its displayed width (viewerImageSources), the next one if it does not load, over
 //     its grid copy while it loads
 //   - a video: lib/viewerVideoPlayers has its player, playing on the page on screen and paused on the ones next to it,
-//     looping, from silent; over its cover, see-through until its first frame is ready (VideoElementTsx1's
-//     videoReadyMap), with no controls of the player's own, only VideoScrubber on the page on screen; elsewhere only its
-//     cover
+//     looping, from silent; over its cover, see-through until its first frame is drawn (VideoElementTsx1's
+//     videoReadyMap; expo-video's VideoView does it itself), with no controls of the player's own, only VideoScrubber on
+//     the page on screen; elsewhere only its cover
 //   - a note: NoteElement (its Markdown, the whole width, spacing.md in)
 //   - content filtering: 'blur' blurs it under the veil with 查看, as in the grid
 // Out of sight while a tile's picture flies into it or out of it (lib/viewerMorph); its box says where it is.
 import { Image } from 'expo-image';
+import { VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { StyleSheet } from 'react-native-unistyles';
-import { VideoView } from 'react-native-video';
 import { NSFW_VEIL, tileImageUrl, tileRatio, viewerImageSources, type Element } from '../../lib/elements';
 import { landMorph, mountViewerMedia, useMorphHidesViewerMedia, zoomMediaId } from '../../lib/viewerMorph';
-import { playViewerVideo, useIsActiveViewerVideo, useViewerVideo, viewerRevealed, type ViewerVideoEntry } from '../../lib/viewerVideoPlayers';
+import {
+  markViewerVideoReady, playViewerVideo, useIsActiveViewerVideo, useViewerVideo, viewerRevealed, viewerVideoLaidOut, type ViewerVideoEntry,
+} from '../../lib/viewerVideoPlayers';
 import { NoteElement } from './NoteElement';
 import { VideoScrubber } from './VideoScrubber';
 
@@ -98,27 +99,20 @@ function ViewerVideo({ element }: { element: Element }) {
 function ViewerVideoSurface({ entry }: { entry: ViewerVideoEntry }) {
   const active = useIsActiveViewerVideo(entry.id);
   const { player } = entry;
-  const opacity = useSharedValue(entry.ready ? 1 : 0);
-  useEffect(() => {
-    const show = () => { opacity.value = 1; };
-    if (entry.ready) show();
-    entry.onReady.add(show);
-    return () => { entry.onReady.delete(show); };
-  }, [entry, opacity]);
-  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
     <>
-      <Animated.View style={[styles.cover, style]} pointerEvents="none">
-        <VideoView
-          player={player}
-          controls={false}
-          pictureInPicture={false}
-          autoEnterPictureInPicture={false}
-          surfaceType="texture" // as VideoElement's VideoView: a texture, no picture in picture
-          resizeMode="cover"
-          style={styles.fill}
-        />
-      </Animated.View>
+      <VideoView
+        player={player}
+        nativeControls={false}
+        contentFit="cover"
+        allowsPictureInPicture={false} // as VideoElement's VideoView: no picture in picture
+        allowsVideoFrameAnalysis={false}
+        surfaceType="textureView" // as VideoElement's: a texture (Android), faded and zoomed with the page
+        pointerEvents="none"
+        style={styles.cover}
+        onLayout={() => viewerVideoLaidOut(entry)}
+        onFirstFrameRender={() => markViewerVideoReady(entry)}
+      />
       {active ? <VideoScrubber player={player} /> : null}
     </>
   );

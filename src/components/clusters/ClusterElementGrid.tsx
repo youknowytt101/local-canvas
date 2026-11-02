@@ -9,6 +9,7 @@ import { ActivityIndicator, Text, useWindowDimensions, View } from 'react-native
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { usePagedList } from '../../hooks/usePagedList';
 import { FEED_IMAGE_SCALE, type Element } from '../../lib/elements';
+import { noteGridMoved } from '../../lib/gridVideos';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { ElementTile } from '../elements/ElementTile';
 import { DEFAULT_GRID_GAP } from '../home/ForYouFeed';
@@ -57,6 +58,8 @@ export function ClusterElementGrid({ list, listRef, source, removeFrom, header, 
       renderItem={renderItem}
       onEndReached={list.loadMore}
       onEndReachedThreshold={1}
+      onScroll={noteGridMoved}
+      scrollEventThrottle={100}
       drawDistance={height}
       style={styles.list}
       contentContainerStyle={{ paddingTop: topInset, paddingHorizontal: DEFAULT_GRID_GAP / 2, paddingBottom: bottomInset }}

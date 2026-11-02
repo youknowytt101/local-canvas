@@ -15,19 +15,18 @@
 import { useIsFocused } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet as RNStyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { StyleSheet } from 'react-native-unistyles';
 import { canvasVideoUrls } from '../../lib/canvas/layout';
 import { NSFW_VEIL, originalImageUrl, tileImageUrl, tileRatio, type Element } from '../../lib/elements';
-import { watchGridVideo, type GridVideoState } from '../../lib/gridVideos';
-import { absoluteUrl } from '../../lib/server';
+import { GridVideosShown, watchGridVideo, type GridVideoState } from '../../lib/gridVideos';
 import { mountTile, notePressedTile, unmountTile, useMorphHidesTile, zoomTileId } from '../../lib/viewerMorph';
 import { prewarmViewerVideo } from '../../lib/viewerVideoPlayers';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 import { NoteElement } from './NoteElement';
-import { PreviewVideo } from './PreviewVideo';
+import { PreviewVideo, previewUrlOf } from './PreviewVideo';
 
 const revealed = new Set<string>(); // 查看 pressed: shown as it is until the app is closed
 let tileSerial = 0;
@@ -35,16 +34,17 @@ let tileSerial = 0;
 function GridVideo({ element }: { element: Element }) {
   const view = useRef<View>(null);
   const focused = useIsFocused();
+  const shown = useContext(GridVideosShown);
   const [state, setState] = useState<GridVideoState>('off');
-  const lane = element.previewUrl ? 'preview' : 'original';
+  const preview = previewUrlOf(element);
   useEffect(() => {
-    if (!focused) return undefined;
-    const stop = watchGridVideo(lane, (done) => view.current?.measureInWindow(done), setState);
+    if (!focused || !shown) return undefined;
+    const stop = watchGridVideo(preview ? 'preview' : 'original', preview, (done) => view.current?.measureInWindow(done), setState);
     return () => { stop(); setState('off'); };
-  }, [focused, lane]);
+  }, [focused, shown, preview]);
   return (
     <View ref={view} style={RNStyleSheet.absoluteFill} pointerEvents="none" collapsable={false}>
-      {state === 'playing' ? <PreviewVideo urls={canvasVideoUrls(element).map((u) => absoluteUrl(u))} playing /> : null}
+      {state === 'playing' ? <PreviewVideo element={element} playing /> : null}
     </View>
   );
 }

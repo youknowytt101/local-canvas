@@ -26,6 +26,7 @@ import { DEFAULT_GRID_GAP } from '../components/home/ForYouFeed';
 import { usePagedList } from '../hooks/usePagedList';
 import { get } from '../lib/api';
 import type { Element } from '../lib/elements';
+import { noteGridMoved } from '../lib/gridVideos';
 import { absoluteUrl } from '../lib/server';
 import { Routes } from '../navigation/routes';
 import { useSessionStore } from '../stores/useSessionStore';
@@ -70,6 +71,7 @@ export function ExploreScreen() {
         onPageSelected={(e) => {
           const i = e.nativeEvent.position;
           setPage(i);
+          noteGridMoved();
           setSeen((s) => (s.has(i) ? s : new Set(s).add(i)));
         }}
       >

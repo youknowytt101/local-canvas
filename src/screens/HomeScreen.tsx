@@ -19,6 +19,7 @@ import { useHomeChrome } from '../hooks/useHomeChrome';
 import { get } from '../lib/api';
 import type { FollowingItem } from '../hooks/useFollowingFeed';
 import type { Element } from '../lib/elements';
+import { noteGridMoved } from '../lib/gridVideos';
 import { Routes } from '../navigation/routes';
 import { useSessionStore } from '../stores/useSessionStore';
 import { useTabDoubleTap } from '../stores/useTabDoubleTapStore';
@@ -59,7 +60,7 @@ export function HomeScreen() {
         style={styles.pager}
         initialPage={0}
         onPageScroll={(e) => pagerX.set(e.nativeEvent.position + e.nativeEvent.offset)}
-        onPageSelected={(e) => { setPage(e.nativeEvent.position); chrome.onPageChange(e.nativeEvent.position); }}
+        onPageSelected={(e) => { setPage(e.nativeEvent.position); chrome.onPageChange(e.nativeEvent.position); noteGridMoved(); }}
       >
         <View key="for-you" style={styles.page}>
           <ForYouFeed userId={userId} active={page === 0} contentTopInset={contentTopInset} bottomInset={bottomInset}

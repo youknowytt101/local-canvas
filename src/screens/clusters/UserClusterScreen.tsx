@@ -38,6 +38,7 @@ import { usePagedList } from '../../hooks/usePagedList';
 import { get } from '../../lib/api';
 import { takeClusterChanged } from '../../lib/clusterChanges';
 import type { Element } from '../../lib/elements';
+import { GridVideosShown } from '../../lib/gridVideos';
 import { serverUrl } from '../../lib/server';
 import { Routes } from '../../navigation/routes';
 import { useBarStore } from '../../stores/useBarStore';
@@ -164,37 +165,41 @@ export function UserClusterScreen() {
       {cluster ? (
         <>
           <Animated.View style={[styles.page, collectionStyle]} pointerEvents={similarOn ? 'none' : 'auto'}>
-            <ClusterElementGrid
-              list={elements}
-              source="CollectionOwn"
-              removeFrom={mine ? cluster.id : null}
-              topInset={topInset}
-              bottomInset={bottomInset}
-              empty={mine ? { title: '建议要素', hint: '开始策划您的收藏' } : { title: '无元素', hint: '该集合为空' }}
-              header={
-                <UserClusterHeader
-                  cluster={cluster} parent={parent} subClusters={subClusters} width={width}
-                  onParentPress={onParentPress} onOwnerPress={onOwnerPress} onOpenSub={(s) => openCluster(s.id)}
-                  onChanged={(patch) => setCluster((c) => (c ? { ...c, ...patch } : c))}
-                  onPeoplePress={() => useCollaboratorsStore.getState().open(cluster.id, cluster.role === 'Owner', {
-                    onOpenPerson: (userId) => (userId === meId ? navigation.navigate(Routes.PROFILE)
-                      : navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_PROFILE, params: { userId } } })),
-                    onChanged: () => { void load(); },
-                  })}
-                  onInvite={() => useCollaboratorsStore.getState().openInvite(cluster.id)}
-                />
-              }
-            />
+            <GridVideosShown.Provider value={!similarOn}>
+              <ClusterElementGrid
+                list={elements}
+                source="CollectionOwn"
+                removeFrom={mine ? cluster.id : null}
+                topInset={topInset}
+                bottomInset={bottomInset}
+                empty={mine ? { title: '建议要素', hint: '开始策划您的收藏' } : { title: '无元素', hint: '该集合为空' }}
+                header={
+                  <UserClusterHeader
+                    cluster={cluster} parent={parent} subClusters={subClusters} width={width}
+                    onParentPress={onParentPress} onOwnerPress={onOwnerPress} onOpenSub={(s) => openCluster(s.id)}
+                    onChanged={(patch) => setCluster((c) => (c ? { ...c, ...patch } : c))}
+                    onPeoplePress={() => useCollaboratorsStore.getState().open(cluster.id, cluster.role === 'Owner', {
+                      onOpenPerson: (userId) => (userId === meId ? navigation.navigate(Routes.PROFILE)
+                        : navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_PROFILE, params: { userId } } })),
+                      onChanged: () => { void load(); },
+                    })}
+                    onInvite={() => useCollaboratorsStore.getState().openInvite(cluster.id)}
+                  />
+                }
+              />
+            </GridVideosShown.Provider>
           </Animated.View>
           {similarAsked ? (
             <Animated.View style={[styles.page, similarStyle]} pointerEvents={similarOn ? 'auto' : 'none'}>
-              <ClusterElementGrid
-                list={similar}
-                source="ClusterRecommendations"
-                topInset={topInset + DEFAULT_GRID_GAP}
-                bottomInset={bottomInset}
-                empty={{ title: '没有相似元素', hint: '稍后再来查看。' }}
-              />
+              <GridVideosShown.Provider value={similarOn}>
+                <ClusterElementGrid
+                  list={similar}
+                  source="ClusterRecommendations"
+                  topInset={topInset + DEFAULT_GRID_GAP}
+                  bottomInset={bottomInset}
+                  empty={{ title: '没有相似元素', hint: '稍后再来查看。' }}
+                />
+              </GridVideosShown.Provider>
             </Animated.View>
           ) : null}
         </>

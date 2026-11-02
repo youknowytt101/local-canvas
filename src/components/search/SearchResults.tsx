@@ -16,6 +16,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { usePagedList } from '../../hooks/usePagedList';
 import { get } from '../../lib/api';
 import type { Element } from '../../lib/elements';
+import { noteGridMoved } from '../../lib/gridVideos';
 import { ClusterElementGrid } from '../clusters/ClusterElementGrid';
 import { CollectionCard, type Collection } from '../clusters/CollectionCard';
 import { DEFAULT_GRID_GAP } from '../home/ForYouFeed';
@@ -74,7 +75,7 @@ function TermResults({ term, origin, topInset, bottomInset, onCluster, onUser }:
         style={styles.pager}
         initialPage={0}
         onPageScroll={(e) => pagerX.set(e.nativeEvent.position + e.nativeEvent.offset)}
-        onPageSelected={(e) => setPage(e.nativeEvent.position)}
+        onPageSelected={(e) => { setPage(e.nativeEvent.position); noteGridMoved(); }}
       >
         <View key="elements" style={styles.page}>
           <ClusterElementGrid list={elements} source="Search" topInset={DEFAULT_GRID_GAP} bottomInset={bottomInset} empty={{ title: '没有找到结果', hint: '尝试别的东西' }} />

@@ -62,7 +62,8 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "expo-video"
     ]
   }
 }

@@ -17,6 +17,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { gql } from '../../lib/auth';
 import { FEED_IMAGE_SCALE, type Element } from '../../lib/elements';
 import { viewedPosition } from '../../lib/feedCache';
+import { noteGridMoved } from '../../lib/gridVideos';
 import { ListImpressions, impressionsScrollEnded } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { useForYouFeed } from '../../hooks/useForYouFeed';
@@ -138,6 +139,7 @@ export function ForYouFeed({ userId, active, contentTopInset, bottomInset, scrol
       viewabilityConfig={VIEWABILITY}
       onViewableItemsChanged={onViewableItemsChanged}
       {...scrollHandlers}
+      onScroll={(e) => { scrollHandlers.onScroll(e); noteGridMoved(); }}
       scrollEventThrottle={16}
       onMomentumScrollEnd={(e) => { scrollHandlers.onMomentumScrollEnd(e); impressionsScrollEnded(); }}
       onLayout={(e) => { listHeight.current = e.nativeEvent.layout.height; }}

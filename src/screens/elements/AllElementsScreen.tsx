@@ -19,6 +19,7 @@ import { SettingsHeader } from '../../components/settings/SettingsParts';
 import { GridIcon } from '../../components/sheets/ElementMenuSheet';
 import { usePagedList } from '../../hooks/usePagedList';
 import type { Element } from '../../lib/elements';
+import { noteGridMoved } from '../../lib/gridVideos';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { pushInfiniteCanvas } from '../../lib/openInfiniteCanvas';
 
@@ -64,6 +65,8 @@ export function AllElementsScreen() {
         renderItem={renderItem}
         onEndReached={list.loadMore}
         onEndReachedThreshold={0.6}
+        onScroll={noteGridMoved}
+        scrollEventThrottle={100}
         contentContainerStyle={{
           paddingHorizontal: DEFAULT_GRID_GAP / 2,
           paddingBottom: insets.bottom + BAR_BOTTOM_OFFSET + TAB_BAR_HOME_HEIGHT + DEFAULT_GRID_GAP,

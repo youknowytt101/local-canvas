@@ -7,8 +7,10 @@
 // Near Cosmos: the line's hit area is inside the video (Cosmos' hangs below it, VIDEO_SCRUBBER_EDGE_OVERFLOW); no
 // 该视频没有音频 pill (the player does not say what tracks it has) and the volume keys do not turn the sound on
 // (useAndroidVolumeUnmute); the thick line's height and the feedback's timing are close, not read.
+import { useEventListener } from 'expo';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useRef, useState } from 'react';
+import type { VideoPlayer } from 'expo-video';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet as RNStyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -16,7 +18,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Path, Svg } from 'react-native-svg';
 import { StyleSheet } from 'react-native-unistyles';
-import { useEvent, type VideoPlayer } from 'react-native-video';
 import { isViewerMuted, setViewerMuted } from '../../lib/viewerVideoPlayers';
 
 const TRACK_HEIGHT = 1;
@@ -24,7 +25,7 @@ const TRACK_HEIGHT_EXPANDED = 6;
 const TRACK_HIT_AREA = 44;
 const SCRUB_HIDE_MS = 1000;
 const LONG_PRESS_MS = 300;
-const TICK_MS = 250; // the player's progress events
+const TICK_MS = 250; // the player's timeUpdate events
 
 export const formatTime = (seconds: number) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -72,8 +73,14 @@ export function VideoScrubber({ player }: { player: VideoPlayer }) {
     duration.value = d;
     setDurationText(formatTime(d));
   }, [duration]);
-  useEvent(player, 'onLoad', (data) => setLength(data.duration));
-  useEvent(player, 'onProgress', ({ currentTime }) => {
+  // the player says where it is every TICK_MS while this page is on screen, and not at all otherwise
+  useEffect(() => {
+    player.timeUpdateEventInterval = TICK_MS / 1000;
+    setLength(player.duration);
+    return () => { player.timeUpdateEventInterval = 0; };
+  }, [player, setLength]);
+  useEventListener(player, 'sourceLoad', (data) => setLength(data.duration));
+  useEventListener(player, 'timeUpdate', ({ currentTime }) => {
     if (scrubbing.current) return;
     if (duration.value <= 0) setLength(player.duration);
     if (duration.value <= 0) return;
@@ -98,7 +105,7 @@ export function VideoScrubber({ player }: { player: VideoPlayer }) {
   const onHoldEnd = () => { player.play(); show('resumed'); };
   const onScrubBegin = () => { scrubbing.current = true; player.pause(); };
   const onScrubEnd = () => { scrubbing.current = false; player.play(); };
-  const seekTo = (seconds: number) => { player.seekTo(seconds); setTimeText(formatTime(seconds)); };
+  const seekTo = (seconds: number) => { player.currentTime = seconds; setTimeText(formatTime(seconds)); };
 
   const tap = Gesture.Tap().maxDistance(12).onEnd((_e, ok) => { if (ok) runOnJS(onTap)(); });
   const hold = Gesture.LongPress().minDuration(LONG_PRESS_MS).maxDistance(20)

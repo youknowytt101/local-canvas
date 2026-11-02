@@ -30,6 +30,7 @@ import { ChevronLeftIcon, CloseIcon } from '../../components/icons';
 import { useSimilarElements } from '../../hooks/useSimilarElements';
 import { useTrackElementView } from '../../hooks/useTrackElementView';
 import { GRID_IMAGE_SCALE, viewerImageSources, type Element } from '../../lib/elements';
+import { noteGridMoved } from '../../lib/gridVideos';
 import { ListImpressions } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { serverUrl } from '../../lib/server';
@@ -225,6 +226,7 @@ export function ElementsViewerScreen() {
           onViewableItemsChanged={onViewableItemsChanged}
           scrollEventThrottle={16}
           onScroll={(e) => {
+            noteGridMoved();
             const next = e.nativeEvent.contentOffset.y > carouselHeight * ELEMENT_VIEWER_HIDE_TAB_BAR_RATIO ? 'scrollToTop' : 'actions';
             if (next !== mode) setMode(next);
           }}

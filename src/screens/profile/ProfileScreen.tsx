@@ -44,6 +44,7 @@ import { usePagedList } from '../../hooks/usePagedList';
 import { api, get } from '../../lib/api';
 import { showToast } from '../../stores/useToastStore';
 import type { Element } from '../../lib/elements';
+import { noteGridMoved } from '../../lib/gridVideos';
 import { serverUrl } from '../../lib/server';
 import { Routes } from '../../navigation/routes';
 import { useSessionStore } from '../../stores/useSessionStore';
@@ -137,7 +138,7 @@ export function ProfileScreen() {
     return { transform: [{ translateY: -Math.min(Math.max(y, 0), maxSv.get()) }] };
   });
   const [y0, y1] = scrollY;
-  const onScroll = useMemo(() => [y0, y1].map((y) => (e: NativeSyntheticEvent<NativeScrollEvent>) => y.set(e.nativeEvent.contentOffset.y)), [y0, y1]);
+  const onScroll = useMemo(() => [y0, y1].map((y) => (e: NativeSyntheticEvent<NativeScrollEvent>) => { y.set(e.nativeEvent.contentOffset.y); noteGridMoved(); }), [y0, y1]);
 
   const scrollPageTo = (i: number, offset: number, animated = false) => {
     if (i === 0) elementList.current?.scrollToOffset({ offset, animated });
@@ -224,7 +225,7 @@ export function ProfileScreen() {
           initialPage={0}
           onPageScroll={(e) => pagerX.set(e.nativeEvent.position + e.nativeEvent.offset)}
           onPageScrollStateChanged={(e) => { if (e.nativeEvent.pageScrollState === 'dragging') syncOther(); }}
-          onPageSelected={(e) => { const i = e.nativeEvent.position; pageRef.current = i; activeSv.set(i); }}
+          onPageSelected={(e) => { const i = e.nativeEvent.position; pageRef.current = i; activeSv.set(i); noteGridMoved(); }}
         >
           <View key="elements" style={styles.page}>
             <ProfileElementGrid {...listProps} list={elements} listRef={elementList} onScroll={onScroll[0]} isMe={isMe} />
