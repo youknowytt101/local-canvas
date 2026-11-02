@@ -1,6 +1,6 @@
 // Cosmos' icons (24 × 24 view box, a 1.75 line, round caps and joins): the paths cosmos-lite took from the app.
 // HomeIcon and ShopIcon fill in when `focused` (the fill is their colour, the line stays); UserRound is lucide's.
-import Svg, { Circle, Path } from 'react-native-svg';
+import Svg, { Circle, Ellipse, Path } from 'react-native-svg';
 
 type IconProps = { color: string; size?: number; strokeWidth?: number };
 type FocusIconProps = IconProps & { focused?: boolean };
@@ -198,6 +198,20 @@ export function ClockIcon({ color, size = 24, strokeWidth }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Path {...line(color, strokeWidth)} d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l3 2" />
+    </Svg>
+  );
+}
+
+// Cosmos' QuadDotsIcon (components/QuadDotsIcon.js): eight dots round a ring, each its own colour unless one is given
+// (the search field's colour search button; tertiary when search is disabled)
+const QUAD_DOTS: [number, number, string][] = [
+  [7.06999, 16.8488, '#1896FD'], [16.9313, 16.9557, '#D572D0'], [7.06999, 7.151, '#72B481'], [16.9313, 7.04407, '#A65C23'],
+  [19.1501, 11.7023, '#AE043C'], [12.0007, 4.8385, '#F5AD19'], [4.84929, 11.7023, '#54CFD1'], [11.9997, 19.1613, '#6D50FE'],
+];
+export function QuadDotsIcon({ color, size = 24 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      {QUAD_DOTS.map(([cx, cy, fill]) => <Ellipse key={`${cx},${cy}`} cx={cx} cy={cy} rx={1.84929} ry={1.8385} fill={color ?? fill} />)}
     </Svg>
   );
 }

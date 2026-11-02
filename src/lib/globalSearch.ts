@@ -1,9 +1,10 @@
 // Cosmos' lib/explore/dismissGlobalSearchOverlays.js: search is a route of the main stack (Routes.SEARCH, fading in
 // over the tabs), reached through the tabs' parent. Cosmos preloads it when the app is idle so that it opens at once.
-// The overlays it dismisses (filters, colour picker, typeahead) come with step 5; until then there are none.
+// The overlays it dismisses: the colour picker (the filters are the Explore search's, not here).
 import { CommonActions, StackActions } from '@react-navigation/native';
 import { navigationRef } from '../navigation/navigationRef';
 import { Routes } from '../navigation/routes';
+import { useSearchStore } from '../stores/useSearchStore';
 import { useTabBarStore } from '../stores/useTabBarStore';
 
 const mainStack = () => useTabBarStore.getState().tabNavProps?.navigation.getParent() ?? null;
@@ -38,5 +39,7 @@ export function closeGlobalSearch() {
 
 // true when it closed something (the tab press then does nothing else)
 export function dismissGlobalSearchOverlays(): boolean {
-  return false;
+  if (!isGlobalSearchOverlayActive() || !useSearchStore.getState().picker.visible) return false;
+  useSearchStore.getState().closeColorPicker();
+  return true;
 }

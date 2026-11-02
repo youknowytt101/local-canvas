@@ -6,6 +6,8 @@
 //   - 收藏 (SearchClustersTab, ClusterGrid): everyone's collections it finds, two columns; none: 没有找到合集
 //   - 用户 (SearchProfilesTab): UserActivity rows (avatar, name, @username, no follow button); none: 未找到个人资料
 // The collection and people tabs are asked for when first shown. Opening a collection or a person remembers it.
+// With a colour searched there are no tabs: only the elements of that colour (and of the words, if any) — SearchResults'
+// searchColor branch, ElementsScene alone.
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
@@ -22,11 +24,25 @@ import { ProfileTabBar } from '../profile/ProfileTabBar';
 import type { Person } from './SearchTypeahead';
 
 type Props = {
-  term: string; origin: 'search_box' | 'caption'; topInset: number; bottomInset: number;
+  term: string; origin: 'search_box' | 'caption'; color?: string | null; topInset: number; bottomInset: number;
   onCluster: (c: Collection) => void; onUser: (p: Person) => void;
 };
 
-export function SearchResults({ term, origin, topInset, bottomInset, onCluster, onUser }: Props) {
+export function SearchResults({ color, ...rest }: Props) {
+  if (color) return <ColorResults color={color} term={rest.term} origin={rest.origin} topInset={rest.topInset} bottomInset={rest.bottomInset} />;
+  return <TermResults {...rest} />;
+}
+
+function ColorResults({ color, term, origin, topInset, bottomInset }: { color: string; term: string; origin: string; topInset: number; bottomInset: number }) {
+  const elements = usePagedList<Element>(`/api/elements?q=${encodeURIComponent(term)}&origin=${origin}&color=${color}`, 40);
+  return (
+    <View style={[styles.container, { paddingTop: topInset }]}>
+      <ClusterElementGrid list={elements} source="Search" topInset={DEFAULT_GRID_GAP} bottomInset={bottomInset} empty={{ title: '没有找到结果', hint: '尝试别的东西' }} />
+    </View>
+  );
+}
+
+function TermResults({ term, origin, topInset, bottomInset, onCluster, onUser }: Omit<Props, 'color'>) {
   const { theme } = useUnistyles();
   const { width } = useWindowDimensions();
   const pager = useRef<PagerView>(null);

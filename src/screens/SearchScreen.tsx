@@ -7,11 +7,14 @@
 //   - submitted: SearchResults (元素 / 收藏 / 用户)
 // A search submitted from the field or a starter, a collection or a person opened from here are remembered (the
 // recent searches). Opening search focuses the field unless it arrives with a search (a description's keyword).
-// Not here yet: the colour search (HueGradient) and the filters (ExploreSearchFilterSheet), the pull to refresh on
-// the landing.
+// The colour search: the field's colour button opens SkiaColorPicker in a SearchOverlay (components/explore/
+// SearchOverlay.js: over the whole screen from the safe area's top, zIndex 100, the background behind it, shown and
+// hidden at once, the back button closes it), its buttons above the bar (getGlobalSearchBarBottomInset: safe area +
+// BAR_BOTTOM_OFFSET + the field's 56). A colour searched shows the results, with or without words.
+// Not here yet: the pull to refresh on the landing.
 import { useFocusEffect, useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
-import { Keyboard, Pressable, View } from 'react-native';
+import { BackHandler, Keyboard, Pressable, View } from 'react-native';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +25,7 @@ import { ClockIcon } from '../components/icons';
 import { SEARCH_HISTORY_DRAWER_WIDTH, SearchHistoryDrawer } from '../components/search/SearchHistoryDrawer';
 import { SearchLanding, type Starter } from '../components/search/SearchLanding';
 import { SearchResults } from '../components/search/SearchResults';
+import { SkiaColorPicker } from '../components/search/SkiaColorPicker';
 import { SearchTypeahead, type Person, type Typeahead } from '../components/search/SearchTypeahead';
 import { get } from '../lib/api';
 import { forgetAllSearches, forgetSearch, readSearchHistory, rememberSearch, type HistoryEntry } from '../lib/searchHistory';
@@ -41,6 +45,8 @@ export function SearchScreen() {
   const query = useSearchStore((s) => s.query);
   const focused = useSearchStore((s) => s.focused);
   const submitted = useSearchStore((s) => s.submitted);
+  const color = useSearchStore((s) => s.color);
+  const picker = useSearchStore((s) => s.picker);
   const [starters, setStarters] = useState<Starter[] | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [typeahead, setTypeahead] = useState<Typeahead | null>(null);
@@ -102,18 +108,28 @@ export function SearchScreen() {
     else openUser({ ...e.user, id: e.userId });
   };
 
+  // SearchOverlay: the back button closes the picker while this screen is focused
+  useEffect(() => {
+    if (!picker.visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!navigation.isFocused()) return false;
+      useSearchStore.getState().closeColorPicker();
+      return true;
+    });
+    return () => sub.remove();
+  }, [picker.visible, navigation]);
+
   // the landing over the bar, and over the keyboard while it is up
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
-  const barSpace = insets.bottom + BAR_BOTTOM_OFFSET + GLOBAL_SEARCH_BAR_HEIGHT + theme.spacing.lg;
+  const barInset = insets.bottom + BAR_BOTTOM_OFFSET + GLOBAL_SEARCH_BAR_HEIGHT; // getGlobalSearchBarBottomInset
+  const barSpace = barInset + theme.spacing.lg;
   const landingStyle = useAnimatedStyle(() => ({ transform: [{ translateY: Math.min(0, keyboardHeight.get() + insets.bottom) }] }));
   const pageStyle = useAnimatedStyle(() => ({ transform: [{ translateX: drawer.get() * SEARCH_HISTORY_DRAWER_WIDTH }] }));
 
   return (
     <View style={styles.screen}>
       <Animated.View style={[styles.page, pageStyle]}>
-        {submitted ? (
-          <SearchResults term={submitted.term} origin={submitted.origin} topInset={insets.top} bottomInset={barSpace} onCluster={openCluster} onUser={openUser} />
-        ) : typing ? (
+        {typing ? (
           <View style={[styles.fill, { paddingTop: insets.top }]}>
             <SearchTypeahead
               data={typeahead}
@@ -123,6 +139,16 @@ export function SearchScreen() {
               onCluster={openCluster}
             />
           </View>
+        ) : submitted || color ? (
+          <SearchResults
+            term={submitted?.term ?? ''}
+            origin={submitted?.origin ?? 'search_box'}
+            color={color}
+            topInset={insets.top}
+            bottomInset={barSpace}
+            onCluster={openCluster}
+            onUser={openUser}
+          />
         ) : (
           <View style={styles.fill}>
             <Animated.View style={[styles.landing, { paddingBottom: barSpace }, landingStyle]}>
@@ -139,6 +165,19 @@ export function SearchScreen() {
           </View>
         )}
       </Animated.View>
+      {picker.visible ? (
+        <View style={[styles.colorPickerOverlay, { marginTop: insets.top }]}>
+          <SkiaColorPicker
+            initialHex={picker.initialHex}
+            isReentering={color != null}
+            bottomInset={barInset}
+            onHexChange={(hex) => useSearchStore.getState().setPickedHex(hex)}
+            onClear={() => useSearchStore.getState().clearColor()}
+            onCancel={() => useSearchStore.getState().closeColorPicker()}
+            onSearch={(hex) => useSearchStore.getState().searchColor(hex)}
+          />
+        </View>
+      ) : null}
       <SearchHistoryDrawer
         progress={drawer}
         open={drawerOpen}
@@ -157,6 +196,7 @@ const styles = StyleSheet.create((theme) => ({
   page: { flex: 1 },
   fill: { flex: 1 },
   landing: { flex: 1, justifyContent: 'flex-end' },
+  colorPickerOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 100, backgroundColor: theme.colors.background },
   historyButton: {
     position: 'absolute', left: theme.spacing.md, width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.elevated,
     alignItems: 'center', justifyContent: 'center', boxShadow: theme.shadows.default,
