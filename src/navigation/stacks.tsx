@@ -2,7 +2,7 @@
 // and search's and settings' (SearchNavigator 3495, SettingsNavigator 2638): native stacks without headers, each
 // starting at its root screen, with the element viewer on each (pushed with the stack's default animation). Cosmos also
 // puts the canvas (fading), collections and profiles on each of them; collections (UserCluster, OrganizeCluster), profiles (UserProfile) and
-// their followers (ProfileConnections) are here, the others
+// their followers (ProfileConnections) and search (ProfileSearch) are here, the others
 // are added in their steps.
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OrganizeClusterScreen } from '../screens/clusters/OrganizeClusterScreen';
@@ -12,6 +12,7 @@ import { ExploreScreen } from '../screens/ExploreScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { ProfileConnectionsScreen } from '../screens/profile/ProfileConnectionsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { ProfileSearchScreen } from '../screens/profile/ProfileSearchScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { ShopScreen } from '../screens/ShopScreen';
@@ -29,6 +30,7 @@ export function HomeNavigator() {
       <HomeStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <HomeStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <HomeStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
+      <HomeStack.Screen name={Routes.PROFILE_SEARCH} component={ProfileSearchScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -43,6 +45,7 @@ export function ExploreNavigator() {
       <ExploreStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <ExploreStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <ExploreStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
+      <ExploreStack.Screen name={Routes.PROFILE_SEARCH} component={ProfileSearchScreen} />
     </ExploreStack.Navigator>
   );
 }
@@ -57,6 +60,7 @@ export function ShopNavigator() {
       <ShopStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <ShopStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <ShopStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
+      <ShopStack.Screen name={Routes.PROFILE_SEARCH} component={ProfileSearchScreen} />
     </ShopStack.Navigator>
   );
 }
@@ -71,6 +75,7 @@ export function ProfileNavigator() {
       <ProfileStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <ProfileStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <ProfileStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
+      <ProfileStack.Screen name={Routes.PROFILE_SEARCH} component={ProfileSearchScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -85,6 +90,7 @@ export function SearchNavigator() {
       <SearchStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <SearchStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <SearchStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
+      <SearchStack.Screen name={Routes.PROFILE_SEARCH} component={ProfileSearchScreen} />
     </SearchStack.Navigator>
   );
 }

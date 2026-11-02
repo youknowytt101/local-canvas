@@ -10,12 +10,12 @@
 //     same way (useProfileTabScrollSync), so the header does not jump.
 //   - the Profile tab pressed again scrolls the page on screen back to the top (useOwnProfileTabPress)
 //   - coming back to it reads the profile again (counts, bio, …); the lists follow when their counts changed
-//   - someone else's: the way back instead of search / settings, share and 更多 (UserMenuSheet) on the right; ProfileInfo's 关注 / 正在关注;
+//   - someone else's: the way back instead of search / settings, share, search and 更多 (UserMenuSheet) on the right; ProfileInfo's 关注 / 正在关注;
 //     his public collections (no create card) and the elements of his profile; the empty states
 //     profile.emptyClustersTitle / Hint and emptyElementsTitle / Hint; nothing to take out
 //   - the follower / following counts open ProfileConnectionsScreen
 // Near Cosmos: dragging on the header scrolls the page under it without a fling of its own (Cosmos hands the gesture
-// to the list); the search (step 5), 创建 (step 6) and 编辑主页 (step 8) are not wired yet; on someone else's menu
+// to the list); 创建 (step 6) and 编辑主页 (step 8) are not wired yet; on someone else's menu
 // (UserProfileMenus) there is no 查看画布 or 屏蔽 yet.
 import type { FlashListRef } from '@shopify/flash-list';
 import { useFocusEffect, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
@@ -95,6 +95,8 @@ export function ProfileScreen() {
       showToast({ text: e instanceof Error ? e.message : '关注用户失败' });
     }
   };
+  // ProfileSearchHeader: the profile's own search (ProfileSearchScreen)
+  const openSearch = () => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.PROFILE_SEARCH, params: { userId, name: profile?.fullName || profile?.username || '' } } });
   const openConnections = (tab: 'followers' | 'following') =>
     navigation.dispatch({ type: 'PUSH', payload: { name: Routes.PROFILE_CONNECTIONS, params: { userId, tab, name: profile?.fullName || profile?.username } } });
   const elementsRef = useRef(elements);
@@ -190,7 +192,7 @@ export function ProfileScreen() {
         )}
         {isRoot ? (
           <View style={styles.headerEnd}>
-            <Pressable style={button} accessibilityRole="button" accessibilityLabel="搜索">
+            <Pressable style={button} onPress={openSearch} accessibilityRole="button" accessibilityLabel="搜索">
               <SearchIcon color={theme.colors.primary} size={20} />
             </Pressable>
             <Pressable style={button} onPress={() => navigation.navigate(Routes.SETTINGS)} accessibilityRole="button" accessibilityLabel="设置">
@@ -201,6 +203,9 @@ export function ProfileScreen() {
           <View style={styles.headerEnd}>
             <Pressable style={button} onPress={share} accessibilityRole="button" accessibilityLabel="分享">
               <ShareIcon color={theme.colors.primary} size={20} />
+            </Pressable>
+            <Pressable style={button} onPress={openSearch} accessibilityRole="button" accessibilityLabel="搜索">
+              <SearchIcon color={theme.colors.primary} size={20} />
             </Pressable>
             <Pressable style={button} onPress={() => useUserMenuStore.getState().open(userId)} accessibilityRole="button" accessibilityLabel="更多">
               <MoreIcon color={theme.colors.primary} size={20} />

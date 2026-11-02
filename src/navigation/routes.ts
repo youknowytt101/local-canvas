@@ -19,6 +19,7 @@ export const Routes = {
   ORGANIZE_CLUSTER: 'OrganizeCluster',
   USER_PROFILE: 'UserProfile',
   PROFILE_CONNECTIONS: 'ProfileConnections',
+  PROFILE_SEARCH: 'ProfileSearch',
 } as const;
 
 export type BottomTabRouteName = typeof Routes.HOME | typeof Routes.EXPLORE | typeof Routes.SHOP | typeof Routes.PROFILE;
