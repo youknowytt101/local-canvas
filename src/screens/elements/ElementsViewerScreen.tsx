@@ -39,7 +39,7 @@ import { ListImpressions } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { serverUrl } from '../../lib/server';
 import { forgetViewerTransition, viewerTransitionFor, type Rect } from '../../lib/viewerTransition';
-import { holdViewerVideos, leaveViewerVideo, peekViewerVideo, playViewerVideo, settleViewerVideos } from '../../lib/viewerVideoPlayers';
+import { holdViewerVideos, leaveViewerVideo, peekViewerVideo, playViewerVideo, settleViewerVideos, viewerRevealed } from '../../lib/viewerVideoPlayers';
 import { Routes } from '../../navigation/routes';
 import { useBarStore } from '../../stores/useBarStore';
 import { useElementViewerStore } from '../../stores/useElementViewerStore';
@@ -205,10 +205,11 @@ export function ElementsViewerScreen() {
     navigation.dispatch({ type: 'POP', payload: { count: n } });
   };
 
-  // ---------- growing out of the tile and back into it (lib/viewerTransition) ----------
-  // Its first render is only the header (the carousel and the grid come once it has nearly grown: mounted on the way,
-  // they held the UI thread up), so that it is pushed and grows at once; going back (one screen, while it is in front) it first shrinks into the tile of the element on screen and
-  // is popped once it is there. The list goes when the screen does (not on a re-run of effects)
+  // ---------- opening out of the tile and going back into it (lib/viewerTransition) ----------
+  // Its first render is only the header (the carousel and the grid come once it is nearly open: mounted on the way, they
+  // held the UI thread up), so that it is pushed and opens at once; going back (one screen, while it is in front) the
+  // picture of the element on screen first flies into its tile and the screen is popped once it is there. The list goes
+  // when the screen does (not on a re-run of effects)
   const transition = useMemo(() => viewerTransitionFor(viewerId), [viewerId]);
   useEffect(() => () => forgetViewerTransition(viewerId), [viewerId]);
   const frame = useRef<ViewerTransitionHandle>(null);
@@ -227,6 +228,14 @@ export function ElementsViewerScreen() {
   const [dragging, setDragging] = useState(false);
   const allowRemove = useRef(false);
   const currentElementId = useCallback(() => elementsNow.current[selectedNow.current]?.id ?? null, []);
+  // the pictures ElementViewerMedia tries for an element (its sources at the width it has) and its size, to fly back
+  const flyImage = useCallback((id: string) => {
+    const el = elementsNow.current.find((e) => e.id === id);
+    if (!el || el.type === 'note') return null;
+    const { w, h } = predictMedia(el, width, headerHeight, carouselHeight, bottomOverlayClearance);
+    const uris = viewerImageSources(el, w);
+    return uris.length ? { uris, blurred: el.nsfw?.treatment === 'blur' && !viewerRevealed.has(el.id), w, h } : null;
+  }, [width, headerHeight, carouselHeight, bottomOverlayClearance]);
   const onDismissed = useCallback(() => { allowRemove.current = true; navigation.goBack(); }, [navigation]);
   useEffect(() => navigation.addListener('beforeRemove', (e) => {
     const { type, payload } = e.data.action as { type: string; payload?: { count?: number } };
@@ -306,8 +315,8 @@ export function ElementsViewerScreen() {
     <ViewerSourceContext.Provider value={source}>
       {transition && initialMedia ? (
         <ViewerTransitionFrame ref={frame} transition={transition} initialElementId={viewer.elements[initialIndex]?.id ?? ''} initialMedia={initialMedia}
-          currentElementId={currentElementId} atTop={atTop} scrollGesture={scrollGesture} onDragging={setDragging} onDismissed={onDismissed}
-          onOpenSettled={onOpenSettled}>
+          currentId={elementId} currentElementId={currentElementId} flyImage={flyImage} atTop={atTop} scrollGesture={scrollGesture}
+          onDragging={setDragging} onDismissed={onDismissed} onOpenSettled={onOpenSettled}>
           {page}
         </ViewerTransitionFrame>
       ) : page}

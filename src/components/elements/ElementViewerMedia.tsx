@@ -10,15 +10,16 @@
 //     the page on screen; elsewhere only its cover
 //   - a note: NoteElement (its Markdown, the whole width, spacing.md in)
 //   - content filtering: 'blur' blurs it under the veil with 查看, as in the grid
-// Its box says where it is and when its picture shows (lib/viewerTransition: a viewer growing out of a tile lines up
-// with it and lets the tile's picture go once its own has shown).
+// Its box says where it is and when its picture shows (lib/viewerTransition: the tile's picture flies to it and gives
+// way once its own has shown), and is out of sight while its picture flies back into a tile.
 import { Image } from 'expo-image';
 import { VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { StyleSheet } from 'react-native-unistyles';
 import { NSFW_VEIL, tileImageUrl, tileRatio, viewerImageSources, type Element } from '../../lib/elements';
-import { mountViewerMedia, noteViewerMedia } from '../../lib/viewerTransition';
+import { mountViewerMedia, noteViewerMedia, useViewerMediaStyle } from '../../lib/viewerTransition';
 import {
   markViewerVideoReady, playViewerVideo, useIsActiveViewerVideo, useViewerVideo, viewerRevealed, viewerVideoLaidOut, type ViewerVideoEntry,
 } from '../../lib/viewerVideoPlayers';
@@ -42,6 +43,7 @@ export function ElementViewerMedia({ element, maxWidth, maxHeight, inset }: Prop
   const [shown, setShown] = useState(viewerRevealed.has(element.id));
   const blurred = element.nsfw?.treatment === 'blur' && !shown;
   const box = useRef<View>(null);
+  const transitionStyle = useViewerMediaStyle(element.id);
   useEffect(() => {
     mountViewerMedia(element.id, box.current);
     return () => mountViewerMedia(element.id, null);
@@ -56,8 +58,8 @@ export function ElementViewerMedia({ element, maxWidth, maxHeight, inset }: Prop
   }
   const size = getSnappedContainFittedSize(maxWidth, maxHeight, aspect, inset);
   return (
-    <View ref={box} collapsable={false} onLayout={() => noteViewerMedia(element.id)}
-      style={[styles.box, size, { backgroundColor: element.color ?? undefined }]}>
+    <Animated.View ref={box} collapsable={false} onLayout={() => noteViewerMedia(element.id)}
+      style={[styles.box, size, { backgroundColor: element.color ?? undefined }, transitionStyle]}>
       <ViewerImage element={element} width={size.width} blurred={blurred} />
       {element.mediaKind === 'video' && !blurred ? <ViewerVideo element={element} /> : null}
       {blurred ? (
@@ -68,7 +70,7 @@ export function ElementViewerMedia({ element, maxWidth, maxHeight, inset }: Prop
           </Pressable>
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 

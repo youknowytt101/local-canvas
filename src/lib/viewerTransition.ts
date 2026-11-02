@@ -1,32 +1,35 @@
-// A grid's tile grows into the viewer and the viewer shrinks back into it: a container transform (Material's container
-// transform, iOS 18's zoom transition; the person's choice, HANDOFF 6.170 / 6.176 — Cosmos pushes its viewer, 6.63).
-// What the system zoom does is done here on both platforms, owned rather than patched into UIKit:
-//   - the viewer is pushed without an animation and grows itself (components/elements/ViewerTransition) out of the
-//     tile just pressed, its media lined up with the tile, over the page it was opened from; it shrinks back into the
-//     tile of the element on screen and is only popped once it is there
-//   - that page stays in sight around it. Android: it is pushed as a transparent modal, and the page under it is still
+// A grid's tile opens into the viewer and the viewer goes back into it: its picture flies between the tile and the
+// viewer's media while everything behind darkens alike and the viewer's page fades in over it (Photos'; the person's
+// choice, HANDOFF 6.170 / 6.176 / 6.177 — Cosmos pushes its viewer, 6.63). Owned on both platforms rather than patched
+// into UIKit:
+//   - the viewer is pushed without an animation and runs its own transition (components/elements/ViewerTransition) over
+//     the page it was opened from; going back, the picture flies into the tile of the element on screen and the viewer
+//     is only popped once it is there
+//   - that page stays in sight behind it. Android: it is pushed as a transparent modal, and the page under it is still
 //     drawn (a screen pushed after it still goes on top there). iOS: a screen pushed after a modal would go under it,
 //     so it is pushed as a card and draws a snapshot of the page instead (Skia's makeImageFromView, the system's own
 //     view snapshot; on Android that one redraws every view in software, 300 - 600 ms on the emulator)
-//   - the tile it grows from or goes back into is out of sight meanwhile (the system zoom hides its source the same
-//     way): in the snapshot it is covered, on Android the tile itself is hidden (useTransitionHidesTile)
+//   - the tile the picture flies out of or into is out of sight meanwhile (the system zoom hides its source the same
+//     way): in the snapshot it is covered, on Android the tile itself is hidden (hiddenTileKey), and so is the
+//     viewer's media while its picture flies (hiddenViewerMedia)
 //   - without a tile just pressed and on screen (or without a snapshot on iOS) the viewer is pushed as before
-// A grid's tiles register here (mountTile) and say when they are pressed (notePressedTile); the viewer's media boxes
-// register too (mountViewerMedia), so that the viewer can measure the one on screen.
+// A grid's tiles register here (mountTile) with the screen they are on and say when they are pressed (notePressedTile);
+// only the tiles of the page the viewer is opened from and in sight there count (the pages under it and the other tabs
+// keep theirs mounted, often of the same elements). The viewer's media boxes register too (mountViewerMedia), so that
+// the viewer can measure the one on screen.
 import { makeImageFromView, type SkImage } from '@shopify/react-native-skia';
 import type { RefObject } from 'react';
 import { Dimensions, Platform, type View } from 'react-native';
-import { create } from 'zustand';
+import { makeMutable, useAnimatedStyle } from 'react-native-reanimated';
 import type { Element } from './elements';
 
 export type Rect = { x: number; y: number; w: number; h: number };
-type Tile = { key: number; elementId: string; view: View | null; image: string | null; blurred: boolean };
-export type TransitionTile = { key: number; elementId: string; rect: Rect };
+// screen: the key of the route it is drawn in; image: its picture, already loaded
+type Tile = { key: number; elementId: string; screen: string | null; view: View | null; image: string | null; blurred: boolean };
+export type TransitionTile = { key: number; elementId: string; rect: Rect; image: string | null; blurred: boolean };
 export type ViewerTransition = {
-  from: TransitionTile; // the tile it grew from, in the window
-  image: string | null; // that tile's picture, already loaded
-  blurred: boolean;
-  tiles: TransitionTile[]; // every tile on the page, where it is
+  from: TransitionTile; // the tile it opened from, in the window
+  tiles: TransitionTile[]; // the tiles in sight on that page, where they are
   backdrop: SkImage | null; // iOS: the page under it
 };
 
@@ -49,10 +52,13 @@ export const notePressedTile = (tile: Tile) => { pressed = { tile, at: Date.now(
 // the view holding every screen and nothing drawn over them (not the bar): what is snapshotted
 export const setTransitionRoot = (ref: RefObject<View | null>) => { root = ref; };
 
-// the tile a viewer grows out of or goes back into, out of sight while it does (Android: the page under it is live)
-const useHiddenTile = create<{ key: number | null }>(() => ({ key: null }));
-export const hideTransitionTile = (key: number | null) => useHiddenTile.setState({ key });
-export const useTransitionHidesTile = (key: number) => useHiddenTile((s) => s.key === key);
+// the tile a viewer's picture flies out of or into, out of sight meanwhile (Android: the page under it is live), and
+// the viewer's media while its picture flies: shared values, so that they go on the frame the picture starts to move
+// rather than on the next render of a page busy with the viewer
+export const hiddenTileKey = makeMutable(-1);
+export const hiddenViewerMedia = makeMutable('');
+export const useTransitionTileStyle = (key: number) => useAnimatedStyle(() => ({ opacity: hiddenTileKey.value === key ? 0 : 1 }));
+export const useViewerMediaStyle = (elementId: string) => useAnimatedStyle(() => ({ opacity: hiddenViewerMedia.value === elementId ? 0 : 1 }));
 
 export function mountViewerMedia(elementId: string, view: View | null) {
   if (view) viewerMedia.set(elementId, view);
@@ -103,15 +109,17 @@ export async function prepareViewerTransition(el: Element, viewerId: string): Pr
   pressed = null;
   const tile = press && Date.now() - press.at < PRESS_FRESH_MS && press.tile.elementId === el.id && tiles.has(press.tile.key) ? press.tile : null;
   if (!tile) return false;
-  const all = [...tiles.values()];
+  const all = [...tiles.values()].filter((t) => t.screen === tile.screen);
   const [rects, backdrop] = await Promise.all([Promise.all(all.map((t) => measureInWindow(t.view))), snapshot()]);
-  const measured = all.flatMap((t, i) => (rects[i] ? [{ key: t.key, elementId: t.elementId, rect: rects[i]! }] : []));
+  const measured = all.flatMap((t, i) => (rects[i] && onScreen(rects[i]!)
+    ? [{ key: t.key, elementId: t.elementId, rect: rects[i]!, image: t.image, blurred: t.blurred }] : []));
   const from = measured.find((t) => t.key === tile.key);
-  if (!from || !onScreen(from.rect) || (!TRANSITION_OVER_LIVE_PAGE && !backdrop)) {
+  if (!from || (!TRANSITION_OVER_LIVE_PAGE && !backdrop)) {
     backdrop?.dispose();
     return false;
   }
-  transitions.set(viewerId, { from, image: tile.image, blurred: tile.blurred, backdrop, tiles: measured });
+  // as it was pressed (what it shows can have changed since it was mounted)
+  transitions.set(viewerId, { from: { ...from, image: tile.image, blurred: tile.blurred }, backdrop, tiles: measured });
   return true;
 }
 
