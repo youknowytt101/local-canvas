@@ -54,7 +54,7 @@ import {
 import { StripCache } from '../../lib/canvas/strips';
 import { absoluteUrl } from '../../lib/server';
 import { NoteElement } from '../elements/NoteElement';
-import { PreviewVideo } from '../elements/PreviewVideo';
+import { PreviewVideo, SHOW_MS } from '../elements/PreviewVideo';
 
 export type FocusRequest = { id: number; elementId: string; sourceIndex: number };
 type Props = {
@@ -83,7 +83,7 @@ const SAMPLING = { filter: FilterMode.Linear, mipmap: MipmapMode.None };
 // do): the empty cards until the camera has centred the card (TIMING_MS), the colours before the first pictures, and a
 // batch of pictures to the next
 const COLOUR_MIN_MS = 160;
-const CLIP_FADE_IN_MS = 180;
+const CLIP_FADE_IN_MS = SHOW_MS; // none: a video view fading in from 0 flashed black (PreviewVideo)
 const CLIP_FADE_OUT_MS = 120;
 const STAGE_MS = 80;
 
@@ -856,8 +856,8 @@ function StripCard({ inst, image, clock, radius }: { inst: CanvasInstance; image
 // ready (VideoElementTsx1's videoReadyMap; the web page's .live), so the cover shows till then. Its VideoView is
 // VideoElement's (a texture, no picture in picture, no controls). While the camera moves it is out of sight from the
 // first frame of the move (busy, on the UI thread) until it plays again (playing, from JS), its strip showing instead.
-// It fades out and back in (CLIP_FADE_OUT_MS / CLIP_FADE_IN_MS): its strip, under it, shows another frame, and a cut
-// from one to the other jumped (HANDOFF 6.172)
+// It fades out (CLIP_FADE_OUT_MS) and comes back at once: its strip, under it, shows another frame, and a cut from one
+// to the other jumped (HANDOFF 6.172), but fading it back in flashed black (6.174)
 function ClipCard({ playing, busy, ...props }: CardProps & { playing: boolean; busy: SharedValue<boolean> }) {
   const style = useCardStyle(props);
   const { inst } = props;

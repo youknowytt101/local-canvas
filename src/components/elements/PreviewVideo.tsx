@@ -1,8 +1,9 @@
 // A silent looping video over a tile's picture, on the grids and the canvas (the web page's <video> in buildCard / board-clip;
 // Cosmos draws only the cover in both, these play by the person's choice, HANDOFF 6.169): its preview first, then the
 // original if that does not play. Its player waits its turn (lib/previewStarts), gets ready paused and plays once its
-// first frame is in; it stays see-through until it is moving (VideoElementTsx1's videoReadyMap waits for the first frame;
-// here the strip or the cover under it shows a little longer, so a start that stutters is not seen). The player and its
+// first frame is in; it stays see-through until it has played REVEAL_AT_S (VideoElementTsx1's videoReadyMap waits for
+// the first frame; here the strip or the cover under it shows a little longer): the first frame said to be ready had not
+// always reached the view, which showed black for a moment as it started (130 ms measured, HANDOFF 6.174). The player and its
 // listeners are made together, so no event of a quick clip is missed (useEvent only listens after a render).
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
@@ -13,7 +14,11 @@ import { waitForPreviewTurn } from '../../lib/previewStarts';
 const BUFFER = { minBufferMs: 1000, maxBufferMs: 4000, bufferForPlaybackMs: 500, bufferForPlaybackAfterRebufferMs: 500, preferredForwardBufferDurationMs: 2000 };
 const RELEASE_DELAY = 300; // the view showing it goes first
 const START_WAIT_MS = 2500;
-const SHOW_MS = 180; // faded in over what was under it (a cover, or a strip showing another frame): a cut jumped
+// Shown at once, not faded in (6.172 faded it in over what was under it, so that a strip showing another frame did not
+// jump): on Android a TextureView coming out of opacity 0 draws black for its first frames, and every tile flashed black
+// as it started (3 tiles in 4 with the fade, 0 in 8 without, HANDOFF 6.174); iOS untested, so not there either
+export const SHOW_MS = 0;
+const REVEAL_AT_S = 0.35;
 
 export function PreviewVideo({ urls, playing }: { urls: string[]; playing: boolean }) {
   const [at, setAt] = useState(0);
@@ -52,8 +57,11 @@ function PreviewSurface({ uri, playing, onFail }: { uri: string; playing: boolea
       subs.push(made.addEventListener('onLoadStart', apply));
       subs.push(made.addEventListener('onStatusChange', apply));
       subs.push(made.addEventListener('onReadyToDisplay', start));
+      let last = 0;
       const moving = made.addEventListener('onProgress', ({ currentTime }) => {
-        if (!now.current.started || currentTime <= 0) return;
+        const looped = currentTime < last; // a clip shorter than REVEAL_AT_S
+        last = currentTime;
+        if (!now.current.started || (currentTime < REVEAL_AT_S && !looped)) return;
         opacity.value = withTiming(1, { duration: SHOW_MS });
         moving.remove();
       });
