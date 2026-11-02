@@ -144,7 +144,7 @@ function LinkIcon({ color }: { color: string }) {
   );
 }
 // Cosmos' GridIcon (lucide's layout-grid)
-function GridIcon({ color }: { color: string }) {
+export function GridIcon({ color }: { color: string }) {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24">
       <Path {...iconLine(color)} d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />

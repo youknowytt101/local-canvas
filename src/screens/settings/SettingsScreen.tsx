@@ -1,47 +1,148 @@
-// Cosmos' SettingsScreen (SettingsRoot, no bar): its groups come in step 8. Until then: the server, retry, sign out,
-// and a new server address (step 0's placeholder page moved here).
-import { useNavigation } from '@react-navigation/native';
-import { Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+// Cosmos' SettingsScreen (SettingsRoot, no bar), its groups as useSettingsOptions / buildSettingsListItems make them,
+// with the web page's words where 2.33's pack reads machine-translated (6.103):
+//   - the avatar, the name and 编辑个人资料 (EditProfile); SettingHeaderCard: 所有元素 (AllElements) with "N 保存"
+//     (settings.allElementsDescription) and the first four as a 2 × 2 preview (40 px, 1 px apart; as the content filter says)
+//   - 一般 (settings.general): 账户详情 (AccountDetails, 更新密码 inside), 内容过滤 (ContentFiltering, its two settings
+//     as the value), 已屏蔽账号 (BlockedAccounts)
+//   - 其他 (settings.other): 外观 (AppearanceSheet: 系统 / 浅色 / 深色, kept on the phone)
+//   - 登出 (settings.signOutConfirmTitle / Message, then sign out), the version under it
+// Not in Cosmos, kept for this app (it reaches the computer's cosmos-lite): 电脑上的服务 — the address, 重试 when it
+// cannot be reached, 改服务器地址. Not here (Cosmos has them, nothing here for them): 权限 (push, camera roll,
+// contacts), 触感, premium, 联系我们 / 获取支持 / 加入社区 / 关注 Cosmos, language; nor the web page's 导入与同步 (no
+// import page in the app), AI 分析, 个人资料 public / private, 举报审核 and 关闭账户.
+import { TrueSheet } from '@lodev09/react-native-true-sheet';
+import { useFocusEffect, useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';
+import Constants from 'expo-constants';
+import { Image } from 'expo-image';
+import { useCallback, useState } from 'react';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
-import { Button } from '../../components/Button';
-import { CloseIcon } from '../../components/icons';
-import { serverUrl } from '../../lib/server';
+import { CheckIcon, ChevronRightIcon } from '../../components/icons';
+import { Avatar } from '../../components/profile/ProfileInfo';
+import { SettingsGroup, SettingsHeader, SettingsRow } from '../../components/settings/SettingsParts';
+import { SheetGrabber } from '../../components/sheets/SheetGrabber';
+import { get } from '../../lib/api';
+import type { Element } from '../../lib/elements';
+import { APPEARANCES, getAppearance, setAppearance, type Appearance } from '../../lib/appearance';
+import { absoluteUrl, serverUrl } from '../../lib/server';
+import { Routes } from '../../navigation/routes';
 import { useSessionStore } from '../../stores/useSessionStore';
+
+const APPEARANCE_SHEET = 'appearance';
+export const TREATMENTS: [string, string][] = [['show', '显示'], ['blur', '模糊'], ['hide', '隐藏']];
+export const treatmentLabel = (v?: string) => TREATMENTS.find(([k]) => k === v)?.[1] ?? '';
+
+const previewUrl = (e: Element) => e.smallUrl || e.thumbUrl || e.posterSmallUrl || e.posterThumbUrl || (e.mediaKind === 'image' ? e.mediaUrl : e.posterUrl);
 
 export function SettingsScreen() {
   const { theme } = useUnistyles();
-  const navigation = useNavigation();
-  const { offline, start, signOut, changeServer } = useSessionStore();
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
+  const { me, offline, start, signOut, changeServer } = useSessionStore();
+  const [filtering, setFiltering] = useState<{ explicit: string; suggestive: string } | null>(null);
+  const [appearance, setAppearanceState] = useState<Appearance>(getAppearance);
+  const [all, setAll] = useState<{ count: number; items: Element[] } | null>(null);
+  useFocusEffect(useCallback(() => {
+    void get<{ items: Element[]; meta: { count?: number } }>('/api/elements?scope=all&pageSize=4').then((r) => setAll({ count: r.meta.count ?? r.items.length, items: r.items }), () => undefined);
+    void get<{ settings: { explicit: string; suggestive: string } }>('/api/settings/content-filtering').then((r) => setFiltering(r.settings), () => undefined);
+  }, []));
+
+  const go = (name: string) => navigation.navigate(name);
+  const confirmSignOut = () => Alert.alert('登出？', '确定要退出登录吗？', [
+    { text: '取消', style: 'cancel' },
+    { text: '登出', style: 'destructive', onPress: () => void signOut() },
+  ]);
+  const choose = (a: Appearance) => {
+    setAppearance(a);
+    setAppearanceState(a);
+    void TrueSheet.dismiss(APPEARANCE_SHEET).catch(() => undefined);
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="关闭" hitSlop={12} onPress={() => navigation.goBack()}>
-          <CloseIcon color={theme.colors.primary} />
+    <View style={styles.screen}>
+      <SettingsHeader title="设置" />
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + theme.spacing.xl }]}>
+        {me ? (
+          <Pressable style={({ pressed }) => [styles.meCard, pressed && styles.pressed]} onPress={() => go(Routes.EDIT_PROFILE)} accessibilityRole="button">
+            <Avatar user={me} size={48} />
+            <View style={styles.meText}>
+              <Text style={styles.meName} numberOfLines={1}>{me.fullName || me.username}</Text>
+              <Text style={styles.meSub}>编辑个人资料</Text>
+            </View>
+            <ChevronRightIcon color={theme.colors.tertiary} size={20} />
+          </Pressable>
+        ) : null}
+        <Pressable style={({ pressed }) => [styles.meCard, styles.allCard, pressed && styles.pressed]} onPress={() => go(Routes.ALL_ELEMENTS)} accessibilityRole="button">
+          <View style={styles.allPreview}>
+            {[0, 1, 2, 3].map((i) => {
+              const el = all?.items[i];
+              const url = el && el.nsfw?.treatment !== 'hide' ? previewUrl(el) : null;
+              return url
+                ? <Image key={i} source={{ uri: absoluteUrl(url) }} style={styles.allCell} contentFit="cover" transition={120} blurRadius={el?.nsfw?.treatment === 'blur' ? 10 : 0} />
+                : <View key={i} style={[styles.allCell, styles.allBlank]} />;
+            })}
+          </View>
+          <View style={styles.meText}>
+            <Text style={styles.meName} numberOfLines={1}>所有元素</Text>
+            {all ? <Text style={styles.meSub}>{all.count} 保存</Text> : null}
+          </View>
+          <ChevronRightIcon color={theme.colors.tertiary} size={20} />
         </Pressable>
-        <Text style={styles.title}>设置</Text>
-        <View style={styles.headerSide} />
-      </View>
-      <View style={styles.body}>
-        <Text style={styles.caption}>{serverUrl()}</Text>
-        {offline ? <Text style={styles.line}>连不上电脑上的服务</Text> : null}
-      </View>
-      <View style={styles.actions}>
-        {offline ? <Button text="重试" onPress={start} fullWidth size="large" /> : null}
-        <Button text="退出登录" onPress={signOut} variant="secondary" fullWidth size="large" />
-        <Button text="改服务器地址" onPress={changeServer} variant="outline" fullWidth size="large" />
-      </View>
-    </SafeAreaView>
+        <SettingsGroup label="一般">
+          <SettingsRow label="账户详情" onPress={() => go(Routes.ACCOUNT_DETAILS)} />
+          <SettingsRow label="内容过滤" value={filtering ? `${treatmentLabel(filtering.explicit)} · ${treatmentLabel(filtering.suggestive)}` : null}
+            onPress={() => go(Routes.CONTENT_FILTERING)} />
+          <SettingsRow label="已屏蔽账号" onPress={() => go(Routes.BLOCKED_ACCOUNTS)} />
+        </SettingsGroup>
+        <SettingsGroup label="其他">
+          <SettingsRow label="外观" value={APPEARANCES.find(([v]) => v === appearance)?.[1]}
+            onPress={() => void TrueSheet.present(APPEARANCE_SHEET).catch(() => undefined)} />
+        </SettingsGroup>
+        <SettingsGroup label="电脑上的服务">
+          <SettingsRow label={serverUrl() ?? ''} note={offline ? '连不上电脑上的服务' : undefined} chevron={false} />
+          {offline ? <SettingsRow label="重试" onPress={() => void start()} chevron={false} /> : null}
+          <SettingsRow label="改服务器地址" onPress={changeServer} chevron={false} />
+        </SettingsGroup>
+        <SettingsGroup>
+          <SettingsRow label="登出" danger chevron={false} onPress={confirmSignOut} />
+        </SettingsGroup>
+        <Text style={styles.version}>版本 {Constants.expoConfig?.version ?? ''}</Text>
+      </ScrollView>
+      <TrueSheet name={APPEARANCE_SHEET} detents={['auto']} cornerRadius={24} grabber={false} backgroundColor={theme.colors.sheetBackground}>
+        <SheetGrabber />
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + theme.spacing.md }]}>
+          <Text style={styles.sheetTitle}>外观</Text>
+          {APPEARANCES.map(([v, label]) => (
+            <Pressable key={v} style={styles.sheetRow} onPress={() => choose(v)} accessibilityRole="button" accessibilityState={{ selected: v === appearance }}>
+              <Text style={styles.sheetLabel}>{label}</Text>
+              {v === appearance ? <CheckIcon color={theme.colors.primary} size={20} /> : null}
+            </Pressable>
+          ))}
+        </View>
+      </TrueSheet>
+    </View>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
-  container: { flex: 1, backgroundColor: theme.colors.background, paddingHorizontal: theme.spacing.xl },
-  header: { height: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerSide: { width: 24 },
-  title: { ...theme.typography.headingMedium, color: theme.colors.primary },
-  body: { flex: 1, gap: theme.spacing.xs, paddingTop: theme.spacing.md },
-  caption: { ...theme.typography.caption, color: theme.colors.tertiary },
-  line: { ...theme.typography.large, color: theme.colors.secondary },
-  actions: { gap: theme.spacing.sm, paddingBottom: theme.spacing.md },
+  screen: { flex: 1, backgroundColor: theme.colors.background },
+  content: { paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.xs },
+  meCard: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.elevated,
+  },
+  allCard: { marginTop: theme.spacing.xs },
+  allPreview: { width: 81, height: 81, flexDirection: 'row', flexWrap: 'wrap', gap: 1, borderRadius: theme.borderRadius.sm, overflow: 'hidden' },
+  allCell: { width: 40, height: 40 },
+  allBlank: { backgroundColor: theme.colors.background },
+  pressed: { opacity: 0.6 },
+  meText: { flex: 1, minWidth: 0 },
+  meName: { ...theme.typography.largePlus, color: theme.colors.primary },
+  meSub: { ...theme.typography.regular, color: theme.colors.tertiary },
+  version: { ...theme.typography.caption, color: theme.colors.tertiary, textAlign: 'center', marginTop: theme.spacing.xl },
+  sheet: { paddingHorizontal: theme.spacing.md },
+  sheetTitle: { ...theme.typography.largePlus, color: theme.colors.primary, textAlign: 'center', marginBottom: theme.spacing.md },
+  sheetRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 52, paddingHorizontal: theme.spacing.xs },
+  sheetLabel: { ...theme.typography.large, color: theme.colors.primary },
 }));

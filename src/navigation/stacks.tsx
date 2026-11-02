@@ -19,6 +19,10 @@ import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { ShopScreen } from '../screens/ShopScreen';
 import { InfiniteCanvasScreen } from '../screens/canvas/InfiniteCanvasScreen';
 import { ActivityScreen } from '../screens/ActivityScreen';
+import { AllElementsScreen } from '../screens/elements/AllElementsScreen';
+import {
+  AccountDetailsScreen, BlockedAccountsScreen, ContentFilteringScreen, EditProfileScreen, UpdatePasswordScreen,
+} from '../screens/settings/SettingsPages';
 import { BrandProfileScreen } from '../screens/shop/BrandProfileScreen';
 import { ShopProductScreen } from '../screens/shop/ShopProductScreen';
 import { Routes } from './routes';
@@ -117,6 +121,19 @@ export function SettingsNavigator() {
   return (
     <SettingsStack.Navigator initialRouteName={Routes.SETTINGS_ROOT} screenOptions={screenOptions}>
       <SettingsStack.Screen name={Routes.SETTINGS_ROOT} component={SettingsScreen} />
+      <SettingsStack.Screen name={Routes.EDIT_PROFILE} component={EditProfileScreen} />
+      <SettingsStack.Screen name={Routes.ACCOUNT_DETAILS} component={AccountDetailsScreen} />
+      <SettingsStack.Screen name={Routes.UPDATE_PASSWORD} component={UpdatePasswordScreen} />
+      <SettingsStack.Screen name={Routes.CONTENT_FILTERING} component={ContentFilteringScreen} />
+      <SettingsStack.Screen name={Routes.BLOCKED_ACCOUNTS} component={BlockedAccountsScreen} />
+      <SettingsStack.Screen name={Routes.ALL_ELEMENTS} component={AllElementsScreen} />
+      <SettingsStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
+      <SettingsStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
+      <SettingsStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <SettingsStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
+      <SettingsStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
+      <SettingsStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
+      <SettingsStack.Screen name={Routes.PROFILE_SEARCH} component={ProfileSearchScreen} />
     </SettingsStack.Navigator>
   );
 }

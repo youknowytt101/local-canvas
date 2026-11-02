@@ -15,7 +15,7 @@
 //     profile.emptyClustersTitle / Hint and emptyElementsTitle / Hint; nothing to take out
 //   - the follower / following counts open ProfileConnectionsScreen
 // Near Cosmos: dragging on the header scrolls the page under it without a fling of its own (Cosmos hands the gesture
-// to the list); 创建 (step 6) and 编辑主页 (step 8) are not wired yet; on someone else's menu
+// to the list); 编辑主页 opens EditProfile (in Cosmos' SettingsNavigator, as here); on someone else's menu
 // (UserProfileMenus) there is no 查看画布 or 屏蔽 yet.
 import type { FlashListRef } from '@shopify/flash-list';
 import { useFocusEffect, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
@@ -247,6 +247,7 @@ export function ProfileScreen() {
               <ProfileInfo
                 user={profile} isMe={isMe} isFollowed={profile.isFollowed} onFollow={toggleFollow}
                 onFollowers={() => openConnections('followers')} onFollowing={() => openConnections('following')}
+                onEdit={() => navigation.navigate(Routes.SETTINGS, { screen: Routes.EDIT_PROFILE })}
                 onCreate={() => useCreateSheetStore.getState().open({
                   isOnProfile: true, clusterId: null, subParent: null, firstCollection: (collections?.length ?? profile.statistics?.numberOfClusters ?? 0) === 0,
                   onChanged: () => { void refresh(); },

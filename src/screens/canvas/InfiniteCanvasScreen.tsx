@@ -8,7 +8,8 @@
 //     (elevated) buttons with 20 icons
 //   - what it shows (params.source): 'for-you' (none given, the home logo): the For You feed's own elements
 //     (key 'for-you:root'), loading more of that feed; 'cluster': the collection's elements a page of CANVAS_PAGE_SIZE at
-//     a time; 'user': the profile's; 'element' (an element's 查看画布): that element, seeded straight away
+//     a time; 'user': the profile's; 'all': 所有元素 (everything saved); 'element' (an element's 查看画布): that element,
+//     seeded straight away
 //   - the similar canvas over it: tapping a card (onFocusElement: Medium haptic, the seed history, focusCanvasSeed)
 //     asks for its first CANVAS_PAGE_SIZE similar elements afresh, leaves the seed out, keeps CANVAS_PAGE_SIZE − 1 and
 //     puts the seed at the tapped slot's index (or the end), the focus slot being the tapped one; a seed from the history
@@ -39,7 +40,7 @@ import { useForYouCanvasStore } from '../../stores/useForYouCanvasStore';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 
 export type InfiniteCanvasParams = {
-  source?: 'for-you' | 'cluster' | 'user' | 'element';
+  source?: 'for-you' | 'cluster' | 'user' | 'all' | 'element';
   clusterId?: string;
   clusterName?: string;
   userId?: string;
@@ -66,9 +67,9 @@ export function InfiniteCanvasScreen() {
   const forYou = useForYouCanvasStore();
   const [entry, setEntry] = useState<Entry>(() => {
     if (source === 'element' && params.element) return { key: `element:${params.element.id}`, elements: [params.element], cursor: null, loading: false };
-    return { key: source === 'cluster' ? `cluster:${params.clusterId}` : `user:${params.userId}`, elements: [], cursor: null, loading: source !== 'for-you' };
+    return { key: source === 'cluster' ? `cluster:${params.clusterId}` : source === 'all' ? 'all' : `user:${params.userId}`, elements: [], cursor: null, loading: source !== 'for-you' };
   });
-  const entryPath = source === 'cluster' ? `/api/elements?${qs({ cluster: params.clusterId })}` : source === 'user' ? `/api/elements?${qs({ user: params.userId })}` : null;
+  const entryPath = source === 'cluster' ? `/api/elements?${qs({ cluster: params.clusterId })}` : source === 'user' ? `/api/elements?${qs({ user: params.userId })}` : source === 'all' ? `/api/elements?${qs({ scope: 'all' })}` : null;
   const loadEntry = useCallback(async (cursor: string | null) => {
     if (!entryPath) return;
     setEntry((e) => ({ ...e, loading: true }));

@@ -1,9 +1,10 @@
-// Cosmos' RootNavigator (module 1999): a NavigationContainer themed from the app's colours around a native stack
-// without headers, holding the signed-out steps or Main, and DynamicBar drawn after the stack (over every screen). Here
+// Cosmos' RootNavigator (module 1999): a NavigationContainer themed from the app's colours (the status bar follows the
+// theme, not the phone) around a native stack without headers, holding the signed-out steps or Main, and DynamicBar drawn after the stack (over every screen). Here
 // the signed-out steps are the server address and the sign-in. Every navigation change records the focused screen
 // (the deepest focused route) for the bar (useBarStore.activeScreen).
 import { DarkTheme, DefaultTheme, NavigationContainer, type NavigationState, type PartialState, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
 import { useUnistyles } from 'react-native-unistyles';
 import { AppToast } from '../components/AppToast';
@@ -47,6 +48,7 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer ref={navigationRef} theme={navTheme} onReady={recordFocused} onStateChange={recordFocused}>
+      <StatusBar style={rt.themeName === 'dark' ? 'light' : 'dark'} />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {phase === 'server' ? <Stack.Screen name="Server" component={ServerScreen} /> : null}
         {phase === 'login' ? <Stack.Screen name="Login" component={LoginScreen} /> : null}
