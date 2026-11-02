@@ -22,6 +22,7 @@ export const Routes = {
   PROFILE_SEARCH: 'ProfileSearch',
   INFINITE_CANVAS: 'InfiniteCanvas',
   BRAND_PROFILE: 'BrandProfile',
+  ACTIVITY: 'Activity',
   SHOP_PRODUCT: 'ShopProduct', // not a Cosmos route: Cosmos opens a product in the viewer, a placeholder product is not an element
 } as const;
 

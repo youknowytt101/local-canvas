@@ -18,6 +18,7 @@ import { SearchScreen } from '../screens/SearchScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { ShopScreen } from '../screens/ShopScreen';
 import { InfiniteCanvasScreen } from '../screens/canvas/InfiniteCanvasScreen';
+import { ActivityScreen } from '../screens/ActivityScreen';
 import { BrandProfileScreen } from '../screens/shop/BrandProfileScreen';
 import { ShopProductScreen } from '../screens/shop/ShopProductScreen';
 import { Routes } from './routes';
@@ -33,6 +34,7 @@ export function HomeNavigator() {
   return (
     <HomeStack.Navigator initialRouteName={Routes.HOME_ROOT} screenOptions={screenOptions}>
       <HomeStack.Screen name={Routes.HOME_ROOT} component={HomeScreen} />
+      <HomeStack.Screen name={Routes.ACTIVITY} component={ActivityScreen} />
       <HomeStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <HomeStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
       <HomeStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />

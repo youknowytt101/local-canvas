@@ -4,6 +4,7 @@
 // (useTabReselect / useTabDoubleTapStore).
 import { pushInfiniteCanvas } from '../lib/openInfiniteCanvas';
 import type { FlashListRef } from '@shopify/flash-list';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useRef, useState } from 'react';
 import { View } from 'react-native';
 import PagerView from 'react-native-pager-view';
@@ -15,6 +16,7 @@ import { FollowingFeed } from '../components/home/FollowingFeed';
 import { DEFAULT_GRID_GAP, ForYouFeed } from '../components/home/ForYouFeed';
 import { HEADER_CONTENT_HEIGHT, HomeHeader } from '../components/home/HomeHeader';
 import { useHomeChrome } from '../hooks/useHomeChrome';
+import { get } from '../lib/api';
 import type { FollowingItem } from '../hooks/useFollowingFeed';
 import type { Element } from '../lib/elements';
 import { Routes } from '../navigation/routes';
@@ -32,6 +34,14 @@ export function HomeScreen() {
   const forYouLook = useRef<((y: number) => void) | null>(null);
   const onForYouScroll = useCallback((y: number) => forYouLook.current?.(y), []);
   const chrome = useHomeChrome(onForYouScroll);
+  const navigation = useNavigation();
+  // the bell's dot (ActivityIndicator), asked for again whenever home comes back on screen
+  const [unread, setUnread] = useState(false);
+  useFocusEffect(useCallback(() => {
+    let live = true;
+    get<{ unread: number }>('/api/activity').then((r) => { if (live) setUnread(r.unread > 0); }, () => undefined);
+    return () => { live = false; };
+  }, []));
 
   const contentTopInset = insets.top + HEADER_CONTENT_HEIGHT;
   const bottomInset = insets.bottom + BAR_BOTTOM_OFFSET + TAB_BAR_HOME_HEIGHT + DEFAULT_GRID_GAP;
@@ -67,6 +77,8 @@ export function HomeScreen() {
         scrimStyle={chrome.scrimStyle}
         onHeight={(h) => chrome.headerHeight.set(h)}
         onLogoPress={() => pushInfiniteCanvas()}
+        onActivityPress={() => { setUnread(false); navigation.dispatch({ type: 'PUSH', payload: { name: Routes.ACTIVITY } }); }}
+        hasUnread={unread}
       />
     </View>
   );

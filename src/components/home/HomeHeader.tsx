@@ -26,11 +26,12 @@ type Props = {
   onHeight: (height: number) => void;
   onLogoPress?: () => void;
   onActivityPress?: () => void;
+  hasUnread?: boolean; // ActivityIndicator: a dot on the bell while something is unread
 };
 
 const alpha = (hex: string, a: number) => `${hex.slice(0, 7)}${Math.round(a * 255).toString(16).padStart(2, '0')}`;
 
-export function HomeHeader({ pagerX, onTabPress, headerStyle, scrimStyle, onHeight, onLogoPress, onActivityPress }: Props) {
+export function HomeHeader({ pagerX, onTabPress, headerStyle, scrimStyle, onHeight, onLogoPress, onActivityPress, hasUnread = false }: Props) {
   const { theme } = useUnistyles();
   const insets = useSafeAreaInsets();
   return (
@@ -56,6 +57,7 @@ export function HomeHeader({ pagerX, onTabPress, headerStyle, scrimStyle, onHeig
             <View style={styles.iconContainerEnd}>
               <Pressable style={styles.logoButton} onPress={onActivityPress} accessibilityRole="button" accessibilityLabel="活动">
                 <BellIcon color={theme.colors.primary} />
+                {hasUnread ? <View style={styles.unreadDot} /> : null}
               </Pressable>
             </View>
           </View>
@@ -91,4 +93,9 @@ const styles = StyleSheet.create((theme) => ({
   iconContainerEnd: { width: HEADER_CONTROL_SIZE, flexShrink: 0, alignItems: 'flex-end' },
   tab: { paddingTop: 10, paddingBottom: 9, paddingHorizontal: 12 },
   tabText: { ...theme.typography.largePlus },
+  // the web page's #activityBtn.has-unread: 8 round, badge, a 2 px ring of the background
+  unreadDot: {
+    position: 'absolute', top: 8, right: 9, width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.badge,
+    boxShadow: `0 0 0 2px ${theme.colors.background}`,
+  },
 }));
