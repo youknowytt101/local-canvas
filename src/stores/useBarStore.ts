@@ -27,17 +27,22 @@ export type ClusterBarState = {
   onShare: () => void;
 };
 
+// organizing a collection (OrganizeClusterActionTabBarContent): how many are chosen and what each action does
+export type OrganizeBarState = { clusterId: string; selectedCount: number; onMove: () => void; onRemove: () => void; onDone: () => void };
+
 type BarState = {
   activeState: { type: BarContent };
   tabBarSuppressed: boolean;
   activeScreen: string | null;
   elementViewerBarState: ElementViewerBarState | null;
   clusterBarState: ClusterBarState | null;
+  organizeBarState: OrganizeBarState | null;
   setActiveState: (activeState: { type: BarContent }) => void;
   setTabBarSuppressed: (tabBarSuppressed: boolean) => void;
   setActiveScreen: (activeScreen: string | null) => void;
   setElementViewerBarState: (state: ElementViewerBarState | null) => void;
   setClusterBarState: (state: ClusterBarState | null) => void;
+  setOrganizeBarState: (state: OrganizeBarState | null) => void;
 };
 
 export const useBarStore = create<BarState>((set) => ({
@@ -46,9 +51,11 @@ export const useBarStore = create<BarState>((set) => ({
   activeScreen: null,
   elementViewerBarState: null,
   clusterBarState: null,
+  organizeBarState: null,
   setActiveState: (activeState) => set({ activeState }),
   setTabBarSuppressed: (tabBarSuppressed) => set({ tabBarSuppressed }),
   setActiveScreen: (activeScreen) => set({ activeScreen }),
   setElementViewerBarState: (elementViewerBarState) => set({ elementViewerBarState }),
   setClusterBarState: (clusterBarState) => set({ clusterBarState }),
+  setOrganizeBarState: (organizeBarState) => set({ organizeBarState }),
 }));

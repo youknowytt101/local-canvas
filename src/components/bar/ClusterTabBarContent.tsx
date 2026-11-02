@@ -2,6 +2,8 @@
 //   - one's own or one worked on: TAB_BAR_CLUSTER_USER_WIDTH (280) × 60, four actions sharing it — 整理 (OrganizeIcon,
 //     off until it can be organized), 添加 (PlusIcon), 相似 (MagicSearchIcon), 分享 (ShareIcon). An action: its icon (24,
 //     primary) over its label (captionPlus, tertiary, one line), 4 apart, centred; switched off at 0.5
+//   - organizing it (OrganizeClusterActionTabBarContent): 210 × 62, spacing.md in, 移动 (MoveIcon) / 移除 (TrashIcon) /
+//     完成 (CheckIcon) as the same actions; 移动 and 移除 off while nothing is chosen
 //   - anyone else's: 156 × 54, 看相似 (regularPlus) and ChevronDownIcon (18) 6 apart, a light haptic when pressed
 // The words are the web page's (整理 / 相似 / 看相似; 2.33's pack says 组织 / Similar / 查看相似).
 import * as Haptics from 'expo-haptics';
@@ -10,7 +12,7 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { type SharedValue } from 'react-native-reanimated';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { useBarStore } from '../../stores/useBarStore';
-import { ChevronDownIcon, MagicSearchIcon, OrganizeIcon, PlusIcon, ShareIcon } from '../icons';
+import { CheckIcon, ChevronDownIcon, MagicSearchIcon, MoveIcon, OrganizeIcon, PlusIcon, ShareIcon, TrashIcon } from '../icons';
 import { BAR_CONTENT_INDEX } from './constants';
 import { useContentAnimation, type ContentTransition } from './useContentAnimation';
 
@@ -47,6 +49,21 @@ function Action({ label, icon, onPress, disabled, active }: { label: string; ico
   );
 }
 
+export function OrganizeClusterTabBarContent({ activeContentIndex, contentTransition }: Props) {
+  const { theme } = useUnistyles();
+  const bar = useBarStore((s) => s.organizeBarState);
+  const animated = useContentAnimation(activeContentIndex, contentTransition, BAR_CONTENT_INDEX.organize);
+  const color = theme.colors.primary;
+  const none = !bar?.selectedCount;
+  return (
+    <Animated.View style={[styles.layer, styles.row, styles.organize, animated]}>
+      <Action label="移动" disabled={none} onPress={bar?.onMove} icon={<MoveIcon color={color} size={24} />} />
+      <Action label="移除" disabled={none} onPress={bar?.onRemove} icon={<TrashIcon color={color} size={24} />} />
+      <Action label="完成" onPress={bar?.onDone} icon={<CheckIcon color={color} size={24} />} />
+    </Animated.View>
+  );
+}
+
 export function ClusterSeeSimilarTabBarContent({ activeContentIndex, contentTransition }: Props) {
   const { theme } = useUnistyles();
   const bar = useBarStore((s) => s.clusterBarState);
@@ -71,6 +88,7 @@ const fill = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as c
 const styles = StyleSheet.create((theme) => ({
   layer: { ...fill, alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row' },
+  organize: { paddingHorizontal: theme.spacing.md },
   action: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center', gap: 4 },
   off: { opacity: 0.5 },
   label: { ...theme.typography.captionPlus, color: theme.colors.tertiary, textAlign: 'center' },

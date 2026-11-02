@@ -1,10 +1,11 @@
 // The tabs' own stacks (Cosmos' HomeNavigator 3389, ExploreNavigator 3188, ShopNavigator 3471, ProfileNavigator 3254)
 // and search's and settings' (SearchNavigator 3495, SettingsNavigator 2638): native stacks without headers, each
 // starting at its root screen, with the element viewer on each (pushed with the stack's default animation). Cosmos also
-// puts the canvas (fading), collections and profiles on each of them; collections (UserCluster), profiles (UserProfile) and
+// puts the canvas (fading), collections and profiles on each of them; collections (UserCluster, OrganizeCluster), profiles (UserProfile) and
 // their followers (ProfileConnections) are here, the others
 // are added in their steps.
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { OrganizeClusterScreen } from '../screens/clusters/OrganizeClusterScreen';
 import { UserClusterScreen } from '../screens/clusters/UserClusterScreen';
 import { ElementsViewerScreen } from '../screens/elements/ElementsViewerScreen';
 import { ExploreScreen } from '../screens/ExploreScreen';
@@ -25,6 +26,7 @@ export function HomeNavigator() {
       <HomeStack.Screen name={Routes.HOME_ROOT} component={HomeScreen} />
       <HomeStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} />
       <HomeStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <HomeStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <HomeStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <HomeStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
     </HomeStack.Navigator>
@@ -38,6 +40,7 @@ export function ExploreNavigator() {
       <ExploreStack.Screen name={Routes.EXPLORE_ROOT} component={ExploreScreen} />
       <ExploreStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} />
       <ExploreStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <ExploreStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <ExploreStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <ExploreStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
     </ExploreStack.Navigator>
@@ -51,6 +54,7 @@ export function ShopNavigator() {
       <ShopStack.Screen name={Routes.SHOP_ROOT} component={ShopScreen} />
       <ShopStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} />
       <ShopStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <ShopStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <ShopStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <ShopStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
     </ShopStack.Navigator>
@@ -64,6 +68,7 @@ export function ProfileNavigator() {
       <ProfileStack.Screen name={Routes.PROFILE_ROOT} component={ProfileScreen} />
       <ProfileStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} />
       <ProfileStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <ProfileStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <ProfileStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <ProfileStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
     </ProfileStack.Navigator>
@@ -77,6 +82,7 @@ export function SearchNavigator() {
       <SearchStack.Screen name={Routes.SEARCH_ROOT} component={SearchScreen} />
       <SearchStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} />
       <SearchStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <SearchStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <SearchStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <SearchStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
     </SearchStack.Navigator>

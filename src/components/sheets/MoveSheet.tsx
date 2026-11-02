@@ -10,6 +10,9 @@
 //   - more than 4 collections: a search field over the list (sheetElevated) and the sheet opens to 510 high
 //     (getMoveSheetCollapsedHeight; 492 with exactly 5), else it fits its content (shouldUseCompactMoveSheet)
 //   - at the bottom, 创建新集合 · 您组织元素的地方 (MoveSheetFooter)
+//   - move mode (organizing a collection's 移动): the collection they are in is left out; a row moves the chosen
+//     elements there and out of it (connect + disconnect in one request), closes the sheet and says 已移至X
+//     (toast.movedToCluster)
 // Near Cosmos: the new collection's name is typed in the sheet's last row (Cosmos opens its create sheet); the tree's
 // connecting lines are not drawn; the saved row's button shows a tick on the inverted colour.
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
@@ -45,6 +48,7 @@ export function MoveSheet() {
   const { height: windowHeight } = useWindowDimensions();
   const navigation = useNavigation();
   const element = useMoveSheetStore((s) => s.element);
+  const move = useMoveSheetStore((s) => s.move);
   const me = useSessionStore((s) => s.me);
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -80,14 +84,31 @@ export function MoveSheet() {
     const q = query.trim().toLowerCase();
     const tops = clusters.filter((c) => !c.parentId || !clusters.some((p) => p.id === c.parentId));
     const ordered = tops.flatMap((t) => [t, ...clusters.filter((c) => c.parentId === t.id)]);
-    return q ? ordered.filter((c) => c.name.toLowerCase().includes(q)) : ordered;
-  }, [clusters, query]);
+    const shown = move ? ordered.filter((c) => c.id !== move.fromClusterId) : ordered;
+    return q ? shown.filter((c) => c.name.toLowerCase().includes(q)) : shown;
+  }, [clusters, query, move]);
   const compact = clusters.length <= COMPACT_MAX;
   const detents = compact ? (['auto'] as const) : ([Math.min(1, (clusters.length === 5 ? 492 : 510) / windowHeight), 1] as const);
 
   // c: a collection, or null for the profile
   const toggle = async (c: Cluster | null) => {
     if (!element || busy) return;
+    if (move) {
+      const to = c ? c.id : profile?.id;
+      if (!to) return;
+      setBusy(true);
+      try {
+        await api('POST', '/api/elements/connections', { elementIds: move.elementIds, connect: [to], disconnect: [move.fromClusterId], userInteractionSource: 'EditClustersConnections' });
+        await TrueSheet.dismiss(MOVE_SHEET).catch(() => undefined);
+        showToast({ text: `已移至${c ? c.name : '个人资料'}` });
+        move.onMoved();
+      } catch (e) {
+        showToast({ text: e instanceof Error && e.message ? e.message : '无法移动' });
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     const had = c ? inClusters.has(c.id) : onProfile;
     const target = c ? c.id : profile?.id;
     if (!target) return;
@@ -142,7 +163,7 @@ export function MoveSheet() {
       cornerRadius={24}
       grabber
       backgroundColor={theme.colors.sheetBackground}
-      onDidDismiss={() => useMoveSheetStore.setState({ element: null })}
+      onDidDismiss={() => useMoveSheetStore.setState({ element: null, move: null })}
       footer={
         <View style={[styles.footer, { paddingBottom: insets.bottom + 8 }]}>
           {naming == null ? (
@@ -174,14 +195,14 @@ export function MoveSheet() {
         <ScrollView nestedScrollEnabled contentContainerStyle={{ paddingTop: compact ? theme.spacing.md : 0, paddingBottom: ROW_HEIGHT + insets.bottom + 16 }}>
           {!query ? (
             <Row
-              title="个人资料" subtitle={profileSubtitle} on={onProfile} onPress={() => void toggle(null)}
+              title="个人资料" subtitle={profileSubtitle} on={!move && onProfile} onPress={() => void toggle(null)}
               thumbnail={me?.avatarUrl ? <Image source={{ uri: absoluteUrl(me.avatarUrl) }} style={[styles.thumbnail, styles.thumbRound]} />
                 : <View style={[styles.thumbnail, styles.thumbRound]}><UserRound color={theme.colors.tertiary} size={20} /></View>}
             />
           ) : null}
           {rows.map((c) => (
             <Row
-              key={c.id} title={c.name} subtitle={`${c.count} 元素${c.isPrivate ? ' · 私人的' : ''}`} on={inClusters.has(c.id)}
+              key={c.id} title={c.name} subtitle={`${c.count} 元素${c.isPrivate ? ' · 私人的' : ''}`} on={!move && inClusters.has(c.id)}
               indent={c.parentId ? SUBCLUSTER_LEADING_INSET : ROW_LEADING_INSET} onPress={() => void toggle(c)}
               thumbnail={c.covers?.[0] ? <Image source={{ uri: absoluteUrl(c.covers[0]) }} style={styles.thumbnail} /> : <View style={styles.thumbnail} />}
             />

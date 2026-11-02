@@ -6,16 +6,26 @@ import type { Element } from '../lib/elements';
 
 export const MOVE_SHEET = 'move';
 
+// move mode (useMoveElements' move: organizing a collection): these elements go to the chosen place and leave `from`
+export type MoveRequest = { elementIds: string[]; fromClusterId: string; onMoved: () => void };
+
 type MoveSheetState = {
   element: Element | null;
+  move: MoveRequest | null;
   open: (element: Element) => void;
+  openMove: (first: Element, move: MoveRequest) => void;
   close: () => void;
 };
 
 export const useMoveSheetStore = create<MoveSheetState>((set) => ({
   element: null,
+  move: null,
   open: (element) => {
-    set({ element });
+    set({ element, move: null });
+    void TrueSheet.present(MOVE_SHEET).catch(() => undefined);
+  },
+  openMove: (first, move) => {
+    set({ element: first, move });
     void TrueSheet.present(MOVE_SHEET).catch(() => undefined);
   },
   close: () => { void TrueSheet.dismiss(MOVE_SHEET).catch(() => undefined); },

@@ -16,6 +16,7 @@ export const Routes = {
   SETTINGS_ROOT: 'SettingsRoot',
   ELEMENTS_VIEWER: 'ElementsViewer',
   USER_CLUSTER: 'UserCluster',
+  ORGANIZE_CLUSTER: 'OrganizeCluster',
   USER_PROFILE: 'UserProfile',
   PROFILE_CONNECTIONS: 'ProfileConnections',
 } as const;

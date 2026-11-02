@@ -5,7 +5,7 @@
 //     time 相似 is pressed). Going to the similar page the collection rises by PAGE_DISTANCE (64) and fades while the
 //     similar page comes up the same way, PAGE_TRANSITION_DURATION_MS (280); 相似 again goes back
 //   - the bar (useClusterActionBarState): one's own or one worked on gets 整理 / 添加 / 相似 / 分享, anyone else's 看相似
-//     - 整理: off (organizing comes later); 添加: the owner's top-level collection opens 新子系列, made inside it,
+//     - 整理: OrganizeClusterScreen; 添加: the owner's top-level collection opens 新子系列, made inside it,
 //       otherwise 新系列 (Cosmos opens its create sheet, whose other items — import, upload — come in step 6)
 //     - 分享: the system's share with the collection's address on the computer (Cosmos opens its share sheet)
 //   - empty: one's own 建议要素 · 开始策划您的收藏 (Cosmos shows suggested elements under it), anyone else's
@@ -31,6 +31,7 @@ import { useCreateClusterStore } from '../../components/sheets/CreateClusterShee
 import { SIMILAR_PAGE_SIZE } from '../../hooks/useSimilarElements';
 import { usePagedList } from '../../hooks/usePagedList';
 import { get } from '../../lib/api';
+import { takeClusterChanged } from '../../lib/clusterChanges';
 import type { Element } from '../../lib/elements';
 import { serverUrl } from '../../lib/server';
 import { Routes } from '../../navigation/routes';
@@ -84,7 +85,8 @@ export function UserClusterScreen() {
   useFocusEffect(useCallback(() => {
     void load().then((c) => {
       if (!c) return;
-      if (seenCount.current != null && seenCount.current !== c.count) void elementsRef.current.refresh();
+      const organized = takeClusterChanged(clusterId);
+      if (organized || (seenCount.current != null && seenCount.current !== c.count)) void elementsRef.current.refresh();
       seenCount.current = c.count;
     });
   }, [load]));
@@ -112,8 +114,8 @@ export function UserClusterScreen() {
     const bar = useBarStore.getState();
     bar.setActiveState({ type: mine ? 'cluster' : 'cluster-see-similar' });
     bar.setClusterBarState({
-      clusterId, canOrganize: false, similarOn,
-      onOrganize: () => undefined,
+      clusterId, canOrganize: mine, similarOn,
+      onOrganize: () => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.ORGANIZE_CLUSTER, params: { clusterId } } }),
       onAdd: () => {
         const sub = cluster.role === 'Owner' && !cluster.parentId;
         useCreateClusterStore.getState().open(() => { void load(); }, sub ? { id: cluster.id, name: cluster.name } : null);
