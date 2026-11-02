@@ -1,5 +1,6 @@
 // Where the app is (Cosmos: useAuthStore, module 1638, plus RootNavigator's signed-in / onboarded switch): no server
-// yet, signed out, or in. `offline`: signed in, but the computer did not answer.
+// yet, signed out, signed in with the steps after signing up still to do (hasCompletedOnboarding), or in. `offline`:
+// signed in, but the computer did not answer.
 import { create } from 'zustand';
 import { get } from '../lib/api';
 import { ApiError, hasSession, signOut } from '../lib/auth';
@@ -7,7 +8,7 @@ import { startHub, stopHub } from '../lib/hub';
 import { serverUrl, setServerUrl } from '../lib/server';
 
 export type Me = { id: string; username: string; fullName?: string; avatarUrl?: string | null; hasCompletedOnboarding?: boolean };
-type Phase = 'boot' | 'server' | 'login' | 'main';
+type Phase = 'boot' | 'server' | 'login' | 'onboarding' | 'main';
 
 type SessionState = {
   phase: Phase;
@@ -28,7 +29,7 @@ export const useSessionStore = create<SessionState>((set, getState) => ({
     if (!hasSession()) return set({ phase: 'login', me: null });
     try {
       const me = await get<Me>('/api/me');
-      set({ phase: 'main', me, offline: false });
+      set({ phase: me.hasCompletedOnboarding === false ? 'onboarding' : 'main', me, offline: false });
       void startHub(); // impressions go over it (lib/impressions.ts)
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) set({ phase: 'login', me: null });

@@ -1,7 +1,7 @@
 // The frame of Cosmos' onboarding steps as LoginScreen uses it: OnboardingContentWrapper (contentAlignment top) with
 // the OnboardingTitle, the form (16 to each side, 24 above, 16 between the fields), and OnboardingFooter's button
 // (24 to each side, the bottom inset + 16 below, 12 under the content), kept above the keyboard.
-// Left out: OnboardingStepHeader's 帮助 (it opens Cosmos' help centre).
+// `header`: OnboardingStepHeader, over the title (LoginScreen has none). Left out: its 帮助 (it opens Cosmos' help centre).
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
@@ -15,12 +15,14 @@ type Props = {
   subtitle?: string | null;
   subtitleColor?: 'default' | 'alert' | 'success';
   children: ReactNode;
+  header?: ReactNode;
   button: { text: string; onPress: () => void; disabled?: boolean; loading?: boolean };
 };
 
-export function OnboardingStep({ title, subtitle, subtitleColor, children, button }: Props) {
+export function OnboardingStep({ title, subtitle, subtitleColor, children, header, button }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {header}
       <View style={styles.content}>
         <OnboardingTitle title={title} subtitle={subtitle} subtitleColor={subtitleColor} />
         <View style={styles.form}>{children}</View>
