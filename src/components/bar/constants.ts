@@ -40,6 +40,7 @@ export const BAR_GRADIENT_HEIGHT = 150;
 export const BAR_HIDDEN_SCREENS = new Set([
   'SettingsRoot', 'EditProfile', 'AccountDetails', 'UpdatePassword', 'BlockedAccounts', 'ContentFiltering', 'Language',
   'PremiumPaywall', 'CropProfilePicture', 'InfiniteCanvas', 'Login',
+  'ShopProduct', // the web page's product page has no bar (the viewer it stands for has the element's own)
 ]);
 
 // BAR_CONTENT_INDEX: the cross-fade interpolates between these numbers (the contents built so far; the others —

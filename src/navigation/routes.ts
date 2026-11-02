@@ -21,6 +21,8 @@ export const Routes = {
   PROFILE_CONNECTIONS: 'ProfileConnections',
   PROFILE_SEARCH: 'ProfileSearch',
   INFINITE_CANVAS: 'InfiniteCanvas',
+  BRAND_PROFILE: 'BrandProfile',
+  SHOP_PRODUCT: 'ShopProduct', // not a Cosmos route: Cosmos opens a product in the viewer, a placeholder product is not an element
 } as const;
 
 export type BottomTabRouteName = typeof Routes.HOME | typeof Routes.EXPLORE | typeof Routes.SHOP | typeof Routes.PROFILE;

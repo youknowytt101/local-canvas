@@ -243,3 +243,21 @@ export function ALargeIcon({ color, size = 24 }: { color: string; size?: number 
     </Svg>
   );
 }
+
+// lucide's sliders-horizontal (BrandFilterRail's filter button), as the web page took it
+export function SlidersIcon({ color, size = 24, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4" />
+    </Svg>
+  );
+}
+
+// lucide's chevron-right (BrandFilterSheet's rows)
+export function ChevronRightIcon({ color, size = 24, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M9 18l6-6-6-6" />
+    </Svg>
+  );
+}

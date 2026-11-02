@@ -18,6 +18,8 @@ import { SearchScreen } from '../screens/SearchScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { ShopScreen } from '../screens/ShopScreen';
 import { InfiniteCanvasScreen } from '../screens/canvas/InfiniteCanvasScreen';
+import { BrandProfileScreen } from '../screens/shop/BrandProfileScreen';
+import { ShopProductScreen } from '../screens/shop/ShopProductScreen';
 import { Routes } from './routes';
 
 const screenOptions = { headerShown: false } as const;
@@ -63,6 +65,8 @@ export function ShopNavigator() {
   return (
     <ShopStack.Navigator initialRouteName={Routes.SHOP_ROOT} screenOptions={screenOptions}>
       <ShopStack.Screen name={Routes.SHOP_ROOT} component={ShopScreen} />
+      <ShopStack.Screen name={Routes.BRAND_PROFILE} component={BrandProfileScreen} />
+      <ShopStack.Screen name={Routes.SHOP_PRODUCT} component={ShopProductScreen} />
       <ShopStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <ShopStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
       <ShopStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
