@@ -69,8 +69,8 @@ export function ElementsViewerScreen() {
   const tileWidth = (width - 3 * DEFAULT_GRID_GAP) / 2;
 
   // the video on screen plays at once, ahead of the page's render (lib/viewerVideoPlayers); the one a swipe is bringing
-  // in starts with the finger; the ones next to it are prepared once the slide has ended (making a player holds up the
-  // main thread)
+  // in starts when the finger lets go; the ones next to it are prepared once the slide has ended (making a player holds
+  // up the main thread)
   const elementsNow = useRef(elements);
   elementsNow.current = elements;
   const selectedNow = useRef(initialIndex);

@@ -8,19 +8,42 @@
 // (cosmos-lite's ContentFilterPill: at least 32 high, a 16 corner, #00000066, white); 查看 shows it for this session.
 // The grid's tiles do not scale when pressed (scaleOnLongPress false: PlainPressableContainer); a long press gives a
 // light haptic and opens the save sheet (useElementMoveLongPress). Pressing opens the viewer.
-// Videos do not play in the grid (MasonryGrid passes allowVideoPlayback false to ElementMedia).
+// A video plays its preview, silent and looping, over its picture when lib/gridVideos says so: the web page's grids, by
+// the person's choice (HANDOFF 6.169). Cosmos' do not play (MasonryGrid passes allowVideoPlayback false to ElementMedia).
+import { useIsFocused } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { memo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { memo, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet as RNStyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { StyleSheet } from 'react-native-unistyles';
+import { canvasVideoUrls } from '../../lib/canvas/layout';
 import { NSFW_VEIL, originalImageUrl, tileImageUrl, tileRatio, type Element } from '../../lib/elements';
+import { watchGridVideo, type GridVideoState } from '../../lib/gridVideos';
+import { absoluteUrl } from '../../lib/server';
 import { prewarmViewerVideo } from '../../lib/viewerVideoPlayers';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 import { NoteElement } from './NoteElement';
+import { PreviewVideo } from './PreviewVideo';
 
 const revealed = new Set<string>(); // 查看 pressed: shown as it is until the app is closed
+
+function GridVideo({ element }: { element: Element }) {
+  const view = useRef<View>(null);
+  const focused = useIsFocused();
+  const [state, setState] = useState<GridVideoState>('off');
+  const lane = element.previewUrl ? 'preview' : 'original';
+  useEffect(() => {
+    if (!focused) return undefined;
+    const stop = watchGridVideo(lane, (done) => view.current?.measureInWindow(done), setState);
+    return () => { stop(); setState('off'); };
+  }, [focused, lane]);
+  return (
+    <View ref={view} style={RNStyleSheet.absoluteFill} pointerEvents="none" collapsable={false}>
+      {state !== 'off' ? <PreviewVideo urls={canvasVideoUrls(element).map((u) => absoluteUrl(u))} playing={state === 'playing'} /> : null}
+    </View>
+  );
+}
 
 type Props = {
   element: Element;
@@ -55,6 +78,7 @@ export const ElementTile = memo(function ElementTile({ element, width, imageScal
           onLoad={ready}
           onError={() => { if (!failed) setFailed(true); else ready(); }}
         />
+        {element.mediaKind === 'video' && !blurred && canvasVideoUrls(element).length ? <GridVideo key={element.id} element={element} /> : null}
         {blurred ? (
           <View style={styles.veil}>
             <Text style={styles.veilText}>{NSFW_VEIL[element.nsfw!.status]}</Text>

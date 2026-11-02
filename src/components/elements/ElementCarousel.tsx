@@ -3,7 +3,9 @@
 // ElementViewerContainer: a column of topSpacer (grows and shrinks, at least spacing.sm) → the meta row, the media, the
 // AI description → a spacer that grows, so the element sits in the middle of the screen between the header and the
 // bar (bottomOverlayClearance). When the element with its description is taller than that, the carousel grows to it
-// (Cosmos measures carouselHeight too) and the description is reached by scrolling. Only the pages near the one on
+// (Cosmos measures carouselHeight too) and the description is reached by scrolling. The column is centred in a box as
+// high as the screen, not in the carousel: the carousel's height changes with the page on screen, and a page must not
+// move when that happens (it bounced once its slide had ended). Only the pages near the one on
 // screen are drawn (two each side), the ones next to it attached to the window, so a video there has its surface and
 // first frame before it is swiped to (offscreenPageLimit).
 import { forwardRef, useRef, useState } from 'react';
@@ -16,7 +18,6 @@ import { ELEMENT_VIEWER_HEADER_HEIGHT, ELEMENT_VIEWER_HEADER_MEDIA_GAP, ElementM
 import { ElementViewerMedia } from './ElementViewerMedia';
 
 const DRAWN_AROUND = 2;
-const PEEK_OFFSET = 0.01;
 const MIN_TOP = 12; // topSpacer's minHeight (spacing.sm)
 
 type Props = {
@@ -27,7 +28,7 @@ type Props = {
   width: number;
   bottomOverlayClearance: number;
   onIndexChange: (index: number) => void;
-  onIncoming: (index: number) => void; // a swipe has started bringing this page in
+  onIncoming: (index: number) => void; // the finger has let go and the slide is bringing this page in
   onSettled: () => void; // the swipe has ended
 };
 
@@ -44,6 +45,7 @@ export const ElementCarousel = forwardRef<PagerView, Props>(function ElementCaro
   const [contentHeights, setContentHeights] = useState<Record<string, number>>({});
   const active = elements[index];
   const selected = useRef(initialIndex);
+  const incoming = useRef<number | null>(null);
   const pagerHeight = Math.max(height, active && contentHeights[active.id] ? contentHeights[active.id] + MIN_TOP + bottomOverlayClearance : 0);
   return (
     <PagerView ref={ref} style={{ height: pagerHeight, width }} initialPage={initialIndex} offscreenPageLimit={1}
@@ -51,15 +53,19 @@ export const ElementCarousel = forwardRef<PagerView, Props>(function ElementCaro
       onPageScroll={(e) => {
         const { position, offset } = e.nativeEvent;
         const on = selected.current;
-        if (position === on && offset > PEEK_OFFSET) onIncoming(on + 1);
-        else if (position === on - 1 && offset < 1 - PEEK_OFFSET) onIncoming(on - 1);
+        incoming.current = position === on && offset > 0 ? on + 1 : position === on - 1 ? on - 1 : null;
       }}
-      onPageScrollStateChanged={(e) => { if (e.nativeEvent.pageScrollState === 'idle') onSettled(); }}
+      onPageScrollStateChanged={(e) => {
+        const state = e.nativeEvent.pageScrollState;
+        // not while the finger is on it: anything on the main thread then and the pager misreads the swipe and springs back
+        if (state === 'settling' && incoming.current != null) onIncoming(incoming.current);
+        if (state === 'idle') onSettled();
+      }}
     >
       {elements.map((element, i) => (
         <View key={element.id} style={[styles.page, { paddingBottom: bottomOverlayClearance }]}>
           {Math.abs(i - index) <= DRAWN_AROUND ? (
-            <>
+            <View style={{ minHeight: height - bottomOverlayClearance }}>
               <View style={styles.topSpacer} />
               <View onLayout={(e) => {
                 const h = Math.ceil(e.nativeEvent.layout.height);
@@ -70,7 +76,7 @@ export const ElementCarousel = forwardRef<PagerView, Props>(function ElementCaro
                 {element.ai?.caption ? <ElementDescription caption={element.ai.caption} /> : null}
               </View>
               <View style={styles.spacer} />
-            </>
+            </View>
           ) : null}
         </View>
       ))}

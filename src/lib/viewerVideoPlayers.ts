@@ -4,8 +4,9 @@
 // still has half a second to go, so:
 //   - a finger going down on a tile gets its player ready (prewarmViewerVideo), letting go starts it (openElementViewer)
 //   - the pages next to the one on screen are prepared and drawn, paused on their first frame (the two-player
-//     pre-rendering of short video apps), and the one a swipe is bringing in starts as soon as the finger moves
-//     (peekViewerVideo), silent until its page is selected: it is already moving as it comes in
+//     pre-rendering of short video apps), and the one a swipe is bringing in starts as soon as the finger lets go
+//     (peekViewerVideo), silent until its page is selected: it is moving as it comes in. Not while the finger is on it:
+//     that made the pager misread 13 swipes in 20 and spring back (HANDOFF 6.169)
 //   - what a player was told is applied again on its first events (VideoElement's applyPlayerState): on iOS the item
 //     only arrives after the player is made
 //   - a player's first frame is remembered here, so a view mounted late does not miss it
@@ -124,13 +125,15 @@ export function playViewerVideo(el: Element | null | undefined) {
   changed();
 }
 
-// a swipe is bringing this page in: it starts now if it is prepared
+// a slide is bringing this page in: it starts now if it is prepared. Only what cannot wait: a prepared player already
+// loops and has the sound it should, and setting those is synchronous with the main thread
 export function peekViewerVideo(el: Element | null | undefined) {
   const entry = el ? entries.get(el.id) : null;
   if (!entry || entry.playing) return;
   entry.playing = true;
   entry.peeking = true;
-  apply(entry);
+  if (!muted) entry.player.muted = true;
+  entry.player.play();
 }
 
 // the swipe has ended: a page it did not stop on goes back and waits

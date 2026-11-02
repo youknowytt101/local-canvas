@@ -2,6 +2,7 @@
 // createCanvasPanGesture, createCanvasLongPressGesture, useCanvasPressFocus, getCanvasOpenPillItems, CanvasOpenPillOverlay,
 // useInitialCanvasReveal, InfiniteCanvas). The web page's public/board.js has the same numbers (HANDOFF 6.33–6.36).
 import { Platform } from 'react-native';
+import { IS_ANDROID_EMULATOR } from '../gridVideos';
 export const CANVAS = {
   PAGE_SIZE: 120,
   MAX_RENDER_ELEMENTS: 2880,
@@ -82,17 +83,17 @@ export const CANVAS = {
   //   - every video on screen, moving or not, loops its strip of first frames (StripCard): a texture each, no decoder.
   //     At most STRIP_MAX, the nearest the middle; the textures kept are STRIP_CACHE
   //   - at rest, the ones nearest the middle with this much of them in view also get a real player over the strip,
-  //     so many from each lane (the web page's PLAY_BUDGET, syncPlayback). Far smaller than the web page's 20 / 2: every
-  //     one is a player and a hardware decoder of its own here, and the Android emulator's H.264 decoder allows 4 at a
-  //     time (more and the resource manager takes decoders back from players that are playing, which then go black)
+  //     so many from each lane (the web page's PLAY_BUDGET, syncPlayback), a few new ones at a time. Smaller than the web
+  //     page's 20 / 2: every one is a player and a decoder of its own on a phone. The Android emulator's previews decode
+  //     in software (its H.264 hardware allows 4 at a time), so its number is what its 4 cores can carry
   STRIP_FPS: 8, // what derive.js makes them at
   STRIP_MAX: 32,
   STRIP_CACHE: 48,
-  VIDEO_PLAY_BUDGET: Platform.OS === 'ios' ? { preview: 6, original: 1 }
-    : /sdk_gphone|generic|emulator/i.test(String((Platform.constants as { Fingerprint?: string }).Fingerprint)) ? { preview: 2, original: 1 }
-      : { preview: 4, original: 1 },
+  VIDEO_PLAY_BUDGET: Platform.OS === 'ios' ? { preview: 12, original: 1 } : IS_ANDROID_EMULATOR ? { preview: 8, original: 1 } : { preview: 6, original: 1 },
+  VIDEO_START_BATCH: 2,
+  VIDEO_START_GAP_MS: 120,
   // the new ones start this long after the camera rests, the ones that stopped having let go of their decoders by then
   // (the web page waits SETTLE_MS for a scroll to settle)
-  VIDEO_SETTLE_MS: 400,
+  VIDEO_SETTLE_MS: 150,
   VIDEO_VISIBLE_FRACTION: 0.25,
 } as const;

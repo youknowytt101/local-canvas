@@ -41,7 +41,6 @@ import Animated, {
   withSpring, withTiming, type SharedValue,
 } from 'react-native-reanimated';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
-import { useEvent, useVideoPlayer, VideoView } from 'react-native-video';
 import { scheduleOnRN } from 'react-native-worklets';
 import type { Element } from '../../lib/elements';
 import { CanvasAtlas, type AtlasRequestItem } from '../../lib/canvas/atlas';
@@ -53,6 +52,7 @@ import {
 import { StripCache } from '../../lib/canvas/strips';
 import { absoluteUrl } from '../../lib/server';
 import { NoteElement } from '../elements/NoteElement';
+import { PreviewVideo } from '../elements/PreviewVideo';
 
 export type FocusRequest = { id: number; elementId: string; sourceIndex: number };
 type Props = {
@@ -334,7 +334,14 @@ export function InfiniteCanvas(props: Props) {
         clearTimeout(clipTimer.current);
         clipPending.current = keys;
         showClips(kept);
-        clipTimer.current = setTimeout(() => { clipPending.current = ''; showClips(next); }, C.VIDEO_SETTLE_MS);
+        const feed = () => {
+          const have = clipsRef.current;
+          const more = next.filter((n) => !have.some((c) => c.key === n.key)).slice(0, C.VIDEO_START_BATCH);
+          if (!more.length) { clipPending.current = ''; return; }
+          showClips([...have, ...more]);
+          clipTimer.current = setTimeout(feed, C.VIDEO_START_GAP_MS);
+        };
+        clipTimer.current = setTimeout(feed, C.VIDEO_SETTLE_MS);
       }
     }
     // useInfiniteCanvasPagination
@@ -786,24 +793,10 @@ function StripCard({ inst, image, clock, radius }: { inst: CanvasInstance; image
 function ClipCard({ playing, ...props }: CardProps & { playing: boolean }) {
   const style = useCardStyle(props);
   const { inst } = props;
-  const urls = canvasVideoUrls(inst.element).map((u) => absoluteUrl(u));
-  const [i, setI] = useState(0);
-  const player = useVideoPlayer(urls[i] ?? '', (p) => {
-    p.loop = true;
-    p.muted = true;
-  });
-  const [readyPlayer, setReadyPlayer] = useState<typeof player | null>(null);
-  useEvent(player, 'onReadyToDisplay', () => setReadyPlayer(player));
-  useEvent(player, 'onError', () => setI((n) => (n + 1 < urls.length ? n + 1 : n)));
-  useEffect(() => {
-    if (playing) player.play();
-    else player.pause();
-  }, [player, playing]);
+  const urls = useMemo(() => canvasVideoUrls(inst.element).map((u) => absoluteUrl(u)), [inst.element]);
   return (
     <Animated.View style={[styles.clip, { width: inst.item.width, height: inst.item.height }, style]}>
-      <View style={[styles.fill, { opacity: readyPlayer === player ? 1 : 0 }]}>
-        <VideoView player={player} pictureInPicture={false} autoEnterPictureInPicture={false} surfaceType="texture" resizeMode="cover" style={styles.fill} />
-      </View>
+      <PreviewVideo urls={urls} playing={playing} />
     </Animated.View>
   );
 }

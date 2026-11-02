@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..a0bde44
 --- /dev/null
 +++ b/node_modules/react-native-video/android/src/main/java/com/twg/video/core/player/EmulatorSafeRenderersFactory.kt
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,63 @@
 +package com.twg.video.core.player
 +
 +import android.content.Context
@@ -23,9 +23,12 @@ index 0000000..a0bde44
 + * view's own surface is there, or the SurfaceView PlayerView swapped for the TextureView one. The video stays black
 + * with a frame now and then (a flicker). On the emulator only, media3's own workaround for devices with a broken
 + * setOutputSurface is turned on: no placeholder surface, and the codec is made again on each new surface.
++ *
++ * softwareFirst: the emulator's hardware H.264 decoder allows 4 at a time and takes decoders back from players that are
++ * playing beyond that. A small preview (a grid or canvas tile, of which a screen plays many) decodes in software there.
 + */
 +@OptIn(UnstableApi::class)
-+class EmulatorSafeRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
++class EmulatorSafeRenderersFactory(context: Context, private val softwareFirst: Boolean = false) : DefaultRenderersFactory(context) {
 +  override fun buildVideoRenderers(
 +    context: Context,
 +    extensionRendererMode: Int,
@@ -45,8 +48,15 @@ index 0000000..a0bde44
 +    val index = out.indexOfFirst { it is MediaCodecVideoRenderer }
 +    if (index < 0) return
 +    val adapterFactory = codecAdapterFactory
++    val selector = if (softwareFirst) {
++      MediaCodecSelector { mimeType, secure, tunneling ->
++        mediaCodecSelector.getDecoderInfos(mimeType, secure, tunneling).sortedBy { it.hardwareAccelerated }
++      }
++    } else {
++      mediaCodecSelector
++    }
 +    out[index] = object : MediaCodecVideoRenderer(
-+      context, adapterFactory, mediaCodecSelector, allowedVideoJoiningTimeMs, enableDecoderFallback,
++      context, adapterFactory, selector, allowedVideoJoiningTimeMs, enableDecoderFallback,
 +      eventHandler, eventListener, MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY
 +    ) {
 +      override fun codecNeedsSetOutputSurfaceWorkaround(name: String): Boolean = true
@@ -74,7 +84,7 @@ index 5dd20c5..319eccd 100644
        .build()
  
 -    val renderersFactory = DefaultRenderersFactory(context)
-+    val renderersFactory = EmulatorSafeRenderersFactory(context)
++    val renderersFactory = EmulatorSafeRenderersFactory(context, softwareFirst = hybridSource.uri.contains("/thumb/"))
        .forceEnableMediaCodecAsynchronousQueueing()
        .setEnableDecoderFallback(true)
  
