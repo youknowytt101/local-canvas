@@ -39,6 +39,8 @@ export const CANVAS = {
   LONG_PRESS_MS: 180,
   // useCanvasPressFocus: the pressed card, spring 35 / 0.8 / 650 (damping / mass / stiffness)
   PRESS_SCALE: 0.975,
+  // useCanvasFocusRelease: a refocus' lock goes this long after what it waits for is there
+  FOCUS_RELEASE_MS: 100,
   // InfiniteCanvas / useInitialCanvasReveal
   REVEAL_BLUR: 24,
   REVEAL_MS: 1800, // Easing.bezier(0.16, 1, 0.3, 1)

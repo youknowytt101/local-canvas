@@ -14,8 +14,9 @@
 //     else the camera returns (ZOOM_OPEN_RETURN_MS)
 //   - a tap (not one that only stopped a glide: TAP_SUPPRESSION_*) on a card that is not the seed centres it (zooming
 //     to 1, or 2 when already at 1 or more, TIMING_MS out-cubic) and makes it the seed (handleTapRequest →
-//     onFocusElement); while that seed loads, every card but the tapped one is a placeholder and taps on others do
-//     nothing (focus lock, isRefiningSimilar). A tap on the seed zooms to MAX_SCALE, and once there opens it
+//     onFocusElement); taps on others do nothing while that seed loads (isRefiningSimilar). The tapped card is locked
+//     (useCanvasFocusLock): until its similar dataset is laid out every other card is an empty card, then each is its
+//     colour until its picture is in (focus lock below). A tap on the seed zooms to MAX_SCALE, and once there opens it
 //   - a card opened says where it and the cards in sight are (lib/viewerTransition's noteOpenedCard): the viewer's
 //     picture flies out of it and back into the card of the element on screen (the person's choice, HANDOFF 6.178)
 //   - holding still LONG_PRESS_MS is a long press (onLongPressElement); a pressed card gives a little (useCanvasPressFocus)
@@ -83,13 +84,8 @@ const REVEAL = { duration: C.REVEAL_MS, easing: Easing.bezier(0.16, 1, 0.3, 1) }
 const PRESS_SPRING = { damping: 35, mass: 0.8, stiffness: 650 };
 // InfiniteCanvasScene's Atlas sampling
 const SAMPLING = { filter: FilterMode.Linear, mipmap: MipmapMode.None };
-// A refocus' steps last at least this long here (the computer answers at once; in Cosmos they last as long as its loads
-// do): the empty cards until the camera has centred the card (TIMING_MS), the colours before the first pictures, and a
-// batch of pictures to the next
-const COLOUR_MIN_MS = 160;
 const CLIP_FADE_IN_MS = 0; // none: a video view fading in from 0 flashed black on Android (HANDOFF 6.174)
 const CLIP_FADE_OUT_MS = 120;
-const STAGE_MS = 80;
 
 type Pinch = {
   startScale: number; startX: number; startY: number; fx: number; fy: number; start: number; armed: boolean;
@@ -241,37 +237,13 @@ export function InfiniteCanvas(props: Props) {
   const lockAtlasKey = useRef<string | null>(null);
   // A refocus as Cosmos draws it (InfiniteCanvas → useInfiniteCanvasRenderState → buildCanvasRenderState): while the
   // dataset the lock was taken on is still the one laid out (replaceSurroundingWithPlaceholders), everything but the
-  // locked card is an empty card (createPlaceholderTile with placeholderColor, emptyCardBackground); once the similar
-  // dataset is laid out, each card is its own colour (renderPlaceholderColor) until its picture is in, nearest the
-  // middle first, PRIORITY_IMAGE_ATLAS_PAGE_ITEM_LIMIT at a time; no fade (fadeAtlasPages false). Pictures already loaded
-  // here (most of a similar set was on the canvas before) still come in by those batches, one STAGE_MS apart, so the
-  // grey → colour → picture steps show (HANDOFF 6.172)
+  // locked card is an empty card (createPlaceholderTile with placeholderColor, emptyCardBackground); the similar dataset
+  // is laid out as soon as it is there, and from then each card is its own colour (renderPlaceholderColor) until its
+  // picture is in the atlas, the ones it already had at once, the others a batch at a time as they are drawn; no fade
+  // (fadeAtlasPages false). Nothing here makes a step last longer than its loads (HANDOFF 6.179)
   const lockDataset = useRef<string | null>(null); // the dataset the lock was taken on
   const shownDataset = useRef<string | null>(null); // the dataset of the cards culled last
-  const rank = useRef(new Map<string, number>()); // the cards in view, nearest the middle first
-  const [staged, setStaged] = useState<number | null>(null); // after a refocus: how many of them have their pictures
-  const stageTimer = useRef<ReturnType<typeof setInterval>>(undefined);
-  useEffect(() => () => clearInterval(stageTimer.current), []);
-  const startStaging = useCallback(() => {
-    clearInterval(stageTimer.current);
-    clearTimeout(colourTimer.current);
-    let n = 0;
-    setStaged(0);
-    const next = () => {
-      n += C.PRIORITY_IMAGE_ATLAS_PAGE_ITEM_LIMIT;
-      if (n < rank.current.size) { setStaged(n); return; }
-      clearInterval(stageTimer.current);
-      setStaged(null);
-    };
-    colourTimer.current = setTimeout(() => {
-      next();
-      stageTimer.current = setInterval(next, STAGE_MS);
-    }, COLOUR_MIN_MS);
-  }, []);
-  const colourTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(colourTimer.current), []);
-  const grayUntil = useRef(0); // a similar dataset arriving sooner is laid out then
-  const [grayTick, setGrayTick] = useState(0);
+  const refined = useRef(false); // hasRefined: the lock's similar dataset has been asked for
   // the dataset laid out is still the one a refocus started on: the cards around it are empty
   const surroundHeld = () => lockKeyRef.current != null && datasetRef.current?.key === lockDataset.current;
   const releaseLock = () => {
@@ -280,6 +252,9 @@ export function InfiniteCanvas(props: Props) {
     lockAtlasKey.current = null;
     lockDataset.current = null;
   };
+  const releaseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const releasing = useRef<string | null>(null); // getFocusReleaseKey of the release waiting
+  useEffect(() => () => clearTimeout(releaseTimer.current), []);
   const [pressedKey, setPressedKey] = useState<string | null>(null);
   const [zoomKey, setZoomKey] = useState<string | null>(null);
   const [pills, setPills] = useState<CanvasInstance[]>([]);
@@ -357,7 +332,6 @@ export function InfiniteCanvas(props: Props) {
     const cy = (y0 + y1) / 2;
     const dist = (i: CanvasInstance) => (i.x + i.item.width / 2 - cx) ** 2 + (i.y + i.item.height / 2 - cy) ** 2;
     const inView = list.filter((i) => i.x + i.item.width >= x0 && i.x <= x1 && i.y + i.item.height >= y0 && i.y <= y1).sort((a, b) => dist(a) - dist(b));
-    rank.current = new Map(inView.map((i, n) => [i.key, n]));
     const focus = lockKeyRef.current ?? zoomKeyRef.current;
     const focused = focus ? list.find((i) => i.key === focus) : null;
     const seen = new Set<string>();
@@ -372,8 +346,8 @@ export function InfiniteCanvas(props: Props) {
       if (items.length >= C.PRIORITY_ATLAS_ITEM_COUNT) break;
     }
     atlas.ask(items, L.signature, lockAtlasKey.current);
-    // CanvasOpenPillOverlay's items (getCanvasOpenPillItems): the loaded cards nearest the middle
-    if (!surroundHeld() && cam.s >= C.OPEN_PILL_MOUNT_SCALE) {
+    // CanvasOpenPillOverlay's items (getCanvasOpenPillItems): the loaded cards nearest the middle, none while a seed loads
+    if (!cb.current.refining && cam.s >= C.OPEN_PILL_MOUNT_SCALE) {
       const near = list.filter((i) => !hasPicture(i.element) || atlas.loaded.has(atlasKey(i.element.id, i.item.atlasHeight)))
         .map((i) => ({ i, d: Math.hypot(i.x + i.item.width / 2 - (sz.W / 2 - cam.x) / cam.s, i.y + i.item.height / 2 - (sz.H / 2 - cam.y) / cam.s) }))
         .sort((a, b) => a.d - b.d).slice(0, C.OPEN_PILL_RENDER_LIMIT).map((p) => p.i);
@@ -483,14 +457,10 @@ export function InfiniteCanvas(props: Props) {
   // the 打开 pills follow what has loaded
   useEffect(() => { if (camS.get() >= C.OPEN_PILL_MOUNT_SCALE) cull(); }, [atlasVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // a dataset (or the size) changed: the layout, kept where it can be (lib/canvas/layout.ts)
+  // a dataset (or the size) changed: the layout, kept where it can be (lib/canvas/layout.ts); a refocus' similar dataset
+  // too, at once, the camera still moving or not (the locked card keeps its slot, so it does not move)
   useEffect(() => {
     if (!size) return;
-    const wait = grayUntil.current - Date.now();
-    if (lockKeyRef.current && dataset && dataset.key !== lockDataset.current && wait > 0) {
-      const t = setTimeout(() => setGrayTick((n) => n + 1), wait);
-      return () => clearTimeout(t);
-    }
     if (!dataset || !dataset.elements.length) {
       layoutRef.current = null;
       datasetRef.current = dataset;
@@ -514,18 +484,37 @@ export function InfiniteCanvas(props: Props) {
       reveal.set(0);
     }
     cull();
-    // the similar dataset is laid out: the lock goes, the pictures come in
-    if (lockKeyRef.current && dataset.key !== lockDataset.current) {
-      releaseLock();
-      startStaging();
-    }
-    return undefined;
-  }, [dataset, size, grayTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dataset, size]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // a refocus is over with nothing new (it failed): the lock goes
+  // the pills come back once a seed has loaded
+  useEffect(() => { if (!refining) cull(); }, [refining]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // useCanvasFocusRelease: the lock goes FOCUS_RELEASE_MS after the seed has loaded and the camera has centred the card,
+  // and, when a similar dataset was laid out, once the atlas is this layout's with its first pictures and the locked
+  // card's picture in (atlasReady, focusedImageReady); a seed that failed leaves the dataset as it was and the lock goes
   useEffect(() => {
-    if (!refining && lockKeyRef.current && datasetRef.current?.key === lockDataset.current) releaseLock();
-  }, [refining]); // eslint-disable-line react-hooks/exhaustive-deps
+    const cancel = () => {
+      clearTimeout(releaseTimer.current);
+      releasing.current = null;
+    };
+    const L = layoutRef.current;
+    if (!lockKey || !L) { cancel(); return; }
+    if (refining) { cancel(); refined.current = true; return; } // markDidRefine
+    if (animating.get() === 1) { cancel(); return; } // focusAnimationActive
+    const same = datasetRef.current?.key === lockDataset.current;
+    if (same && !refined.current) { cancel(); return; }
+    const pictured = lockAtlasKey.current != null && atlas.loaded.has(lockAtlasKey.current);
+    if (!same && !(atlas.isReadyFor(L.signature) && pictured)) { cancel(); return; }
+    const key = `${lockDataset.current}:${lockKey}:${L.signature}`;
+    if (releasing.current === key) return;
+    clearTimeout(releaseTimer.current);
+    releasing.current = key;
+    releaseTimer.current = setTimeout(() => {
+      if (releasing.current !== key) return;
+      releasing.current = null;
+      releaseLock();
+    }, C.FOCUS_RELEASE_MS);
+  }, [lockKey, refining, moving, atlasVersion, instances]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // externalFocusRequest: a seed from the history has loaded: the camera goes to its copy in the middle ring
   useEffect(() => {
@@ -578,7 +567,7 @@ export function InfiniteCanvas(props: Props) {
       setLockKey(inst.key); // startFocusLock
       lockKeyRef.current = inst.key;
       lockDataset.current = datasetRef.current?.key ?? null;
-      grayUntil.current = Date.now() + C.TIMING_MS;
+      refined.current = false;
       lockAtlasKey.current = atlasKey(inst.element.id, inst.item.atlasHeight); // retainAtlasKey
       focusWorldPoint(cx, cy);
       cb.current.onFocusElement({ element: inst.element, elementIndex: inst.elementIndex, sourceIndex: inst.item.sourceIndex });
@@ -760,12 +749,13 @@ export function InfiniteCanvas(props: Props) {
     const rects: { key: string; x: number; y: number; w: number; h: number; color: string }[] = [];
     const notes: CanvasInstance[] = [];
     let top: { inst: CanvasInstance; sprite: { image: SkImage; rect: SkRect } | null; color: string } | null = null;
+    const pictured = new Set<string>(); // the cards drawn as their pictures: a video's strip and player go over these only
     const held = lockKey != null && shownDataset.current === lockDataset.current;
-    const inTurn = (key: string) => staged == null || (rank.current.get(key) ?? 0) < staged;
     for (const inst of instances) {
       const el = inst.element;
       const placeholder = held && inst.key !== lockKey;
-      const sprite = !placeholder && hasPicture(el) && inTurn(inst.key) ? atlas.loaded.get(atlasKey(el.id, inst.item.atlasHeight)) ?? null : null;
+      const sprite = !placeholder && hasPicture(el) ? atlas.loaded.get(atlasKey(el.id, inst.item.atlasHeight)) ?? null : null;
+      if (sprite) pictured.add(inst.key);
       const color = placeholder ? placeholderColor : el.color ?? placeholderColor;
       if (inst.key === special) {
         top = { inst, sprite: sprite ? { image: sprite.texture.image, rect: sprite.rect } : null, color };
@@ -779,8 +769,8 @@ export function InfiniteCanvas(props: Props) {
       g.sprites.push(sprite.rect);
       g.transforms.push(Skia.RSXform(inst.item.width / C.ATLAS_SPRITE_WIDTH, 0, inst.x, inst.y));
     }
-    return { textures: [...byTexture.entries()], rects, notes, top };
-  }, [instances, atlasVersion, lockKey, staged, special, placeholderColor]); // eslint-disable-line react-hooks/exhaustive-deps
+    return { textures: [...byTexture.entries()], rects, notes, top, pictured };
+  }, [instances, atlasVersion, lockKey, special, placeholderColor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const topInst = scene.top?.inst ?? null;
   const topTransform = useDerivedValue(() => {
@@ -814,7 +804,7 @@ export function InfiniteCanvas(props: Props) {
         ))}
         {stripInsts.map((inst) => {
           const image = strips.get(inst.element.videoStrip!.url);
-          return image && inst.key !== scene.top?.inst.key && (staged == null || (rank.current.get(inst.key) ?? 0) < staged) ? <StripCard key={inst.key} inst={inst} image={image} clock={stripClock} radius={r} /> : null;
+          return image && inst.key !== scene.top?.inst.key && scene.pictured.has(inst.key) ? <StripCard key={inst.key} inst={inst} image={image} clock={stripClock} radius={r} /> : null;
         })}
       </Group>
       {scene.top ? (
@@ -838,7 +828,7 @@ export function InfiniteCanvas(props: Props) {
             </Group>
           </Canvas>
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            {clips.filter((inst) => staged == null || (rank.current.get(inst.key) ?? 0) < staged).map((inst) => (
+            {clips.filter((inst) => scene.pictured.has(inst.key)).map((inst) => (
               <ClipCard key={inst.key} inst={inst} camX={camX} camY={camY} camS={camS} reveal={revealOpacity} fade={fade}
                 focus={inst.key === special} pressScale={pressScale} playing={active && !moving} busy={busy} />
             ))}

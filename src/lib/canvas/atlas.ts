@@ -168,6 +168,12 @@ export class CanvasAtlas {
     return this.complete === req || req.items.slice(0, req.required).every((i) => this.loaded.has(i.key));
   }
 
+  // atlasReadyForReveal for a layout: the request in force is this layout's (none is waiting for its debounce) and its
+  // first REVEAL_REQUIRED_ITEM_COUNT pictures are in
+  isReadyFor(layoutSignature: string) {
+    return !this.pendingRequest && this.request?.layoutSignature === layoutSignature && this.isRevealReady();
+  }
+
   ask(items: AtlasRequestItem[], layoutSignature: string, lockKey: string | null) {
     const req: Request = {
       items,
@@ -200,7 +206,8 @@ export class CanvasAtlas {
     const wanted = new Set(req.items.map((i) => i.key));
     const all = [...new Set([...this.batches, ...this.retained])];
     const retained = lockKey ? all.filter((b) => b.sprites.has(lockKey)) : [];
-    const free = this.batches.filter((b) => !retained.includes(b));
+    // the batches kept for a lock that has gone are reused as any other (the locked card's picture stays put)
+    const free = all.filter((b) => !retained.includes(b));
     const useful = free.filter((b) => [...b.sprites.keys()].some((k) => wanted.has(k)));
     const useless = free.filter((b) => !useful.includes(b));
     this.retained = retained;
