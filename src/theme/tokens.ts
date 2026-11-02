@@ -23,6 +23,7 @@ const lightColors = {
   blurSurfaceBorder: '#F2F1F0', surfaceInverted: '#0D0D0D', surfaceBorder: '#0000001A', paperBackground: '#F7F5F3',
   paperElevated: '#FFFFFF', paperElevatedFilled: '#ECECEC', paperInvertedFilled: '#383838', scrim: '#00000066',
   playButtonOverlay: '#00000045', badge: '#2965F6', primaryBlue: '#0700FF', alert: '#BD3C1F',
+  emptyCardBackground: '#F7F5F3', // paperBackground (module 763)
 };
 type Colors = typeof lightColors;
 
@@ -34,6 +35,7 @@ const darkColors: Colors = {
   blurSurfaceBorder: '#323131', surfaceInverted: '#FFFFFF', surfaceBorder: '#FFFFFF1A', paperBackground: '#141414',
   paperElevated: '#1C1C1C', paperElevatedFilled: '#0D0D0D', paperInvertedFilled: '#E8E8E8', scrim: '#00000066',
   playButtonOverlay: '#00000045', badge: '#316AF4', primaryBlue: '#123CEB', alert: '#EF7759',
+  emptyCardBackground: '#323131', // sheetElevated (module 763)
 };
 
 export const borderRadius = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 20, xl: 24, xxl: 32, full: 9999, element: 3 } as const;

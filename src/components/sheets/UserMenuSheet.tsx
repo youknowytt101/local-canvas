@@ -1,6 +1,7 @@
 // Cosmos' UserProfileMenus on someone else's profile (its header's 更多), the element menu's grouped look:
-// 复制链接 (common.copyLink, toast 链接已复制) — 举报 (profile.report, alert colour: one question, then the report).
-// Not here yet: 查看画布 (step 7), 屏蔽 (profile.block · 他们将不再看到您的个人资料或内容, and BlockedAccountScreen).
+// 复制链接 (common.copyLink, toast 链接已复制) / 查看画布 (canvas.viewCanvas: their canvas, source 'user') — 举报
+// (profile.report, alert colour: one question, then the report). Not here yet: 分享通过 (profile.shareVia; the header has
+// its own share), 屏蔽 (profile.block · 他们将不再看到您的个人资料或内容, and BlockedAccountScreen).
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
 import * as Clipboard from 'expo-clipboard';
 import { Pressable, StyleSheet as RNStyleSheet, Text, View } from 'react-native';
@@ -12,6 +13,7 @@ import { serverUrl } from '../../lib/server';
 import { showToast } from '../../stores/useToastStore';
 import { reportTarget } from './ReportSheet';
 import { SheetGrabber } from './SheetGrabber';
+import { pushInfiniteCanvas } from '../../lib/openInfiniteCanvas';
 
 export const USER_MENU_SHEET = 'user-menu';
 
@@ -29,6 +31,14 @@ export function FlagIcon({ color }: { color: string }) {
   return (
     <Svg width={23} height={23} viewBox="0 0 24 24">
       <Path {...line(color)} d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7" />
+    </Svg>
+  );
+}
+// Cosmos' GridIcon (lucide's layout-grid)
+function GridIcon({ color }: { color: string }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24">
+      <Path {...line(color)} d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />
     </Svg>
   );
 }
@@ -64,6 +74,11 @@ export function UserMenuSheet() {
           >
             <Text style={styles.label}>复制链接</Text>
             <LinkIcon color={theme.colors.primary} />
+          </Pressable>
+          <View style={styles.separator} />
+          <Pressable style={styles.item} accessibilityRole="button" onPress={async () => { if (!userId) return; await close(); pushInfiniteCanvas({ source: 'user', userId }); }}>
+            <Text style={styles.label}>查看画布</Text>
+            <GridIcon color={theme.colors.primary} />
           </Pressable>
         </View>
         <View style={styles.group}>

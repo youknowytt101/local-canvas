@@ -2,6 +2,7 @@
 // and 正在关注 (FollowingFeed) — under the floating HomeHeader (useHomeChrome). Swiping or pressing a tab changes the
 // page; pressing the Home tab again scrolls the page on screen back to the top and brings the header back
 // (useTabReselect / useTabDoubleTapStore).
+import { pushInfiniteCanvas } from '../lib/openInfiniteCanvas';
 import type { FlashListRef } from '@shopify/flash-list';
 import { useCallback, useRef, useState } from 'react';
 import { View } from 'react-native';
@@ -65,6 +66,7 @@ export function HomeScreen() {
         headerStyle={chrome.headerStyle}
         scrimStyle={chrome.scrimStyle}
         onHeight={(h) => chrome.headerHeight.set(h)}
+        onLogoPress={() => pushInfiniteCanvas()}
       />
     </View>
   );

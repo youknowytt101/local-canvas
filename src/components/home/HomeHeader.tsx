@@ -4,7 +4,7 @@
 // pager's position), ActivityIconButton (the bell) on the right. Under the status bar a scrim (insets.top + 44 high,
 // background at 0.25 → 0.1 → 0) fades in as the header goes.
 // The user's choices kept: six dots instead of Cosmos' wordmark (6.59), no underline under the tabs (6.72).
-// The logo opens the canvas (step 7) and the bell the activity page (step 8); until then they do nothing.
+// The logo opens the canvas (InfiniteCanvas, For You) and the bell the activity page (step 8; until then it does nothing).
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';

@@ -96,7 +96,7 @@ function ViewerVideo({ element }: { element: Element }) {
       controls
       pictureInPicture={false}
       autoEnterPictureInPicture={false}
-      surfaceType="texture" // VideoElement's VideoView: a texture, no picture in picture (a surface stays black in the pager)
+      surfaceType="texture" // as VideoElement's VideoView: a texture, no picture in picture
       resizeMode="cover"
       style={styles.fill}
     />

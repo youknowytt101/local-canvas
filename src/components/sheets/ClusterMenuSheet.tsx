@@ -7,9 +7,12 @@
 //     已从个人资料取消固定) / 编辑收藏 (the create sheet in its edit mode) / 邀请协作者 (the invite link sheet) / on a sub-collection 从“父”中移除 (asked first; PATCH parentId null, toast 已移出“父”)
 //   - someone else's: 举报 (alert colour; one question, then the report)
 //   - then the owner's 删除收藏 (alert colour; asked first, the elements stay; DELETE, back)
-// The questions use the web page's words, asked with the system's alert as Cosmos does. Not here yet: 查看画布 (step 7);
-// 整理 is on the bar (OrganizeClusterScreen).
+//   - 查看画布 (canvas.viewCanvas, GridIcon) after 分享收藏: the collection's canvas (buildClusterCanvasUrl → InfiniteCanvas,
+//     source 'cluster')
+// The questions use the web page's words, asked with the system's alert as Cosmos does. 整理 is on the bar
+// (OrganizeClusterScreen).
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
+import { pushInfiniteCanvas } from '../../lib/openInfiniteCanvas';
 import * as Clipboard from 'expo-clipboard';
 import { Fragment, type ReactNode } from 'react';
 import { Alert, Pressable, Share, StyleSheet as RNStyleSheet, Text, View } from 'react-native';
@@ -67,6 +70,7 @@ export function ClusterMenuSheet() {
     groups.push([
       { label: '复制链接', icon: <LinkIcon color={color} />, onPress: async () => { await Clipboard.setStringAsync(link); await close(); showToast({ text: '链接已复制' }); } },
       { label: '分享收藏', icon: <ShareIcon color={color} />, onPress: async () => { await close(); void Share.share({ message: link, title: c.name }); } },
+      { label: '查看画布', icon: <GridIcon color={color} />, onPress: async () => { await close(); pushInfiniteCanvas({ source: 'cluster', clusterId: c.id, clusterName: c.name }); } },
     ]);
     if (c.role === 'Collaborator') {
       groups.push([{

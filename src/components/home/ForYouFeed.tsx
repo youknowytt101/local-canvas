@@ -20,6 +20,7 @@ import { viewedPosition } from '../../lib/feedCache';
 import { ListImpressions, impressionsScrollEnded } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { useForYouFeed } from '../../hooks/useForYouFeed';
+import { useForYouCanvasStore } from '../../stores/useForYouCanvasStore';
 import type { PageScrollHandlers } from '../../hooks/useHomeChrome';
 import { ElementTile } from '../elements/ElementTile';
 import { HomeFeedEmptyState } from './HomeFeedEmptyState';
@@ -44,6 +45,10 @@ export function ForYouFeed({ userId, active, contentTopInset, bottomInset, scrol
   const { width, height: windowHeight } = useWindowDimensions();
   const focused = useIsFocused();
   const feed = useForYouFeed(userId);
+  // the canvas the home logo opens shows this same list (useForYouCanvasStore)
+  useEffect(() => {
+    useForYouCanvasStore.setState({ items: feed.items, hasMore: !feed.done && feed.firstResolved, loading: feed.loading, loadMore: feed.loadMore });
+  }, [feed.items, feed.done, feed.firstResolved, feed.loading, feed.loadMore]);
   const tileWidth = (width - (NUM_COLUMNS + 1) * DEFAULT_GRID_GAP) / NUM_COLUMNS;
   const showing = active && focused;
   const navigation = useNavigation<NavigationProp<ParamListBase>>();

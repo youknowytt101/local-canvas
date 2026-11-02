@@ -20,6 +20,7 @@ export const Routes = {
   USER_PROFILE: 'UserProfile',
   PROFILE_CONNECTIONS: 'ProfileConnections',
   PROFILE_SEARCH: 'ProfileSearch',
+  INFINITE_CANVAS: 'InfiniteCanvas',
 } as const;
 
 export type BottomTabRouteName = typeof Routes.HOME | typeof Routes.EXPLORE | typeof Routes.SHOP | typeof Routes.PROFILE;

@@ -4,7 +4,9 @@
 //   - 复制链接 (useCopyElementShareLink): the element's address on the computer, toast 链接已复制, an ElementLinkCopied event
 //   - 分享通过 (useOpenElementShare): the system's share with that address (Cosmos opens its own share screen)
 //   - 不感兴趣 (useDislikeElement): POST /api/elements/dislike, toast 收到反馈
-// Not yet: 保存到相机胶卷 (needs a media-library module in the native build), 查看画布 (step 7), 添加来源 / 编辑来源,
+//   - 查看画布 (canvas.viewCanvas, GridIcon) closing the first group: the canvas seeded with this element
+//     (createCanvasEntryHandoff + pushInfiniteCanvasOntoActiveStack, source 'element')
+// Not yet: 保存到相机胶卷 (needs a media-library module in the native build), 添加来源 / 编辑来源,
 // 删除 (All Elements is not here yet).
 //   - 举报 (profile.report, Flag): the report sheet (ReportSheet), before 移除
 //   - 移除 (useElementViewerRemoveAction), last and in the alert colour, for something one has (isConnectedByUser) opened
@@ -29,6 +31,7 @@ import { showToast } from '../../stores/useToastStore';
 import Svg, { Path } from 'react-native-svg';
 import { ShareIcon } from '../icons';
 import { SheetGrabber } from './SheetGrabber';
+import { pushInfiniteCanvas } from '../../lib/openInfiniteCanvas';
 
 export const ELEMENT_MENU_SHEET = 'element-menu';
 
@@ -69,6 +72,7 @@ export function ElementMenuSheet() {
         },
       },
       { label: '分享通过', icon: <ShareIcon color={color} />, onPress: async () => { await close(); void Share.share({ message: elementLink(element) }); } },
+      { label: '查看画布', icon: <GridIcon color={color} />, onPress: async () => { await close(); pushInfiniteCanvas({ source: 'element', element }); } },
     ],
     [
       {
@@ -136,6 +140,14 @@ function LinkIcon({ color }: { color: string }) {
     <Svg width={24} height={24} viewBox="0 0 24 24">
       <Path {...iconLine(color)} d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
       <Path {...iconLine(color)} d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </Svg>
+  );
+}
+// Cosmos' GridIcon (lucide's layout-grid)
+function GridIcon({ color }: { color: string }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24">
+      <Path {...iconLine(color)} d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />
     </Svg>
   );
 }
