@@ -11,7 +11,12 @@
 //   - the picture shows, the tile hides and the flight starts before the viewer is pushed (its render holds the JS
 //     thread up; the flight runs on the UI thread)
 // Without a tile on screen (or with one already flying) the viewer is pushed as before.
+// On iOS 18 and later the system's zoom transition does it instead (modules/zoom-transition, the person's choice after
+// this one was "not right", HANDOFF 6.173): the whole screen grows out of the tile and can be dragged back down; this
+// file only says which tile and which media (by testID, zoomTileId / zoomMediaId), and the flight here stays for Android
+// and older iOS.
 import type { View } from 'react-native';
+import { zoomTransition } from '../../modules/zoom-transition';
 import { Easing, makeMutable, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { create } from 'zustand';
@@ -82,6 +87,14 @@ export function setMorphPredictor(fn: (el: Element) => Rect | null, size: { widt
 export const mountTile = (tile: Tile) => { tiles.set(tile.key, tile); };
 export const unmountTile = (key: number) => { tiles.delete(key); };
 export const notePressedTile = (tile: Tile) => { pressed = { tile, at: Date.now() }; };
+export const zoomTileId = (key: number) => `zoom-tile-${key}`;
+export const zoomMediaId = (elementId: string) => `zoom-media-${elementId}`;
+// a tile of this element on the page, to zoom back into (the one it opened from first)
+export function zoomTileFor(elementId: string): string | null {
+  if (origin?.elementId === elementId && tiles.has(origin.key)) return zoomTileId(origin.key);
+  for (const t of tiles.values()) if (t.elementId === elementId) return zoomTileId(t.key);
+  return null;
+}
 export function mountViewerMedia(elementId: string, view: View | null) {
   if (view) viewerMedia.set(elementId, view);
   else viewerMedia.delete(elementId);
@@ -139,16 +152,23 @@ export function morphShown() {
   if (then) requestAnimationFrame(() => requestAnimationFrame(then));
 }
 
-// the viewer is opening on this element: grows its tile if the tile was just pressed and is on screen; open(morph) is
-// called either way, at once or once the tile has been measured
-export function openWithMorph(el: Element, open: (morph: boolean) => void) {
+// the viewer is opening on this element: grows its tile if the tile was just pressed and is on screen (iOS 18: the
+// system zooms it, from what is armed here); open(how) is called either way, at once or once the tile has been measured
+export function openWithMorph(el: Element, viewerId: string, open: (how: 'morph' | 'zoom' | null) => void) {
   const press = pressed;
   pressed = null;
   const tile = press && Date.now() - press.at < PRESS_FRESH_MS && press.tile.elementId === el.id && tiles.has(press.tile.key) ? press.tile : null;
+  if (zoomTransition) {
+    if (!tile) { open(null); return; }
+    origin = tile;
+    zoomTransition.arm(viewerId, zoomTileId(tile.key), zoomMediaId(el.id));
+    open('zoom');
+    return;
+  }
   const to = tile?.image && predict ? predict(el) : null;
-  if (!tile || !to || useViewerMorph.getState().phase !== 'idle') { open(false); return; }
+  if (!tile || !to || useViewerMorph.getState().phase !== 'idle') { open(null); return; }
   measure(tile.view, (from) => {
-    if (!from || !onScreen(from)) { open(false); return; }
+    if (!from || !onScreen(from)) { open(null); return; }
     origin = tile;
     morphFrom.value = { ...from, r: 3 }; // the tile's borderRadius.element; the viewer's media is square-cornered
     morphTo.x.value = to.x;
@@ -162,7 +182,7 @@ export function openWithMorph(el: Element, open: (morph: boolean) => void) {
     faded = false;
     clearTimeout(landTimer);
     landTimer = setTimeout(() => { landed = true; faded = true; if (arrived) settle(); }, LAND_WAIT_MS);
-    waitToFly(MORPH_IN_MS, () => open(true));
+    waitToFly(MORPH_IN_MS, () => open('morph'));
   });
 }
 

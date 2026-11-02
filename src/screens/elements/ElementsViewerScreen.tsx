@@ -33,7 +33,8 @@ import { GRID_IMAGE_SCALE, viewerImageSources, type Element } from '../../lib/el
 import { ListImpressions } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { serverUrl } from '../../lib/server';
-import { closeWithMorph, morphViewerFaded } from '../../lib/viewerMorph';
+import { zoomTransition } from '../../../modules/zoom-transition';
+import { closeWithMorph, morphViewerFaded, zoomMediaId, zoomTileFor } from '../../lib/viewerMorph';
 import { holdViewerVideos, leaveViewerVideo, peekViewerVideo, playViewerVideo, settleViewerVideos } from '../../lib/viewerVideoPlayers';
 import { Routes } from '../../navigation/routes';
 import { useBarStore } from '../../stores/useBarStore';
@@ -47,7 +48,7 @@ const PREFETCH_ORDER = [1, -1, 2, -2];
 const VIEWABILITY = { itemVisiblePercentThreshold: 1 };
 const VIDEO_NEIGHBOURS_DELAY = 300;
 
-type Params = { viewerId: string; initialIndex: number; openAnimation?: 'fade' | 'morph' };
+type Params = { viewerId: string; initialIndex: number; openAnimation?: 'fade' | 'morph' | 'zoom' };
 
 export function ElementsViewerScreen() {
   const route = useRoute<RouteProp<{ ElementsViewer: Params }, 'ElementsViewer'>>();
@@ -188,6 +189,14 @@ export function ElementsViewerScreen() {
   };
 
   // the list goes when the screen does (not on a re-run of effects)
+  // one the system zoomed in from a tile zooms back into the tile of the element on screen (none on the page: UIKit's
+  // fallback)
+  const zoomed = route.params.openAnimation === 'zoom';
+  useEffect(() => {
+    if (!zoomed || !elementId) return;
+    zoomTransition?.setTarget(viewerId, zoomTileFor(elementId), zoomMediaId(elementId));
+  }, [zoomed, viewerId, elementId]);
+  useEffect(() => () => { if (zoomed) zoomTransition?.forget(viewerId); }, [zoomed, viewerId]);
   useEffect(() => (navigation as unknown as NativeStackNavigationProp<ParamListBase>).addListener('transitionEnd', (e) => {
     if (!e.data.closing) morphViewerFaded(); // a tile's picture waiting on it hands over
   }), [navigation]);

@@ -31,7 +31,8 @@ import { Routes } from './routes';
 const screenOptions = { headerShown: false } as const;
 const CANVAS_OPTIONS = { animation: 'fade', freezeOnBlur: true } as const;
 // getElementsViewerOptions: a viewer opened from the canvas fades in (openAnimation 'fade'); one growing from a tile
-// fades in over MORPH_FADE_MS with the page staying under it (lib/viewerMorph, not in Cosmos)
+// fades in over MORPH_FADE_MS with the page staying under it (lib/viewerMorph, not in Cosmos); one the system zooms
+// (iOS 18, 'zoom') keeps the default animation, which react-native-screens leaves to UIKit and its preferredTransition
 const getElementsViewerOptions = ({ route }: { route: { params?: object } }) => {
   const open = (route.params as { openAnimation?: string } | undefined)?.openAnimation;
   if (open === 'morph') return { animation: 'fade' as const, animationDuration: MORPH_FADE_MS };

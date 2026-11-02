@@ -1,0 +1,9 @@
+{
+  "name": "zoom-transition",
+  "version": "1.0.0",
+  "description": "iOS 18's zoom transition for a pushed screen, from a view found by its testID",
+  "main": "index.ts",
+  "license": "MIT",
+  "author": "local-canvas",
+  "homepage": "https://github.com/youknowytt101/local-canvas"
+}

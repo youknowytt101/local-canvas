@@ -10,8 +10,8 @@ import { playViewerVideo } from './viewerVideoPlayers';
 export function openElementViewer(navigation: NavigationProp<ParamListBase>, list: Omit<ViewerList, 'currentIndex'>) {
   const viewerId = useElementViewerStore.getState().openViewer(list);
   playViewerVideo(list.elements[list.initialIndex]); // it starts now, not when the viewer has rendered
-  openWithMorph(list.elements[list.initialIndex], (morph) => {
-    const params = { viewerId, initialIndex: list.initialIndex, ...(morph ? { openAnimation: 'morph' } : {}) };
+  openWithMorph(list.elements[list.initialIndex], viewerId, (how) => {
+    const params = { viewerId, initialIndex: list.initialIndex, ...(how ? { openAnimation: how } : {}) };
     navigation.dispatch({ type: 'PUSH', payload: { name: Routes.ELEMENTS_VIEWER, params } });
   });
 }

@@ -23,7 +23,7 @@ import { canvasVideoUrls } from '../../lib/canvas/layout';
 import { NSFW_VEIL, originalImageUrl, tileImageUrl, tileRatio, type Element } from '../../lib/elements';
 import { watchGridVideo, type GridVideoState } from '../../lib/gridVideos';
 import { absoluteUrl } from '../../lib/server';
-import { mountTile, notePressedTile, unmountTile, useMorphHidesTile } from '../../lib/viewerMorph';
+import { mountTile, notePressedTile, unmountTile, useMorphHidesTile, zoomTileId } from '../../lib/viewerMorph';
 import { prewarmViewerVideo } from '../../lib/viewerVideoPlayers';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 import { NoteElement } from './NoteElement';
@@ -120,7 +120,7 @@ export const ElementTile = memo(function ElementTile({ element, width, imageScal
       accessibilityRole="button"
       accessibilityLabel={element.title || undefined}
     >
-      <Animated.View ref={box} entering={FadeIn.duration(300)} style={[styles.tileInner, flying && styles.flying]}>{content}</Animated.View>
+      <Animated.View ref={box} testID={zoomTileId(key)} entering={FadeIn.duration(300)} style={[styles.tileInner, flying && styles.flying]}>{content}</Animated.View>
     </Pressable>
   );
 });

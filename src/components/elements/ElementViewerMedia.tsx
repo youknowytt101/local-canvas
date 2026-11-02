@@ -18,7 +18,7 @@ import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanima
 import { StyleSheet } from 'react-native-unistyles';
 import { VideoView } from 'react-native-video';
 import { NSFW_VEIL, tileImageUrl, tileRatio, viewerImageSources, type Element } from '../../lib/elements';
-import { landMorph, mountViewerMedia, useMorphHidesViewerMedia } from '../../lib/viewerMorph';
+import { landMorph, mountViewerMedia, useMorphHidesViewerMedia, zoomMediaId } from '../../lib/viewerMorph';
 import { playViewerVideo, useIsActiveViewerVideo, useViewerVideo, viewerRevealed, type ViewerVideoEntry } from '../../lib/viewerVideoPlayers';
 import { NoteElement } from './NoteElement';
 import { VideoScrubber } from './VideoScrubber';
@@ -55,7 +55,7 @@ export function ElementViewerMedia({ element, maxWidth, maxHeight, inset }: Prop
   }
   const size = getSnappedContainFittedSize(maxWidth, maxHeight, aspect, inset);
   return (
-    <View ref={box} collapsable={false} onLayout={() => landMorph(element.id, box.current)}
+    <View ref={box} testID={zoomMediaId(element.id)} collapsable={false} onLayout={() => landMorph(element.id, box.current)}
       style={[styles.box, size, { backgroundColor: element.color ?? undefined }, flying && styles.flying]}>
       <ViewerImage element={element} width={size.width} blurred={blurred} />
       {element.mediaKind === 'video' && !blurred ? <ViewerVideo element={element} /> : null}
