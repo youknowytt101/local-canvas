@@ -192,3 +192,12 @@ export function TrashIcon({ color, size = 24, strokeWidth }: IconProps) {
     </Svg>
   );
 }
+
+// the recent searches' button (Cosmos' ClockIcon; lucide's clock)
+export function ClockIcon({ color, size = 24, strokeWidth }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path {...line(color, strokeWidth)} d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l3 2" />
+    </Svg>
+  );
+}

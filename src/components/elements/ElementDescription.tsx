@@ -1,7 +1,8 @@
 // The AI description under the media, as Cosmos' ElementDescription draws it (getElementGeneratedCaptionText): centred
 // in 75 % of the width, spacing.md from the media; the words textElementFeedBody in the tertiary colour, its
 // <n>key terms</n> as chips in the primary colour (the background colour, a 0.5 surfaceBorder outline,
-// borderRadius.xs, the default shadow, 2 apart, 6 / 1 inside) that will search for themselves (step 5). The tokens
+// borderRadius.xs, the default shadow, 2 apart, 6 / 1 inside) that search for themselves when pressed (onTagPress: global search, origin
+// caption). The tokens
 // wrap as whole pieces, rows spacing.xxs apart; Chinese splits into its characters with a closing mark kept on its
 // character (cosmos-lite's choice, the user's: Cosmos splits on spaces only).
 // Near Cosmos: it shows two rows (useCollapsedCaptionTokens maxLines 2) and 更多 under them to open the rest, where
@@ -9,6 +10,14 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
+import { openGlobalSearch } from '../../lib/globalSearch';
+import { useSearchStore } from '../../stores/useSearchStore';
+
+// onTagPress: the keyword searched for in the global search, as a search from the description (origin caption)
+function searchKeyword(term: string) {
+  useSearchStore.getState().submit(term, 'caption');
+  openGlobalSearch();
+}
 
 const CJK = '⺀-鿿豈-﫿　-〿＀-￯';
 const PIECE = new RegExp(`\\s+|[${CJK}]|[^\\s${CJK}]+`, 'gu');
@@ -51,7 +60,9 @@ export function ElementDescription({ caption }: { caption: string }) {
         <View style={styles.text} onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
           {tokens.map((t, i) => (t.isTag ? (
             <View key={i} style={styles.group}>
-              <View style={styles.chip}><Text style={styles.chipText}>{t.text}</Text></View>
+              <Pressable style={styles.chip} onPress={() => searchKeyword(t.text)} accessibilityRole="button" hitSlop={4}>
+                <Text style={styles.chipText}>{t.text}</Text>
+              </Pressable>
               {t.trail ? <Text style={styles.word}>{t.trail}</Text> : null}
             </View>
           ) : <Text key={i} style={styles.word}>{t.text}</Text>))}
