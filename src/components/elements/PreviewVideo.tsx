@@ -6,13 +6,14 @@
 // listeners are made together, so no event of a quick clip is missed (useEvent only listens after a render).
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { VideoPlayer, VideoView } from 'react-native-video';
 import { waitForPreviewTurn } from '../../lib/previewStarts';
 
 const BUFFER = { minBufferMs: 1000, maxBufferMs: 4000, bufferForPlaybackMs: 500, bufferForPlaybackAfterRebufferMs: 500, preferredForwardBufferDurationMs: 2000 };
 const RELEASE_DELAY = 300; // the view showing it goes first
 const START_WAIT_MS = 2500;
+const SHOW_MS = 180; // faded in over what was under it (a cover, or a strip showing another frame): a cut jumped
 
 export function PreviewVideo({ urls, playing }: { urls: string[]; playing: boolean }) {
   const [at, setAt] = useState(0);
@@ -45,7 +46,7 @@ function PreviewSurface({ uri, playing, onFail }: { uri: string; playing: boolea
         now.current.started = true;
         done();
         apply();
-        if (!now.current.playing) opacity.value = 1; // a still one shows its first frame
+        if (!now.current.playing) opacity.value = withTiming(1, { duration: SHOW_MS }); // a still one shows its first frame
       };
       apply();
       subs.push(made.addEventListener('onLoadStart', apply));
@@ -53,7 +54,7 @@ function PreviewSurface({ uri, playing, onFail }: { uri: string; playing: boolea
       subs.push(made.addEventListener('onReadyToDisplay', start));
       const moving = made.addEventListener('onProgress', ({ currentTime }) => {
         if (!now.current.started || currentTime <= 0) return;
-        opacity.value = 1;
+        opacity.value = withTiming(1, { duration: SHOW_MS });
         moving.remove();
       });
       subs.push(moving);

@@ -22,6 +22,8 @@ export function useForYouFeed(userId: string | null) {
   const busy = useRef(false);
   const savedThisVisit = useRef(false);
   const items = useRef<Element[]>([]);
+  const doneNow = useRef(false);
+  const running = useRef<Promise<unknown> | null>(null);
 
   const fetchPage = (pageSize: number, fresh: boolean) =>
     get<FeedPage<Element>>(`/api/home/foryou?${qs({ pageSize, fresh: fresh ? 1 : null, v: viewedPosition.get() })}`);
@@ -35,6 +37,7 @@ export function useForYouFeed(userId: string | null) {
   // a new list (the first page, or the cached one replaced): generation tells the screen the list was replaced
   const replace = (next: Element[], done: boolean, extra: Partial<State> = {}) => {
     items.current = next;
+    doneNow.current = done;
     setState((s) => ({ ...s, items: next, done, loading: false, refreshing: false, error: null, generation: s.generation + 1, ...extra }));
   };
 
@@ -71,34 +74,49 @@ export function useForYouFeed(userId: string | null) {
     }
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // resolves with the elements it added (the viewer pages on with them)
-  const loadMore = useCallback(async (): Promise<Element[]> => {
-    if (busy.current || state.done || !state.firstResolved || !items.current.length) return [];
+  const fetchNext = async () => {
     const my = token.current;
     busy.current = true;
     setState((s) => ({ ...s, loading: true }));
     try {
       const page = await fetchPage(FOR_YOU_FEED_PAGE_SIZE, false);
-      if (my !== token.current) return [];
+      if (my !== token.current) return;
       const have = new Set(items.current.map((e) => e.id));
       const added = page.items.filter((e) => !have.has(e.id));
       const next = [...items.current, ...added];
       items.current = next;
-      setState((s) => ({ ...s, items: next, loading: false, done: !page.meta.nextPageCursor }));
-      return added;
+      doneNow.current = !page.meta.nextPageCursor;
+      setState((s) => ({ ...s, items: next, loading: false, done: doneNow.current }));
     } catch (e) {
       if (my === token.current) setState((s) => ({ ...s, loading: false, error: e instanceof Error ? e.message : String(e) }));
     } finally {
       if (my === token.current) busy.current = false;
     }
-    return [];
-  }, [state.done, state.firstResolved]); // eslint-disable-line react-hooks/exhaustive-deps
+  };
+  const begin = (opts?: { refreshing?: boolean }) => {
+    const p = start(opts);
+    running.current = p;
+    return p;
+  };
+
+  // the next page, once whatever load is under way has ended (the first page, or the cached one being replaced: until
+  // it has answered nothing more is asked); resolves with the whole list and whether it is done, for a viewer paging on
+  const loadMore = useCallback(async () => {
+    const before = items.current.length;
+    if (busy.current) await running.current;
+    if (!doneNow.current && items.current.length === before && items.current.length && !busy.current) {
+      const p = fetchNext();
+      running.current = p;
+      await p;
+    }
+    return { items: items.current, done: doneNow.current };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     items.current = [];
     savedThisVisit.current = false;
-    void start();
-  }, [start]);
+    void begin();
+  }, [start]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { ...state, loadMore, refresh: () => start({ refreshing: true }), retry: () => start() };
+  return { ...state, loadMore, refresh: () => begin({ refreshing: true }), retry: () => begin() };
 }

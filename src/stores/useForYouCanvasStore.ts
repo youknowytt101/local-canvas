@@ -8,12 +8,12 @@ type ForYouCanvasState = {
   items: Element[];
   hasMore: boolean;
   loading: boolean;
-  loadMore: () => Promise<Element[]>;
+  loadMore: () => Promise<unknown>;
 };
 
 export const useForYouCanvasStore = create<ForYouCanvasState>(() => ({
   items: [],
   hasMore: false,
   loading: false,
-  loadMore: async () => [],
+  loadMore: async () => undefined,
 }));

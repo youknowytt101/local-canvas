@@ -110,8 +110,9 @@ export function ElementsViewerScreen() {
     useElementViewerStore.getState().setCurrentIndex(viewerId, index);
     if (!viewer?.hasMore || !viewer.loadMore || loadingMore.current || elements.length - 1 - index > PAGINATION_THRESHOLD) return;
     loadingMore.current = true;
+    // what of the list it does not have yet; it stops only once the list is done
     viewer.loadMore().then((more) => {
-      useElementViewerStore.getState().appendElements(viewerId, more ?? [], !!more?.length);
+      useElementViewerStore.getState().appendElements(viewerId, more.items, !more.done);
     }, () => undefined).finally(() => { loadingMore.current = false; });
   }, [index, elements.length]); // eslint-disable-line react-hooks/exhaustive-deps
 

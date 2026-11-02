@@ -1,6 +1,6 @@
 diff --git a/node_modules/react-native-video/android/src/main/java/com/twg/video/core/player/EmulatorSafeRenderersFactory.kt b/node_modules/react-native-video/android/src/main/java/com/twg/video/core/player/EmulatorSafeRenderersFactory.kt
 new file mode 100644
-index 0000000..a0bde44
+index 0000000..2916664
 --- /dev/null
 +++ b/node_modules/react-native-video/android/src/main/java/com/twg/video/core/player/EmulatorSafeRenderersFactory.kt
 @@ -0,0 +1,63 @@
@@ -68,7 +68,7 @@ index 0000000..a0bde44
 +  }
 +}
 diff --git a/node_modules/react-native-video/android/src/main/java/com/twg/video/hybrids/videoplayer/HybridVideoPlayer.kt b/node_modules/react-native-video/android/src/main/java/com/twg/video/hybrids/videoplayer/HybridVideoPlayer.kt
-index 5dd20c5..319eccd 100644
+index 5dd20c5..10d887c 100644
 --- a/node_modules/react-native-video/android/src/main/java/com/twg/video/hybrids/videoplayer/HybridVideoPlayer.kt
 +++ b/node_modules/react-native-video/android/src/main/java/com/twg/video/hybrids/videoplayer/HybridVideoPlayer.kt
 @@ -28,6 +28,7 @@ import com.twg.video.core.LibraryError
@@ -88,6 +88,28 @@ index 5dd20c5..319eccd 100644
        .forceEnableMediaCodecAsynchronousQueueing()
        .setEnableDecoderFallback(true)
  
+@@ -258,7 +259,9 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
+     // Release the previous player (the placeholder, or an earlier one if initialize() runs again)
+     // so it doesn't leak. Remove the listeners first, like completeRelease(), so a release timeout
+     // doesn't report an error on this player.
+-    currentPlayerView?.get()?.player = player
++    // only a view still showing this player's previous ExoPlayer: one handed to another player since keeps that player
++    // (it went on playing with no picture, its time running)
++    currentPlayerView?.get()?.let { if (it.player === previousPlayer) it.player = player }
+     previousPlayer.removeListener(playerListener)
+     previousPlayer.removeAnalyticsListener(analyticsListener)
+     previousPlayer.release()
+@@ -446,7 +449,9 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
+     VideoManager.addViewToPlayer(videoView, this)
+ 
+     runOnMainThreadSync {
+-      PlayerView.switchTargetView(player, currentPlayerView?.get(), videoView.playerView)
++      // the view it left is cleared only while it still shows this player, not once another player has it
++      val left = currentPlayerView?.get()?.takeIf { it.player === player }
++      PlayerView.switchTargetView(player, left, videoView.playerView)
+       currentPlayerView = WeakReference(videoView.playerView)
+     }
+   }
 diff --git a/node_modules/react-native-video/android/src/main/java/com/twg/video/view/VideoView.kt b/node_modules/react-native-video/android/src/main/java/com/twg/video/view/VideoView.kt
 index 8a25759..5f169b7 100644
 --- a/node_modules/react-native-video/android/src/main/java/com/twg/video/view/VideoView.kt
@@ -105,11 +127,10 @@ index 8a25759..5f169b7 100644
        if (field == value) return
        field = value
 diff --git a/node_modules/react-native-video/ios/hybrids/VideoPlayer/HybridVideoPlayer.swift b/node_modules/react-native-video/ios/hybrids/VideoPlayer/HybridVideoPlayer.swift
-index 0000000..0000001 100644
+index 3957c11..dfb0f77 100644
 --- a/node_modules/react-native-video/ios/hybrids/VideoPlayer/HybridVideoPlayer.swift
 +++ b/node_modules/react-native-video/ios/hybrids/VideoPlayer/HybridVideoPlayer.swift
-@@ -115,7 +115,10 @@
-     self.eventEmitter = HybridVideoPlayerEventEmitter()
+@@ -116,6 +116,9 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
  
      // Initialize AVPlayer with empty item
      self.player = AVPlayer()

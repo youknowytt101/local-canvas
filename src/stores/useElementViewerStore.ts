@@ -11,7 +11,8 @@ export type ViewerList = {
   initialIndex: number;
   currentIndex: number;
   hasMore: boolean;
-  loadMore?: () => Promise<Element[] | null>; // the next elements, or null when there are none
+  // the list it was opened from once more of it has loaded (the whole of it), and whether that list is done
+  loadMore?: () => Promise<{ items: Element[]; done: boolean }>;
   userInteractionSource: string;
   // useElementViewerRemoveAction's source: the profile or a collection one may take things out of, and the list to
   // tell when one is taken out
