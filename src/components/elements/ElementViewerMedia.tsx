@@ -4,21 +4,22 @@
 // snaps to whichever of the two is nearer.
 //   - a picture: the copy that fits its displayed width (viewerImageSources), the next one if it does not load, over
 //     its grid copy while it loads
-//   - a video: plays on the page on screen only (react-native-video 7), looping, from silent, with the player's own
-//     controls; over its cover, see-through until its first frame is ready (VideoElementTsx1's videoReadyMap), and
-//     elsewhere only its cover. Near Cosmos: its own controls (VideoElement) are not drawn
+//   - a video: lib/viewerVideoPlayers has its player, playing on the page on screen and paused on the ones next to it,
+//     looping, from silent; over its cover, see-through until its first frame is ready (VideoElementTsx1's
+//     videoReadyMap), with no controls of the player's own, only VideoScrubber on the page on screen; elsewhere only its
+//     cover
 //   - a note: NoteElement (its Markdown, the whole width, spacing.md in)
 //   - content filtering: 'blur' blurs it under the veil with 查看, as in the grid
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { StyleSheet } from 'react-native-unistyles';
-import { useEvent, useVideoPlayer, VideoView } from 'react-native-video';
+import { VideoView } from 'react-native-video';
 import { NSFW_VEIL, tileImageUrl, tileRatio, viewerImageSources, type Element } from '../../lib/elements';
-import { absoluteUrl } from '../../lib/server';
+import { playViewerVideo, useIsActiveViewerVideo, useViewerVideo, viewerRevealed, type ViewerVideoEntry } from '../../lib/viewerVideoPlayers';
 import { NoteElement } from './NoteElement';
-
-const revealed = new Set<string>();
+import { VideoScrubber } from './VideoScrubber';
 
 export function getContainFittedSize(maxWidth: number, maxHeight: number, aspect: number) {
   return maxHeight * aspect <= maxWidth ? { width: maxHeight * aspect, height: maxHeight } : { width: maxWidth, height: maxWidth / aspect };
@@ -31,10 +32,10 @@ export function getSnappedContainFittedSize(maxWidth: number, maxHeight: number,
   return maxWidth - fitted.width <= fitted.width - inner ? { width: maxWidth, height: maxHeight } : { width: inner, height: inner / aspect };
 }
 
-type Props = { element: Element; active: boolean; maxWidth: number; maxHeight: number; inset: number };
+type Props = { element: Element; maxWidth: number; maxHeight: number; inset: number };
 
-export function ElementViewerMedia({ element, active, maxWidth, maxHeight, inset }: Props) {
-  const [shown, setShown] = useState(revealed.has(element.id));
+export function ElementViewerMedia({ element, maxWidth, maxHeight, inset }: Props) {
+  const [shown, setShown] = useState(viewerRevealed.has(element.id));
   const blurred = element.nsfw?.treatment === 'blur' && !shown;
 
   if (element.type === 'note') {
@@ -48,11 +49,11 @@ export function ElementViewerMedia({ element, active, maxWidth, maxHeight, inset
   return (
     <View style={[styles.box, size, { backgroundColor: element.color ?? undefined }]}>
       <ViewerImage element={element} width={size.width} blurred={blurred} />
-      {element.mediaKind === 'video' && active && !blurred ? <ViewerVideo element={element} /> : null}
+      {element.mediaKind === 'video' && !blurred ? <ViewerVideo element={element} /> : null}
       {blurred ? (
         <View style={styles.veil}>
           <Text style={styles.veilText}>{NSFW_VEIL[element.nsfw!.status]}</Text>
-          <Pressable style={styles.veilButton} onPress={() => { revealed.add(element.id); setShown(true); }} accessibilityRole="button">
+          <Pressable style={styles.veilButton} onPress={() => { viewerRevealed.add(element.id); setShown(true); playViewerVideo(element); }} accessibilityRole="button">
             <Text style={styles.veilButtonText}>查看</Text>
           </Pressable>
         </View>
@@ -81,29 +82,36 @@ function ViewerImage({ element, width, blurred }: { element: Element; width: num
 }
 
 function ViewerVideo({ element }: { element: Element }) {
-  const urls = [element.mediaUrl, element.previewUrl].filter((u): u is string => !!u).map((u) => absoluteUrl(u));
-  const [i, setI] = useState(0);
-  const player = useVideoPlayer(urls[i] ?? '', (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
-  const [readyPlayer, setReadyPlayer] = useState<typeof player | null>(null);
-  useEvent(player, 'onReadyToDisplay', () => setReadyPlayer(player));
-  // the original not there (or not playable): its preview
-  useEvent(player, 'onError', () => setI((n) => (n + 1 < urls.length ? n + 1 : n)));
+  const entry = useViewerVideo(element.id);
+  return entry ? <ViewerVideoSurface key={entry.at} entry={entry} /> : null;
+}
+
+function ViewerVideoSurface({ entry }: { entry: ViewerVideoEntry }) {
+  const active = useIsActiveViewerVideo(entry.id);
+  const { player } = entry;
+  const opacity = useSharedValue(entry.ready ? 1 : 0);
+  useEffect(() => {
+    const show = () => { opacity.value = 1; };
+    if (entry.ready) show();
+    entry.onReady.add(show);
+    return () => { entry.onReady.delete(show); };
+  }, [entry, opacity]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
-    <View style={[styles.cover, { opacity: readyPlayer === player ? 1 : 0 }]}>
-      <VideoView
-        player={player}
-        controls
-        pictureInPicture={false}
-        autoEnterPictureInPicture={false}
-        surfaceType="texture" // as VideoElement's VideoView: a texture, no picture in picture
-        resizeMode="cover"
-        style={styles.fill}
-      />
-    </View>
+    <>
+      <Animated.View style={[styles.cover, style]} pointerEvents="none">
+        <VideoView
+          player={player}
+          controls={false}
+          pictureInPicture={false}
+          autoEnterPictureInPicture={false}
+          surfaceType="texture" // as VideoElement's VideoView: a texture, no picture in picture
+          resizeMode="cover"
+          style={styles.fill}
+        />
+      </Animated.View>
+      {active ? <VideoScrubber player={player} /> : null}
+    </>
   );
 }
 

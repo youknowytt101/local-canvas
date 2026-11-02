@@ -24,7 +24,6 @@ type Props = {
   height: number;
   width: number;
   bottomOverlayClearance: number;
-  focused: boolean;
   onIndexChange: (index: number) => void;
 };
 
@@ -35,7 +34,7 @@ export const getMaxMediaHeight = (viewerHeight: number, bottomOverlayClearance: 
 };
 
 export const ElementCarousel = forwardRef<PagerView, Props>(function ElementCarousel(
-  { elements, index, initialIndex, height, width, bottomOverlayClearance, focused, onIndexChange }, ref,
+  { elements, index, initialIndex, height, width, bottomOverlayClearance, onIndexChange }, ref,
 ) {
   const maxHeight = getMaxMediaHeight(height, bottomOverlayClearance, height / 2);
   const [contentHeights, setContentHeights] = useState<Record<string, number>>({});
@@ -53,7 +52,7 @@ export const ElementCarousel = forwardRef<PagerView, Props>(function ElementCaro
                 if (contentHeights[element.id] !== h) setContentHeights((m) => ({ ...m, [element.id]: h }));
               }}>
                 <ElementMetaRow element={element} />
-                <ElementViewerMedia element={element} active={focused && i === index} maxWidth={width} maxHeight={maxHeight} inset={16} />
+                <ElementViewerMedia element={element} maxWidth={width} maxHeight={maxHeight} inset={16} />
                 {element.ai?.caption ? <ElementDescription caption={element.ai.caption} /> : null}
               </View>
               <View style={styles.spacer} />

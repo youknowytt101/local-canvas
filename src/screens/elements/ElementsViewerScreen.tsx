@@ -14,7 +14,7 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useFocusEffect, useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import { Image } from 'expo-image';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, useWindowDimensions, View, type ViewToken } from 'react-native';
 import type PagerView from 'react-native-pager-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +32,7 @@ import { GRID_IMAGE_SCALE, viewerImageSources, type Element } from '../../lib/el
 import { ListImpressions } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { serverUrl } from '../../lib/server';
+import { holdViewerVideos, leaveViewerVideo, playViewerVideo } from '../../lib/viewerVideoPlayers';
 import { Routes } from '../../navigation/routes';
 import { useBarStore } from '../../stores/useBarStore';
 import { useElementViewerStore } from '../../stores/useElementViewerStore';
@@ -42,6 +43,7 @@ const HEADER_CONTENT_HEIGHT = 64;
 const PAGINATION_THRESHOLD = 5;
 const PREFETCH_ORDER = [1, -1, 2, -2];
 const VIEWABILITY = { itemVisiblePercentThreshold: 1 };
+const VIDEO_NEIGHBOURS_DELAY = 300;
 
 type Params = { viewerId: string; initialIndex: number };
 
@@ -65,6 +67,25 @@ export function ElementsViewerScreen() {
   const carouselHeight = height - headerHeight;
   const bottomOverlayClearance = insets.bottom + BAR_BOTTOM_OFFSET + TAB_BAR_HEIGHT_DEFAULT;
   const tileWidth = (width - 3 * DEFAULT_GRID_GAP) / 2;
+
+  // the video on screen plays at once, ahead of the page's render (lib/viewerVideoPlayers); the ones next to it are
+  // prepared once that is done
+  const elementsNow = useRef(elements);
+  elementsNow.current = elements;
+  const onIndexChange = useCallback((i: number) => {
+    playViewerVideo(elementsNow.current[i]);
+    startTransition(() => setIndex(i));
+  }, []);
+  const elementId = element?.id ?? null;
+  useEffect(() => {
+    if (!focused) { leaveViewerVideo(elementId); return undefined; }
+    playViewerVideo(elementsNow.current[index]);
+    const t = setTimeout(() => holdViewerVideos([elementsNow.current[index - 1], elementsNow.current[index + 1]]), VIDEO_NEIGHBOURS_DELAY);
+    return () => clearTimeout(t);
+  }, [focused, elementId, index]);
+  const lastElementId = useRef(elementId);
+  lastElementId.current = elementId;
+  useEffect(() => () => leaveViewerVideo(lastElementId.current), []);
 
   useTrackElementView(element, focused, source);
   const similar = useSimilarElements(element?.id ?? null);
@@ -186,8 +207,7 @@ export function ElementsViewerScreen() {
                 height={carouselHeight}
                 width={width}
                 bottomOverlayClearance={bottomOverlayClearance}
-                focused={focused}
-                onIndexChange={setIndex}
+                onIndexChange={onIndexChange}
               />
             </View>
           }
