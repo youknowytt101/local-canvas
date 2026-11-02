@@ -6,13 +6,14 @@
 import { DarkTheme, DefaultTheme, NavigationContainer, type NavigationState, type PartialState, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import { View } from 'react-native';
 import { useUnistyles } from 'react-native-unistyles';
 import { AppToast } from '../components/AppToast';
 import { DynamicBar } from '../components/bar/DynamicBar';
-import { ViewerMorphOverlay } from '../components/elements/ViewerMorphOverlay';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { ServerScreen } from '../screens/auth/ServerScreen';
+import { setTransitionRoot } from '../lib/viewerTransition';
 import { useBarStore } from '../stores/useBarStore';
 import { useSessionStore } from '../stores/useSessionStore';
 import { MainNavigator } from './MainNavigator';
@@ -48,17 +49,21 @@ export function RootNavigator() {
   }, [theme, rt.themeName]);
 
   const recordFocused = () => useBarStore.getState().setActiveScreen(focusedRouteName(navigationRef.getRootState()));
+  // every screen and nothing over them (not the bar): what a viewer growing out of a tile snapshots (lib/viewerTransition)
+  const screens = useRef<View>(null);
+  setTransitionRoot(screens);
 
   return (
     <NavigationContainer ref={navigationRef} theme={navTheme} onReady={recordFocused} onStateChange={recordFocused}>
       <StatusBar style={rt.themeName === 'dark' ? 'light' : 'dark'} />
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {phase === 'server' ? <Stack.Screen name="Server" component={ServerScreen} /> : null}
-        {phase === 'login' ? <Stack.Screen name="Login" component={LoginScreen} /> : null}
-        {phase === 'onboarding' ? <Stack.Screen name={Routes.ONBOARDING} component={OnboardingNavigator} /> : null}
-        {phase === 'main' ? <Stack.Screen name={Routes.MAIN} component={MainNavigator} /> : null}
-      </Stack.Navigator>
-      {phase === 'main' ? <ViewerMorphOverlay /> : null}
+      <View ref={screens} style={{ flex: 1 }} collapsable={false}>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {phase === 'server' ? <Stack.Screen name="Server" component={ServerScreen} /> : null}
+          {phase === 'login' ? <Stack.Screen name="Login" component={LoginScreen} /> : null}
+          {phase === 'onboarding' ? <Stack.Screen name={Routes.ONBOARDING} component={OnboardingNavigator} /> : null}
+          {phase === 'main' ? <Stack.Screen name={Routes.MAIN} component={MainNavigator} /> : null}
+        </Stack.Navigator>
+      </View>
       {phase === 'main' ? <DynamicBar /> : null}
       <AppToast />
     </NavigationContainer>

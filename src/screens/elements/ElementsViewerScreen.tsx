@@ -13,15 +13,19 @@
 // ShareElementScreen).
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useFocusEffect, useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Image } from 'expo-image';
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Share, useWindowDimensions, View, type ViewToken } from 'react-native';
+import { forwardRef, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Share, useWindowDimensions, View, type ScrollViewProps, type ViewToken } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import type PagerView from 'react-native-pager-view';
+import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { BAR_BOTTOM_OFFSET, TAB_BAR_HEIGHT_DEFAULT } from '../../components/bar/constants';
-import { ElementCarousel } from '../../components/elements/ElementCarousel';
+import { ElementCarousel, getMaxMediaHeight, MIN_TOP } from '../../components/elements/ElementCarousel';
+import { ELEMENT_VIEWER_HEADER_HEIGHT, ELEMENT_VIEWER_HEADER_MEDIA_GAP } from '../../components/elements/ElementMetaRow';
+import { getSnappedContainFittedSize } from '../../components/elements/ElementViewerMedia';
+import { ViewerTransitionFrame, type ViewerTransitionHandle } from '../../components/elements/ViewerTransition';
 import { useElementMenuStore } from '../../components/sheets/ElementMenuSheet';
 import { ElementTile } from '../../components/elements/ElementTile';
 import { ViewerSourceContext } from '../../components/elements/viewerContext';
@@ -29,13 +33,12 @@ import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
 import { ChevronLeftIcon, CloseIcon } from '../../components/icons';
 import { useSimilarElements } from '../../hooks/useSimilarElements';
 import { useTrackElementView } from '../../hooks/useTrackElementView';
-import { GRID_IMAGE_SCALE, viewerImageSources, type Element } from '../../lib/elements';
+import { GRID_IMAGE_SCALE, tileRatio, viewerImageSources, type Element } from '../../lib/elements';
 import { noteGridMoved } from '../../lib/gridVideos';
 import { ListImpressions } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { serverUrl } from '../../lib/server';
-import { zoomTransition } from '../../../modules/zoom-transition';
-import { closeWithMorph, morphViewerFaded, zoomMediaId, zoomTileFor } from '../../lib/viewerMorph';
+import { forgetViewerTransition, viewerTransitionFor, type Rect } from '../../lib/viewerTransition';
 import { holdViewerVideos, leaveViewerVideo, peekViewerVideo, playViewerVideo, settleViewerVideos } from '../../lib/viewerVideoPlayers';
 import { Routes } from '../../navigation/routes';
 import { useBarStore } from '../../stores/useBarStore';
@@ -48,8 +51,21 @@ const PAGINATION_THRESHOLD = 5;
 const PREFETCH_ORDER = [1, -1, 2, -2];
 const VIEWABILITY = { itemVisiblePercentThreshold: 1 };
 const VIDEO_NEIGHBOURS_DELAY = 300;
+const DESCRIPTION_GUESS = 16 + 24 * 2 + 4; // ElementDescription: spacing.md over its two rows
 
-type Params = { viewerId: string; initialIndex: number; openAnimation?: 'fade' | 'morph' | 'zoom' };
+type Params = { viewerId: string; initialIndex: number; openAnimation?: 'fade' | 'zoom' };
+
+// where ElementCarousel → ElementViewerContainer will put this element's media on the page: the column centred in the
+// carousel less the bar's clearance, the meta row over the media, the description under it (two rows guessed); the
+// transition corrects it once the media has laid out
+function predictMedia(el: Element, width: number, headerHeight: number, carouselHeight: number, clearance: number): Rect {
+  const aspect = el.mediaKind === 'video' && !el.width ? 9 / 16 : tileRatio(el.width, el.height);
+  const size = getSnappedContainFittedSize(width, getMaxMediaHeight(carouselHeight, clearance, carouselHeight / 2), aspect, 16);
+  const above = ELEMENT_VIEWER_HEADER_HEIGHT + ELEMENT_VIEWER_HEADER_MEDIA_GAP;
+  const content = above + size.height + (el.ai?.caption ? DESCRIPTION_GUESS : 0);
+  const top = headerHeight + Math.max(MIN_TOP, (carouselHeight - clearance - content) / 2);
+  return { x: (width - size.width) / 2, y: top + above, w: size.width, h: size.height };
+}
 
 export function ElementsViewerScreen() {
   const route = useRoute<RouteProp<{ ElementsViewer: Params }, 'ElementsViewer'>>();
@@ -189,28 +205,49 @@ export function ElementsViewerScreen() {
     navigation.dispatch({ type: 'POP', payload: { count: n } });
   };
 
-  // the list goes when the screen does (not on a re-run of effects)
-  // one the system zoomed in from a tile zooms back into the tile of the element on screen (none on the page: UIKit's
-  // fallback)
-  const zoomed = route.params.openAnimation === 'zoom';
+  // ---------- growing out of the tile and back into it (lib/viewerTransition) ----------
+  // Its first render is only the header (the carousel and the grid come once it has nearly grown: mounted on the way,
+  // they held the UI thread up), so that it is pushed and grows at once; going back (one screen, while it is in front) it first shrinks into the tile of the element on screen and
+  // is popped once it is there. The list goes when the screen does (not on a re-run of effects)
+  const transition = useMemo(() => viewerTransitionFor(viewerId), [viewerId]);
+  useEffect(() => () => forgetViewerTransition(viewerId), [viewerId]);
+  const frame = useRef<ViewerTransitionHandle>(null);
+  const [contentReady, setContentReady] = useState(!transition);
+  const onOpenSettled = useCallback(() => setContentReady(true), []);
   useEffect(() => {
-    if (!zoomed || !elementId) return;
-    zoomTransition?.setTarget(viewerId, zoomTileFor(elementId), zoomMediaId(elementId));
-  }, [zoomed, viewerId, elementId]);
-  useEffect(() => () => { if (zoomed) zoomTransition?.forget(viewerId); }, [zoomed, viewerId]);
-  useEffect(() => (navigation as unknown as NativeStackNavigationProp<ParamListBase>).addListener('transitionEnd', (e) => {
-    if (!e.data.closing) morphViewerFaded(); // a tile's picture waiting on it hands over
-  }), [navigation]);
-  useEffect(() => navigation.addListener('beforeRemove', () => {
-    // one that grew from a tile shrinks back into it (lib/viewerMorph) as it fades out
-    if (route.params.openAnimation === 'morph') closeWithMorph(elementsNow.current[selectedNow.current]);
+    if (contentReady) return undefined;
+    const t = setTimeout(onOpenSettled, 1000); // in case the growth never reports
+    return () => clearTimeout(t);
+  }, [contentReady, onOpenSettled]);
+  const initialMedia = useMemo(() => {
+    const el = viewer?.elements[initialIndex];
+    return el ? predictMedia(el, width, headerHeight, carouselHeight, bottomOverlayClearance) : null;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- where it opens, once
+  const atTop = useSharedValue(true);
+  const [dragging, setDragging] = useState(false);
+  const allowRemove = useRef(false);
+  const currentElementId = useCallback(() => elementsNow.current[selectedNow.current]?.id ?? null, []);
+  const onDismissed = useCallback(() => { allowRemove.current = true; navigation.goBack(); }, [navigation]);
+  useEffect(() => navigation.addListener('beforeRemove', (e) => {
+    const { type, payload } = e.data.action as { type: string; payload?: { count?: number } };
+    const one = type === 'GO_BACK' || (type === 'POP' && (payload?.count ?? 1) === 1);
+    if (frame.current && !allowRemove.current && one && navigation.isFocused()) {
+      e.preventDefault();
+      frame.current.close(currentElementId(), () => { allowRemove.current = true; navigation.dispatch(e.data.action); });
+      return;
+    }
     useElementViewerStore.getState().closeViewer(viewerId);
-  }), [navigation, viewerId, route.params.openAnimation]);
+  }), [navigation, viewerId, currentElementId]);
+  // the list's scrolling waits for a drag back to be ruled out (ViewerTransitionFrame)
+  const scrollGesture = useMemo(() => Gesture.Native(), []);
+  const GestureScroll = useMemo(() => forwardRef<ScrollView, ScrollViewProps>(function GestureScroll(props, ref) {
+    return <GestureDetector gesture={scrollGesture}><ScrollView ref={ref} {...props} /></GestureDetector>;
+  }), [scrollGesture]);
 
   if (!viewer) return <View style={styles.screen} />;
-  return (
-    <ViewerSourceContext.Provider value={source}>
-      <View style={styles.screen}>
+  const page = (
+    <View style={styles.screen}>
+      {contentReady ? (
         <FlashList
           ref={listRef}
           data={similar.items}
@@ -227,9 +264,11 @@ export function ElementsViewerScreen() {
           scrollEventThrottle={16}
           onScroll={(e) => {
             noteGridMoved();
+            atTop.value = e.nativeEvent.contentOffset.y <= 1;
             const next = e.nativeEvent.contentOffset.y > carouselHeight * ELEMENT_VIEWER_HIDE_TAB_BAR_RATIO ? 'scrollToTop' : 'actions';
             if (next !== mode) setMode(next);
           }}
+          {...(transition ? { renderScrollComponent: GestureScroll, bounces: false, overScrollMode: 'never' as const, scrollEnabled: !dragging } : {})}
           contentContainerStyle={{ paddingTop: headerHeight, paddingHorizontal: DEFAULT_GRID_GAP / 2, paddingBottom: bottomOverlayClearance + DEFAULT_GRID_GAP }}
           ListHeaderComponent={
             <View style={styles.fullBleed}>
@@ -249,7 +288,8 @@ export function ElementsViewerScreen() {
           }
           ListFooterComponent={similar.loading ? <View style={styles.footer}><ActivityIndicator color={theme.colors.tertiary} /></View> : null}
         />
-        <View style={[styles.header, { paddingTop: insets.top, height: headerHeight }]}>
+      ) : null}
+      <View style={[styles.header, { paddingTop: insets.top, height: headerHeight }]}>
           <Pressable style={styles.headerButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="返回" hitSlop={4}>
             <ChevronLeftIcon color={theme.colors.primary} />
           </Pressable>
@@ -259,8 +299,18 @@ export function ElementsViewerScreen() {
               <CloseIcon color={theme.colors.primary} size={16} />
             </Pressable>
           ) : <View style={styles.headerButton} />}
-        </View>
       </View>
+    </View>
+  );
+  return (
+    <ViewerSourceContext.Provider value={source}>
+      {transition && initialMedia ? (
+        <ViewerTransitionFrame ref={frame} transition={transition} initialElementId={viewer.elements[initialIndex]?.id ?? ''} initialMedia={initialMedia}
+          currentElementId={currentElementId} atTop={atTop} scrollGesture={scrollGesture} onDragging={setDragging} onDismissed={onDismissed}
+          onOpenSettled={onOpenSettled}>
+          {page}
+        </ViewerTransitionFrame>
+      ) : page}
     </ViewerSourceContext.Provider>
   );
 }
