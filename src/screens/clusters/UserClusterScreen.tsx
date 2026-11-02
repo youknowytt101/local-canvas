@@ -12,7 +12,9 @@
 //     无元素 · 该集合为空; no similar ones: 没有相似元素 · 稍后再来查看。
 // The values of ClusterBodyPager's constants are read in order (64, 280, 6, 96, 56, 1000, 16) and matched to their
 // names by how they are used: near. The header's 更多 opens the collection's menu (ClusterMenuSheet). Not here yet:
-// pulling down at the top of the similar page to go back, the collaborators sheet.
+// pulling down at the top of the similar page to go back.
+// The header's search (UserClusterSearchOverlay): the search button left of 更多 turns the header into the field with
+// the collection's badge and 取消, its results over the collection (components/clusters/UserClusterSearch.tsx).
 import { useFocusEffect, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, Text, useWindowDimensions, View } from 'react-native';
@@ -25,7 +27,8 @@ import type { Collection } from '../../components/clusters/CollectionCard';
 import { UserClusterHeader, type ClusterDetail } from '../../components/clusters/UserClusterHeader';
 import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
 import { HEADER_CONTENT_HEIGHT } from '../../components/home/HomeHeader';
-import { ChevronLeftIcon, MoreIcon } from '../../components/icons';
+import { ClusterSearchBar, ClusterSearchOverlay, useClusterSearch } from '../../components/clusters/UserClusterSearch';
+import { ChevronLeftIcon, MoreIcon, SearchIcon } from '../../components/icons';
 import { useClusterMenuStore } from '../../components/sheets/ClusterMenuSheet';
 import { useCollaboratorsStore } from '../../components/sheets/CollaboratorsSheet';
 import { useCreateClusterStore } from '../../components/sheets/CreateClusterSheet';
@@ -57,6 +60,7 @@ export function UserClusterScreen() {
   const [subClusters, setSubClusters] = useState<Collection[]>([]);
   const [failed, setFailed] = useState(false);
   const elements = usePagedList<Element>(`/api/elements?cluster=${encodeURIComponent(clusterId)}`, ELEMENTS_PAGE_SIZE);
+  const search = useClusterSearch();
   const [similarOn, setSimilarOn] = useState(false);
   const [similarAsked, setSimilarAsked] = useState(false);
   const similar = usePagedList<Element>(similarAsked ? `/api/clusters/${encodeURIComponent(clusterId)}/similar` : null, SIMILAR_PAGE_SIZE);
@@ -193,11 +197,17 @@ export function UserClusterScreen() {
           {failed ? <Text style={styles.failed}>打不开这个收藏夹</Text> : <ActivityIndicator color={theme.colors.tertiary} />}
         </View>
       )}
+      {cluster && search.searching ? <ClusterSearchOverlay clusterId={cluster.id} mine={mine} search={search} top={topInset} bottomInset={bottomInset} /> : null}
       <View style={[styles.header, { paddingTop: insets.top, height: topInset }]}>
         <Pressable style={styles.headerButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="返回" hitSlop={4}>
           <ChevronLeftIcon color={theme.colors.primary} />
         </Pressable>
-        {cluster ? (
+        {cluster && search.searching ? <ClusterSearchBar cluster={cluster} search={search} /> : null}
+        {cluster && !search.searching ? (
+          <View style={styles.actions}>
+          <Pressable style={styles.headerButton} onPress={search.open} accessibilityRole="button" accessibilityLabel="搜索" hitSlop={4}>
+            <SearchIcon color={theme.colors.primary} />
+          </Pressable>
           <Pressable
             style={styles.headerButton}
             onPress={() => useClusterMenuStore.getState().open(cluster, parent, { onChanged: () => { void load(); }, onGone: () => navigation.goBack() })}
@@ -207,6 +217,7 @@ export function UserClusterScreen() {
           >
             <MoreIcon color={theme.colors.primary} />
           </Pressable>
+          </View>
         ) : null}
       </View>
     </View>
@@ -220,8 +231,9 @@ const styles = StyleSheet.create((theme) => ({
   failed: { ...theme.typography.regular, color: theme.colors.tertiary, marginTop: theme.spacing.xxxxl },
   header: {
     position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md, gap: theme.spacing.xs, zIndex: 101,
     backgroundColor: theme.colors.background,
   },
+  actions: { flexDirection: 'row', gap: theme.spacing.xs },
   headerButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
 }));
