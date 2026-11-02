@@ -4,11 +4,13 @@
 // computer's offset when the app is back (startup, coming to the front). A 4xx from the computer (a type it does not
 // take, too big) drops it and says why; anything else pauses it.
 // Cosmos makes its uploads elements at once (createPendingUploadPayload / reattachExistingMediaUploads) that show as
-// tiles while they go up; here the tiles are not drawn: the bar of progress is the toast (near).
+// tiles while they go up; here the tiles are not drawn: the bar of progress is the toast (near). A video's cover is made
+// on the computer after the upload is done, so the lists read themselves once more when it is there.
 import { File } from 'expo-file-system';
 import { AppState } from 'react-native';
 import { create } from 'zustand';
 import { api } from './api';
+import type { Element } from './elements';
 import { authFetch } from './auth';
 import { absoluteUrl } from './server';
 import { store } from './storage';
@@ -88,7 +90,17 @@ async function sendOne(u: Upload) {
     offset = typeof body.offset === 'number' ? body.offset : offset + bytes.length;
     patch(u.key, { offset });
   }
-  await api('POST', `/api/uploads/${encodeURIComponent(uploadId)}/complete`);
+  const done = await api<{ element?: Element }>('POST', `/api/uploads/${encodeURIComponent(uploadId)}/complete`);
+  return done.element ?? null;
+}
+
+// the computer makes a video's cover a little after the upload: ask for it every 1.5 s for half a minute
+async function whenCovered(el: Element, clusterId: string | null) {
+  for (let i = 0; i < 20; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const now = await api<Element>('GET', `/api/elements/${encodeURIComponent(el.id)}`).catch(() => null);
+    if (now?.posterUrl) { for (const fn of listeners) fn(clusterId); return; }
+  }
 }
 
 let running = false;
@@ -101,10 +113,11 @@ export async function runUploads() {
       const next = useUploadStore.getState().uploads.find((u) => u.status === 'waiting' || u.status === 'paused');
       if (!next) break;
       try {
-        await sendOne(next);
+        const el = await sendOne(next);
         useUploadStore.getState().patch(next.key, { status: 'done' });
         useUploadStore.getState().remove(next.key);
         for (const fn of listeners) fn(next.clusterId);
+        if (el && el.mediaKind === 'video' && !el.posterUrl) void whenCovered(el, next.clusterId);
         if (!useUploadStore.getState().uploads.some((u) => u.status === 'waiting' || u.status === 'sending' || u.status === 'paused')) showToast({ text: '上传完成' });
       } catch (e) {
         if (e instanceof Rejected || (e as { status?: number }).status === 400 || (e as { status?: number }).status === 413) {

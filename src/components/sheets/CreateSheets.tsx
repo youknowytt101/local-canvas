@@ -111,8 +111,7 @@ export function CreateSheet() {
   const subtitle = onProfile ? '整理你的元素' : '元素的嵌套文件夹';
   const photos = async () => {
     const c = context;
-    await dismiss(CREATE_SHEET);
-    if (c) await pickAndUploadMedia({ clusterId: c.clusterId, isOnProfile: c.isOnProfile });
+    if (c) await pickAndUploadMedia({ clusterId: c.clusterId, isOnProfile: c.isOnProfile }, () => dismiss(CREATE_SHEET));
   };
   const collection = async () => {
     const c = context;
@@ -160,9 +159,21 @@ function CreateSheetHeader({ title, onClosePress }: { title: string; onClosePres
   );
 }
 
-async function made(kind: 'url' | 'note', r: { element?: Element } | null) {
+// a link is an import on the computer that has no element yet when /api/save answers: the place it was added to reads
+// itself again when the job is over (every 1.5 s, for a minute at most)
+async function whenImported(jobId: string, onChanged: () => void) {
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const list = await api<{ jobs: { id: string; status: string }[] }>('GET', '/api/jobs').catch(() => null);
+    const job = list?.jobs.find((j) => j.id === jobId);
+    if (!job || (job.status !== 'NotStarted' && job.status !== 'Started')) { onChanged(); return; }
+  }
+}
+
+async function made(kind: 'url' | 'note', r: { element?: Element; job?: { id: string } } | null) {
   const c = useCreateSheetStore.getState().context;
   c?.onChanged();
+  if (kind === 'url' && r?.job && c) void whenImported(r.job.id, c.onChanged);
   if (kind === 'note' && r?.element && !c?.clusterId) useMoveSheetStore.getState().open(r.element); // CreateNoteSheet.move
   if (kind === 'url') showToast({ text: c?.clusterId ? '正在保存…' : '正在保存至个人资料…' });
 }
@@ -178,10 +189,10 @@ export function CreateUrlSheet() {
     setBusy(true);
     try {
       const clusterId = useCreateSheetStore.getState().context?.clusterId ?? undefined;
-      await api('POST', '/api/save', { url: url.trim(), clusterId });
+      const r = await api<{ job?: { id: string } }>('POST', '/api/save', { url: url.trim(), clusterId });
       Keyboard.dismiss();
       await dismiss(CREATE_URL_SHEET);
-      await made('url', null);
+      await made('url', r);
     } catch {
       showToast({ text: '创建元素失败' }); // toast.createElementFailed
     } finally {
