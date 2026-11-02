@@ -11,10 +11,11 @@
 // SearchOverlay.js: over the whole screen from the safe area's top, zIndex 100, the background behind it, shown and
 // hidden at once, the back button closes it), its buttons above the bar (getGlobalSearchBarBottomInset: safe area +
 // BAR_BOTTOM_OFFSET + the field's 56). A colour searched shows the results, with or without words.
-// Not here yet: the pull to refresh on the landing.
+// Pulling the landing down asks for the starters again; the spinner (RefreshControl: tertiary, the primary colour,
+// elevated behind) stays 600 ms whatever the answer (SearchScreen's t38).
 import { useFocusEffect, useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';
-import { useCallback, useEffect, useState } from 'react';
-import { BackHandler, Keyboard, Pressable, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { BackHandler, Keyboard, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +37,7 @@ import { useSessionStore } from '../stores/useSessionStore';
 
 const DRAWER_DURATION = 300;
 const TYPEAHEAD_DELAY = 150;
+const LANDING_REFRESH_MS = 600;
 
 export function SearchScreen() {
   const { theme } = useUnistyles();
@@ -64,10 +66,20 @@ export function SearchScreen() {
 
   // ---------- what it reads ----------
   const loadHistory = useCallback(() => readSearchHistory().then(setHistory, () => undefined), []);
+  const loadStarters = useCallback(() => get<Starter[]>('/api/search/starters?count=12').then(setStarters, () => setStarters((s) => s ?? [])), []);
   useEffect(() => {
-    get<Starter[]>('/api/search/starters?count=12').then(setStarters, () => setStarters([]));
+    void loadStarters();
     void loadHistory();
-  }, [loadHistory]);
+  }, [loadStarters, loadHistory]);
+  const [landingRefreshing, setLandingRefreshing] = useState(false);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onLandingRefresh = () => {
+    void loadStarters();
+    setLandingRefreshing(true);
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => { refreshTimer.current = null; setLandingRefreshing(false); }, LANDING_REFRESH_MS);
+  };
+  useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
   useEffect(() => {
     if (!submitted) return;
     void rememberSearch({ kind: 'term', searchTerm: submitted.term }).then(loadHistory);
@@ -151,8 +163,22 @@ export function SearchScreen() {
           />
         ) : (
           <View style={styles.fill}>
-            <Animated.View style={[styles.landing, { paddingBottom: barSpace }, landingStyle]}>
-              <SearchLanding starters={starters} returning={history.length > 0} onStarterPress={(s) => useSearchStore.getState().submit(s.searchTerm)} />
+            <Animated.View style={[styles.fill, landingStyle]}>
+              <ScrollView
+                contentContainerStyle={[styles.landing, { paddingBottom: barSpace }]}
+                keyboardShouldPersistTaps="handled"
+                refreshControl={
+                  <RefreshControl
+                    refreshing={landingRefreshing}
+                    onRefresh={onLandingRefresh}
+                    tintColor={theme.colors.tertiary}
+                    colors={[theme.colors.primary]}
+                    progressBackgroundColor={theme.colors.elevated}
+                  />
+                }
+              >
+                <SearchLanding starters={starters} returning={history.length > 0} onStarterPress={(s) => useSearchStore.getState().submit(s.searchTerm)} />
+              </ScrollView>
             </Animated.View>
             <Pressable
               style={[styles.historyButton, { top: insets.top + theme.spacing.sm }]}
@@ -195,7 +221,7 @@ const styles = StyleSheet.create((theme) => ({
   screen: { flex: 1, backgroundColor: theme.colors.background, overflow: 'hidden' },
   page: { flex: 1 },
   fill: { flex: 1 },
-  landing: { flex: 1, justifyContent: 'flex-end' },
+  landing: { flexGrow: 1, justifyContent: 'flex-end' },
   colorPickerOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 100, backgroundColor: theme.colors.background },
   historyButton: {
     position: 'absolute', left: theme.spacing.md, width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.elevated,
