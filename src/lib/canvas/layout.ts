@@ -253,5 +253,12 @@ export function canvasImageUrls(el: Element): string[] {
   return urls.filter((u): u is string => !!u);
 }
 
+// the clip a video card plays (the web page's buildTile, not in Cosmos): its small preview (lib/derive.js), else the
+// original
+export function canvasVideoUrls(el: Element): string[] {
+  if (el.mediaKind !== 'video' || el.embed) return [];
+  return [el.previewUrl, el.mediaUrl].filter((u): u is string => !!u);
+}
+
 // toCanvasElements: a link that has no picture (getLinkFallbackDomain) is not put on the canvas
 export const toCanvasElements = (els: Element[]) => els.filter((el) => el.type !== 'link' || canvasImageUrls(el).length > 0);

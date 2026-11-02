@@ -77,4 +77,14 @@ export const CANVAS = {
   ATLAS_PADDING: 2,
   // InfiniteCanvasScreen: the seed history keeps this many
   SEED_HISTORY_LIMIT: 5,
+  // Not in Cosmos (videos play on the canvas by the person's choice, HANDOFF 6.130): the web page's playback budget
+  // (app.js PLAY_BUDGET, syncPlayback) — at rest, the videos nearest the middle with this much of them in view play,
+  // so many from each lane. Far smaller than the web page's 20 / 2: every one is a player and a hardware decoder of
+  // its own here, and the Android emulator's H.264 decoder allows 4 at a time (more and the resource manager takes
+  // decoders back from players that are playing, which then go black)
+  VIDEO_PLAY_BUDGET: { preview: 3, original: 1 },
+  // the new ones start this long after the camera rests, the ones that stopped having let go of their decoders by then
+  // (the web page waits SETTLE_MS for a scroll to settle)
+  VIDEO_SETTLE_MS: 400,
+  VIDEO_VISIBLE_FRACTION: 0.25,
 } as const;

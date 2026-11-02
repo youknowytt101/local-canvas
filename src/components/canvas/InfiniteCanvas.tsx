@@ -24,8 +24,9 @@
 //     outermost copy in view shows the last page; any loads the next once the middle of the screen has moved
 //     PAGINATION_DISTANCE × scale from where the last was asked for (useInfiniteCanvasPagination)
 // Kept as the person chose on the web page (HANDOFF 6.130): a note is its text (NoteElement) in its slot, over the
-// canvas, not a coloured placeholder. Near Cosmos: a video is its cover (the web page plays it; the viewer's player
-// does not draw on the emulator yet, HANDOFF 6.157).
+// canvas, not a coloured placeholder; a video plays over its cover (Cosmos only draws the cover), muted and looping,
+// as the web page's board-clip: nothing starts while the camera moves and what plays is paused, at rest the ones
+// nearest the middle play within VIDEO_PLAY_BUDGET (app.js syncPlayback).
 import {
   Atlas, Blur, Canvas, FilterMode, Group, MipmapMode, Paint, RoundedRect, Skia, type SkImage, type SkRect, type SkRSXform,
 } from '@shopify/react-native-skia';
@@ -38,14 +39,16 @@ import Animated, {
   withSpring, withTiming, type SharedValue,
 } from 'react-native-reanimated';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { useEvent, useVideoPlayer, VideoView } from 'react-native-video';
 import { scheduleOnRN } from 'react-native-worklets';
 import type { Element } from '../../lib/elements';
 import { CanvasAtlas, type AtlasRequestItem } from '../../lib/canvas/atlas';
 import { CANVAS as C } from '../../lib/canvas/constants';
 import {
-  atlasKey, buildLayout, canvasImageUrls, createInstance, homeCamera, visibleInstances,
+  atlasKey, buildLayout, canvasImageUrls, canvasVideoUrls, createInstance, homeCamera, visibleInstances,
   type Camera, type CanvasDataset, type CanvasInstance, type CanvasLayout, type SlotCache,
 } from '../../lib/canvas/layout';
+import { absoluteUrl } from '../../lib/server';
 import { NoteElement } from '../elements/NoteElement';
 
 export type FocusRequest = { id: number; elementId: string; sourceIndex: number };
@@ -196,6 +199,13 @@ export function InfiniteCanvas(props: Props) {
   const [pressedKey, setPressedKey] = useState<string | null>(null);
   const [zoomKey, setZoomKey] = useState<string | null>(null);
   const [pills, setPills] = useState<CanvasInstance[]>([]);
+  const [clips, setClips] = useState<CanvasInstance[]>([]); // the videos that may play
+  const clipsRef = useRef(clips);
+  const clipTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const clipPending = useRef(''); // the keys of the ones waiting to start
+  const showClips = useCallback((next: CanvasInstance[]) => { clipsRef.current = next; setClips(next); }, []);
+  useEffect(() => () => clearTimeout(clipTimer.current), []);
+  const [moving, setMoving] = useState(false);
   const [revealed, setRevealed] = useState(true);
   const revealWaiting = useRef(false);
   const [atlasVersion, setAtlasVersion] = useState(0);
@@ -257,6 +267,39 @@ export function InfiniteCanvas(props: Props) {
         .sort((a, b) => a.d - b.d).slice(0, C.OPEN_PILL_RENDER_LIMIT).map((p) => p.i);
       setPills(near);
     } else setPills([]);
+    // the videos that play (the web page's syncPlayback): none start while the camera moves; at rest the ones nearest
+    // the middle with VIDEO_VISIBLE_FRACTION of them in view, up to each lane's budget, not the placeholders of a refocus.
+    // The ones that stop go at once, the new ones come VIDEO_SETTLE_MS later, once the others have let go of their decoders
+    if (busy.get()) {
+      clearTimeout(clipTimer.current);
+      clipPending.current = '';
+      showClips(clipsRef.current.map((c) => list.find((i) => i.key === c.key)).filter((i): i is CanvasInstance => !!i));
+    } else {
+      const shown = (i: CanvasInstance) =>
+        (Math.max(0, Math.min(i.x + i.item.width, x1) - Math.max(i.x, x0)) * Math.max(0, Math.min(i.y + i.item.height, y1) - Math.max(i.y, y0)))
+        / (i.item.width * i.item.height);
+      const lanes = { preview: [] as CanvasInstance[], original: [] as CanvasInstance[] };
+      for (const inst of inView) {
+        if (refiningRef.current && inst.key !== lockKeyRef.current) continue;
+        // one without a cover is not played (the web page's bare card)
+        if (!hasPicture(inst.element) || !canvasVideoUrls(inst.element).length || shown(inst) < C.VIDEO_VISIBLE_FRACTION) continue;
+        const lane = inst.element.previewUrl ? 'preview' : 'original';
+        if (lanes[lane].length < C.VIDEO_PLAY_BUDGET[lane]) lanes[lane].push(inst);
+      }
+      const next = [...lanes.preview, ...lanes.original];
+      const kept = next.filter((n) => clipsRef.current.some((c) => c.key === n.key));
+      const keys = next.map((i) => i.key).join();
+      if (kept.length === next.length) {
+        clearTimeout(clipTimer.current);
+        clipPending.current = '';
+        showClips(next);
+      } else if (keys !== clipPending.current) { // the same ones already waiting keep their time
+        clearTimeout(clipTimer.current);
+        clipPending.current = keys;
+        showClips(kept);
+        clipTimer.current = setTimeout(() => { clipPending.current = ''; showClips(next); }, C.VIDEO_SETTLE_MS);
+      }
+    }
     // useInfiniteCanvasPagination
     const p = cb.current;
     if (!p.hasMore || p.loadingMore || L.renderElements.length >= C.MAX_RENDER_ELEMENTS) return;
@@ -291,6 +334,8 @@ export function InfiniteCanvas(props: Props) {
     () => `${Math.round(camX.get() / C.CULLING_BUCKET_SIZE)}:${Math.round(camY.get() / C.CULLING_BUCKET_SIZE)}:${Math.round(camS.get() / C.CULLING_SCALE_BUCKET_SIZE)}:${revision.get()}`,
     (key, prev) => { if (key !== prev) scheduleOnRN(cull); },
   );
+  // what plays is paused while the camera moves
+  useAnimatedReaction(() => busy.get(), (now, prev) => { if (now !== prev) scheduleOnRN(setMoving, now); });
 
   // the reveal starts once the nearest pictures are in
   const maybeReveal = useCallback(() => {
@@ -609,6 +654,10 @@ export function InfiniteCanvas(props: Props) {
             </Group>
           </Canvas>
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            {clips.map((inst) => (
+              <ClipCard key={inst.key} inst={inst} camX={camX} camY={camY} camS={camS} reveal={revealOpacity} fade={fade}
+                focus={inst.key === special} pressScale={pressScale} playing={!moving} />
+            ))}
             {scene.notes.map((inst) => (
               <NoteCard key={inst.key} inst={inst} camX={camX} camY={camY} camS={camS} reveal={revealOpacity} fade={fade}
                 focus={inst.key === special} pressScale={pressScale} />
@@ -628,13 +677,16 @@ export function InfiniteCanvas(props: Props) {
 
 type Cam = { camX: SharedValue<number>; camY: SharedValue<number>; camS: SharedValue<number> };
 
-// a note on the canvas: its text in its slot (the web page's DOM card, kept by the person's choice)
-function NoteCard({ inst, camX, camY, camS, reveal, fade, focus, pressScale }: Cam & {
+type CardProps = Cam & {
   inst: CanvasInstance; reveal: SharedValue<number>; fade: SharedValue<number>; focus: boolean; pressScale: SharedValue<number>;
-}) {
+};
+
+// a card over the canvas in its slot: follows the camera, comes in with the reveal, fades with a pinch that opens
+// another card, gives a little when pressed
+function useCardStyle({ inst, camX, camY, camS, reveal, fade, focus, pressScale }: CardProps) {
   const { x, y } = inst;
   const { width, height } = inst.item;
-  const style = useAnimatedStyle(() => {
+  return useAnimatedStyle(() => {
     const s = camS.get();
     const press = focus ? pressScale.get() : 1;
     return {
@@ -646,9 +698,44 @@ function NoteCard({ inst, camX, camY, camS, reveal, fade, focus, pressScale }: C
       ],
     };
   });
+}
+
+// a note on the canvas: its text in its slot (the web page's DOM card, kept by the person's choice)
+function NoteCard(props: CardProps) {
+  const style = useCardStyle(props);
+  const { inst } = props;
   return (
-    <Animated.View style={[styles.note, { width, height }, style]}>
+    <Animated.View style={[styles.note, { width: inst.item.width, height: inst.item.height }, style]}>
       <NoteElement text={inst.element.text ?? inst.element.title ?? ''} compact />
+    </Animated.View>
+  );
+}
+
+// a video on the canvas plays over its cover (the web page's board-clip, kept by the person's choice): muted and
+// looping, its preview first and the original if that does not play; it stays see-through until its first frame is
+// ready (VideoElementTsx1's videoReadyMap; the web page's .live), so the cover shows till then. Its VideoView is
+// VideoElement's (a texture, no picture in picture, no controls)
+function ClipCard({ playing, ...props }: CardProps & { playing: boolean }) {
+  const style = useCardStyle(props);
+  const { inst } = props;
+  const urls = canvasVideoUrls(inst.element).map((u) => absoluteUrl(u));
+  const [i, setI] = useState(0);
+  const player = useVideoPlayer(urls[i] ?? '', (p) => {
+    p.loop = true;
+    p.muted = true;
+  });
+  const [readyPlayer, setReadyPlayer] = useState<typeof player | null>(null);
+  useEvent(player, 'onReadyToDisplay', () => setReadyPlayer(player));
+  useEvent(player, 'onError', () => setI((n) => (n + 1 < urls.length ? n + 1 : n)));
+  useEffect(() => {
+    if (playing) player.play();
+    else player.pause();
+  }, [player, playing]);
+  return (
+    <Animated.View style={[styles.clip, { width: inst.item.width, height: inst.item.height }, style]}>
+      <View style={[styles.fill, { opacity: readyPlayer === player ? 1 : 0 }]}>
+        <VideoView player={player} pictureInPicture={false} autoEnterPictureInPicture={false} surfaceType="texture" resizeMode="cover" style={styles.fill} />
+      </View>
     </Animated.View>
   );
 }
@@ -684,6 +771,7 @@ const styles = StyleSheet.create((theme) => ({
     position: 'absolute', left: 0, top: 0, transformOrigin: 'left top', overflow: 'hidden', justifyContent: 'center',
     backgroundColor: theme.colors.background, borderRadius: theme.borderRadius.element,
   },
+  clip: { position: 'absolute', left: 0, top: 0, transformOrigin: 'left top', overflow: 'hidden', borderRadius: theme.borderRadius.element },
   pillWrap: { position: 'absolute', left: 0, top: 0, width: C.OPEN_PILL_WIDTH, height: C.OPEN_PILL_HEIGHT },
   pill: {
     flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: theme.borderRadius.full,

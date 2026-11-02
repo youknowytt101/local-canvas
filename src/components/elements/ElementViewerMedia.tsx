@@ -5,7 +5,8 @@
 //   - a picture: the copy that fits its displayed width (viewerImageSources), the next one if it does not load, over
 //     its grid copy while it loads
 //   - a video: plays on the page on screen only (react-native-video 7), looping, from silent, with the player's own
-//     controls; elsewhere its cover. Near Cosmos: its own controls (VideoElement) are not drawn
+//     controls; over its cover, see-through until its first frame is ready (VideoElementTsx1's videoReadyMap), and
+//     elsewhere only its cover. Near Cosmos: its own controls (VideoElement) are not drawn
 //   - a note: NoteElement (its Markdown, the whole width, spacing.md in)
 //   - content filtering: 'blur' blurs it under the veil with 查看, as in the grid
 import { Image } from 'expo-image';
@@ -46,9 +47,8 @@ export function ElementViewerMedia({ element, active, maxWidth, maxHeight, inset
   const size = getSnappedContainFittedSize(maxWidth, maxHeight, aspect, inset);
   return (
     <View style={[styles.box, size, { backgroundColor: element.color ?? undefined }]}>
-      {element.mediaKind === 'video' && active && !blurred
-        ? <ViewerVideo element={element} />
-        : <ViewerImage element={element} width={size.width} blurred={blurred} />}
+      <ViewerImage element={element} width={size.width} blurred={blurred} />
+      {element.mediaKind === 'video' && active && !blurred ? <ViewerVideo element={element} /> : null}
       {blurred ? (
         <View style={styles.veil}>
           <Text style={styles.veilText}>{NSFW_VEIL[element.nsfw!.status]}</Text>
@@ -88,24 +88,29 @@ function ViewerVideo({ element }: { element: Element }) {
     p.muted = true;
     p.play();
   });
+  const [readyPlayer, setReadyPlayer] = useState<typeof player | null>(null);
+  useEvent(player, 'onReadyToDisplay', () => setReadyPlayer(player));
   // the original not there (or not playable): its preview
   useEvent(player, 'onError', () => setI((n) => (n + 1 < urls.length ? n + 1 : n)));
   return (
-    <VideoView
-      player={player}
-      controls
-      pictureInPicture={false}
-      autoEnterPictureInPicture={false}
-      surfaceType="texture" // as VideoElement's VideoView: a texture, no picture in picture
-      resizeMode="cover"
-      style={styles.fill}
-    />
+    <View style={[styles.cover, { opacity: readyPlayer === player ? 1 : 0 }]}>
+      <VideoView
+        player={player}
+        controls
+        pictureInPicture={false}
+        autoEnterPictureInPicture={false}
+        surfaceType="texture" // as VideoElement's VideoView: a texture, no picture in picture
+        resizeMode="cover"
+        style={styles.fill}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
   box: { alignSelf: 'center', overflow: 'hidden' },
   fill: { width: '100%', height: '100%' },
+  cover: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   link: { marginHorizontal: theme.spacing.md, padding: theme.spacing.lg, borderRadius: theme.borderRadius.md, backgroundColor: theme.colors.elevated },
   linkText: { ...theme.typography.largePlus, color: theme.colors.primary },
   veil: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.xs },

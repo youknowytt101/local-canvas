@@ -1,0 +1,96 @@
+diff --git a/node_modules/react-native-video/android/src/main/java/com/twg/video/core/player/EmulatorSafeRenderersFactory.kt b/node_modules/react-native-video/android/src/main/java/com/twg/video/core/player/EmulatorSafeRenderersFactory.kt
+new file mode 100644
+index 0000000..a0bde44
+--- /dev/null
++++ b/node_modules/react-native-video/android/src/main/java/com/twg/video/core/player/EmulatorSafeRenderersFactory.kt
+@@ -0,0 +1,53 @@
++package com.twg.video.core.player
++
++import android.content.Context
++import android.os.Build
++import android.os.Handler
++import androidx.annotation.OptIn
++import androidx.media3.common.util.UnstableApi
++import androidx.media3.exoplayer.DefaultRenderersFactory
++import androidx.media3.exoplayer.Renderer
++import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
++import androidx.media3.exoplayer.video.MediaCodecVideoRenderer
++import androidx.media3.exoplayer.video.VideoRendererEventListener
++
++/**
++ * The Android emulator's decoders (goldfish and the software c2.android ones) draw black into the buffers that
++ * MediaCodec.setOutputSurface carries over to a new surface: the placeholder surface the codec starts on before the
++ * view's own surface is there, or the SurfaceView PlayerView swapped for the TextureView one. The video stays black
++ * with a frame now and then (a flicker). On the emulator only, media3's own workaround for devices with a broken
++ * setOutputSurface is turned on: no placeholder surface, and the codec is made again on each new surface.
++ */
++@OptIn(UnstableApi::class)
++class EmulatorSafeRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
++  override fun buildVideoRenderers(
++    context: Context,
++    extensionRendererMode: Int,
++    mediaCodecSelector: MediaCodecSelector,
++    enableDecoderFallback: Boolean,
++    eventHandler: Handler,
++    eventListener: VideoRendererEventListener,
++    allowedVideoJoiningTimeMs: Long,
++    out: ArrayList<Renderer>
++  ) {
++    super.buildVideoRenderers(
++      context, extensionRendererMode, mediaCodecSelector, enableDecoderFallback,
++      eventHandler, eventListener, allowedVideoJoiningTimeMs, out
++    )
++    if (!isEmulator) return
++
++    val index = out.indexOfFirst { it is MediaCodecVideoRenderer }
++    if (index < 0) return
++    val adapterFactory = codecAdapterFactory
++    out[index] = object : MediaCodecVideoRenderer(
++      context, adapterFactory, mediaCodecSelector, allowedVideoJoiningTimeMs, enableDecoderFallback,
++      eventHandler, eventListener, MAX_DROPPED_VIDEO_FRAME_COUNT_TO_NOTIFY
++    ) {
++      override fun codecNeedsSetOutputSurfaceWorkaround(name: String): Boolean = true
++    }
++  }
++
++  private companion object {
++    val isEmulator = Build.HARDWARE == "ranchu" || Build.HARDWARE == "goldfish"
++  }
++}
+diff --git a/node_modules/react-native-video/android/src/main/java/com/twg/video/hybrids/videoplayer/HybridVideoPlayer.kt b/node_modules/react-native-video/android/src/main/java/com/twg/video/hybrids/videoplayer/HybridVideoPlayer.kt
+index 5dd20c5..319eccd 100644
+--- a/node_modules/react-native-video/android/src/main/java/com/twg/video/hybrids/videoplayer/HybridVideoPlayer.kt
++++ b/node_modules/react-native-video/android/src/main/java/com/twg/video/hybrids/videoplayer/HybridVideoPlayer.kt
+@@ -28,6 +28,7 @@ import com.twg.video.core.LibraryError
+ import com.twg.video.core.PlayerError
+ import com.twg.video.core.VideoManager
+ import com.twg.video.core.extensions.updateService
++import com.twg.video.core.player.EmulatorSafeRenderersFactory
+ import com.twg.video.core.player.OnAudioFocusChangedListener
+ import com.twg.video.core.recivers.AudioBecomingNoisyReceiver
+ import com.twg.video.core.services.playback.VideoPlaybackService
+@@ -244,7 +245,7 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
+       )
+       .build()
+ 
+-    val renderersFactory = DefaultRenderersFactory(context)
++    val renderersFactory = EmulatorSafeRenderersFactory(context)
+       .forceEnableMediaCodecAsynchronousQueueing()
+       .setEnableDecoderFallback(true)
+ 
+diff --git a/node_modules/react-native-video/android/src/main/java/com/twg/video/view/VideoView.kt b/node_modules/react-native-video/android/src/main/java/com/twg/video/view/VideoView.kt
+index 8a25759..5f169b7 100644
+--- a/node_modules/react-native-video/android/src/main/java/com/twg/video/view/VideoView.kt
++++ b/node_modules/react-native-video/android/src/main/java/com/twg/video/view/VideoView.kt
+@@ -94,7 +94,10 @@ class VideoView @JvmOverloads constructor(
+ 
+   var pictureInPictureEnabled: Boolean = false
+ 
+-  var surfaceType: SurfaceType = SurfaceType.SURFACE
++  // A texture to begin with, not a SurfaceView: every VideoView in this app asks for a texture, and a SurfaceView made
++  // first and swapped out once the prop arrives shows as a black hole on its own layer (the view's opacity does not
++  // reach it) and has its decoder made twice
++  var surfaceType: SurfaceType = SurfaceType.TEXTURE
+     set(value) {
+       if (field == value) return
+       field = value
