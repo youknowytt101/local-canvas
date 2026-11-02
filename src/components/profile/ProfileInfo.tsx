@@ -97,11 +97,11 @@ export function ProfileInfo({ user, isMe = true, isFollowed, onFollow, onCreate,
       <View style={styles.actions}>
         {isMe ? (
           <>
-            <Button text="创建" onPress={onCreate} style={styles.actionButton} />
-            <Button text="编辑主页" variant="outline" onPress={onEdit} style={styles.actionButton} />
+            <Button text="创建" size="regular" onPress={onCreate} style={styles.actionButton} />
+            <Button text="编辑主页" variant="outline" size="regular" onPress={onEdit} style={styles.actionButton} />
           </>
         ) : (
-          <Button text={isFollowed ? '正在关注' : '关注'} variant={isFollowed ? 'outline' : 'primary'} onPress={onFollow} style={styles.actionButton} />
+          <Button text={isFollowed ? '正在关注' : '关注'} variant={isFollowed ? 'outline' : 'primary'} size="regular" onPress={onFollow} style={styles.actionButton} />
         )}
         {socials.map(([label, href, icon]) => (
           <Pressable key={label} style={styles.social} onPress={() => void Linking.openURL(href)} accessibilityRole="link" accessibilityLabel={label}>{icon}</Pressable>

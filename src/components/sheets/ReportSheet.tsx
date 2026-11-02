@@ -79,8 +79,8 @@ export function ReportSheet() {
   };
   const buttons = (
     <View style={styles.buttons}>
-      <Button text="取消" variant="outline" onPress={() => void close()} style={styles.button} />
-      <Button text="举报" loading={busy} disabled={step === 'caption' && !caption.trim()} onPress={() => void send()} style={styles.button} />
+      <Button text="取消" variant="outline" size="regular" onPress={() => void close()} style={styles.button} />
+      <Button text="举报" size="regular" loading={busy} disabled={step === 'caption' && !caption.trim()} onPress={() => void send()} style={styles.button} />
     </View>
   );
 

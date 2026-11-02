@@ -1,6 +1,6 @@
 // Cosmos' Button (module 1314): fully round; variants primary / invertedPrimary / secondary / glass / sheetFilled /
 // transparent / outline / destructive; sizes extraSmall 28 · small 34 · regular 40 · large 48 · extraLarge 56 high with
-// xs / sm / md / lg / xl side padding; text buttonMedium; disabled = the background at 20 % (…33) and inverted text.
+// xs / sm / md / lg / xl side padding, large when none is given (Cosmos' default); text buttonMedium; disabled = the background at 20 % (…33) and inverted text.
 // Pressing scales to 0.975 in 70 ms and springs back (220 ms, damping ratio 0.8), the press cosmos-lite measured (MOTION.press).
 // `glass` draws Cosmos' drop-shadow filter as a box shadow (iOS has no filter: local, close).
 import { ActivityIndicator, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -24,7 +24,7 @@ type Props = {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function Button({ text, onPress, variant = 'primary', size = 'regular', fullWidth = false, fitContent = false, disabled = false, loading = false, style }: Props) {
+export function Button({ text, onPress, variant = 'primary', size = 'large', fullWidth = false, fitContent = false, disabled = false, loading = false, style }: Props) {
   const { theme } = useUnistyles();
   styles.useVariants({ variant, size, fullWidth, fitContent, disabled });
   const scale = useSharedValue(1);

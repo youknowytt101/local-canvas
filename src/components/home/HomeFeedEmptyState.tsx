@@ -15,7 +15,7 @@ export function HomeFeedEmptyState({ kind, onRetry }: Props) {
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
-      {onRetry ? <Button text="重试" variant="secondary" onPress={onRetry} style={styles.button} /> : null}
+      {onRetry ? <Button text="重试" variant="outline" onPress={onRetry} style={styles.button} /> : null}
     </View>
   );
 }
