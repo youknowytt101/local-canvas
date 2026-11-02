@@ -21,6 +21,7 @@ import { serverUrl } from '../../lib/server';
 import { showToast } from '../../stores/useToastStore';
 import { Button } from '../Button';
 import { Avatar } from '../profile/ProfileInfo';
+import { SheetGrabber } from './SheetGrabber';
 
 export const COLLABORATORS_SHEET = 'collaborators';
 export const INVITE_LINK_SHEET = 'collaborator-invite-link';
@@ -78,10 +79,11 @@ export function CollaboratorsSheet() {
       name={COLLABORATORS_SHEET}
       detents={['auto', 1] as never}
       cornerRadius={24}
-      grabber
+      grabber={false}
       backgroundColor={theme.colors.sheetBackground}
       onDidDismiss={() => useCollaboratorsStore.setState({ clusterId: null, handlers: null })}
     >
+      <SheetGrabber />
       <ScrollView nestedScrollEnabled contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + theme.spacing.lg }]}>
         {canManage && clusterId ? (
           <Button text="邀请合作者" variant="outline" fullWidth onPress={() => useCollaboratorsStore.getState().openInvite(clusterId)} style={styles.invite} />
@@ -123,8 +125,9 @@ export function InviteLinkSheet() {
     }
   };
   return (
-    <TrueSheet name={INVITE_LINK_SHEET} detents={['auto']} cornerRadius={24} grabber backgroundColor={theme.colors.sheetBackground}
+    <TrueSheet name={INVITE_LINK_SHEET} detents={['auto']} cornerRadius={24} grabber={false} backgroundColor={theme.colors.sheetBackground}
       onDidDismiss={() => useCollaboratorsStore.setState({ inviteClusterId: null })}>
+      <SheetGrabber />
       <View style={[styles.inviteContainer, { paddingBottom: insets.bottom + theme.spacing.md }]}>
         <Text style={styles.inviteTitle}>邀请合作者</Text>
         <Text style={styles.inviteText}>分享邀请链接以协作</Text>
@@ -143,7 +146,7 @@ const styles = StyleSheet.create((theme) => ({
   text: { flex: 1, minWidth: 0 },
   title: { ...theme.typography.largePlus, color: theme.colors.primary },
   meta: { ...theme.typography.regular, color: theme.colors.tertiary },
-  inviteContainer: { paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.xl, alignItems: 'center', gap: theme.spacing.xs },
+  inviteContainer: { paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.md, alignItems: 'center', gap: theme.spacing.xs },
   inviteTitle: { ...theme.typography.headingMedium, color: theme.colors.primary, textAlign: 'center' },
   inviteText: { ...theme.typography.regular, color: theme.colors.tertiary, textAlign: 'center' },
   copy: { marginTop: theme.spacing.lg },

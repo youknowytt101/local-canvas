@@ -21,6 +21,7 @@ import { absoluteUrl } from '../../lib/server';
 import type { Collection } from '../clusters/CollectionCard';
 import { Avatar } from '../profile/ProfileInfo';
 import { ProfileTabBar } from '../profile/ProfileTabBar';
+import { SheetGrabber } from './SheetGrabber';
 
 export const ELEMENT_CONNECTIONS_SHEET = 'element-connections';
 
@@ -86,10 +87,11 @@ export function ElementConnectionsSheet() {
       name={ELEMENT_CONNECTIONS_SHEET}
       detents={[0.6, 1] as never}
       cornerRadius={24}
-      grabber
+      grabber={false}
       backgroundColor={theme.colors.sheetBackground}
       onDidDismiss={() => useElementConnectionsStore.setState({ elementId: null, known: null, handlers: null })}
     >
+      <SheetGrabber />
       <View style={styles.tabs}>
         <ProfileTabBar
           pagerX={pagerX}

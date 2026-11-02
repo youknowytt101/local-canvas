@@ -28,6 +28,7 @@ import { serverUrl } from '../../lib/server';
 import { showToast } from '../../stores/useToastStore';
 import Svg, { Path } from 'react-native-svg';
 import { ShareIcon } from '../icons';
+import { SheetGrabber } from './SheetGrabber';
 
 export const ELEMENT_MENU_SHEET = 'element-menu';
 
@@ -106,9 +107,10 @@ export function ElementMenuSheet() {
   ] : [];
 
   return (
-    <TrueSheet name={ELEMENT_MENU_SHEET} detents={['auto']} cornerRadius={24} grabber backgroundColor={theme.colors.sheetBackground}
+    <TrueSheet name={ELEMENT_MENU_SHEET} detents={['auto']} cornerRadius={24} grabber={false} backgroundColor={theme.colors.sheetBackground}
       onDidDismiss={() => useElementMenuStore.setState({ element: null })}>
-      <View style={[styles.menu, { paddingBottom: insets.bottom + theme.spacing.sm, paddingTop: theme.spacing.xl }]}>
+      <SheetGrabber />
+      <View style={[styles.menu, { paddingBottom: insets.bottom + theme.spacing.sm }]}>
         {groups.map((group, g) => (
           <View key={g} style={styles.group}>
             {group.map((item, i) => (

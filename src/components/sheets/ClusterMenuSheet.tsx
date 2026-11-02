@@ -26,6 +26,7 @@ import { useCollaboratorsStore } from './CollaboratorsSheet';
 import { useCreateClusterStore } from './CreateClusterSheet';
 import { reportTarget } from './ReportSheet';
 import { FlagIcon } from './UserMenuSheet';
+import { SheetGrabber } from './SheetGrabber';
 
 export const CLUSTER_MENU_SHEET = 'cluster-menu';
 
@@ -131,9 +132,10 @@ export function ClusterMenuSheet() {
   }
 
   return (
-    <TrueSheet name={CLUSTER_MENU_SHEET} detents={['auto']} cornerRadius={24} grabber backgroundColor={theme.colors.sheetBackground}
+    <TrueSheet name={CLUSTER_MENU_SHEET} detents={['auto']} cornerRadius={24} grabber={false} backgroundColor={theme.colors.sheetBackground}
       onDidDismiss={() => useClusterMenuStore.setState({ cluster: null, parent: null, handlers: null })}>
-      <View style={[styles.menu, { paddingBottom: insets.bottom + theme.spacing.sm, paddingTop: theme.spacing.xl }]}>
+      <SheetGrabber />
+      <View style={[styles.menu, { paddingBottom: insets.bottom + theme.spacing.sm }]}>
         {groups.map((group, g) => (
           <View key={g} style={styles.group}>
             {group.map((item, i) => (

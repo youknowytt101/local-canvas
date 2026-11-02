@@ -11,6 +11,7 @@ import { create } from 'zustand';
 import { serverUrl } from '../../lib/server';
 import { showToast } from '../../stores/useToastStore';
 import { reportTarget } from './ReportSheet';
+import { SheetGrabber } from './SheetGrabber';
 
 export const USER_MENU_SHEET = 'user-menu';
 
@@ -46,9 +47,10 @@ export function UserMenuSheet() {
   const userId = useUserMenuStore((s) => s.userId);
   const close = () => TrueSheet.dismiss(USER_MENU_SHEET).catch(() => undefined);
   return (
-    <TrueSheet name={USER_MENU_SHEET} detents={['auto']} cornerRadius={24} grabber backgroundColor={theme.colors.sheetBackground}
+    <TrueSheet name={USER_MENU_SHEET} detents={['auto']} cornerRadius={24} grabber={false} backgroundColor={theme.colors.sheetBackground}
       onDidDismiss={() => useUserMenuStore.setState({ userId: null })}>
-      <View style={[styles.menu, { paddingBottom: insets.bottom + theme.spacing.sm, paddingTop: theme.spacing.xl }]}>
+      <SheetGrabber />
+      <View style={[styles.menu, { paddingBottom: insets.bottom + theme.spacing.sm }]}>
         <View style={styles.group}>
           <Pressable
             style={styles.item}

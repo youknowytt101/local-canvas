@@ -20,6 +20,7 @@ import { create } from 'zustand';
 import { api } from '../../lib/api';
 import { showToast } from '../../stores/useToastStore';
 import { Button } from '../Button';
+import { SheetGrabber } from './SheetGrabber';
 
 export const REPORT_SHEET = 'report';
 
@@ -89,10 +90,11 @@ export function ReportSheet() {
       name={REPORT_SHEET}
       detents={['auto']}
       cornerRadius={24}
-      grabber
+      grabber={false}
       backgroundColor={theme.colors.sheetBackground}
       onDidDismiss={() => { setStep('reasons'); setReason(null); setCaption(''); useReportStore.setState({ elementId: null }); }}
     >
+      <SheetGrabber />
       <View style={[styles.content, { paddingBottom: insets.bottom + theme.spacing.md }]}>
         {step === 'reasons' ? (
           <>
@@ -144,7 +146,7 @@ export function ReportSheet() {
 }
 
 const styles = StyleSheet.create((theme) => ({
-  content: { padding: theme.spacing.md, paddingTop: theme.spacing.xl },
+  content: { padding: theme.spacing.md, paddingTop: 0 },
   title: { ...theme.typography.largePlus, color: theme.colors.primary, textAlign: 'center', marginBottom: theme.spacing.md },
   list: { paddingLeft: 4 },
   reasonRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: theme.spacing.xs, gap: theme.spacing.sm },

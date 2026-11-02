@@ -16,6 +16,7 @@ import { api } from '../../lib/api';
 import { showToast } from '../../stores/useToastStore';
 import { Button } from '../Button';
 import type { Collection } from '../clusters/CollectionCard';
+import { SheetGrabber } from './SheetGrabber';
 
 export const CREATE_CLUSTER_SHEET = 'create-cluster';
 const MAX_CLUSTER_NAME_LENGTH = 24;
@@ -82,13 +83,14 @@ export function CreateClusterSheet() {
       name={CREATE_CLUSTER_SHEET}
       detents={['auto'] as never}
       cornerRadius={24}
-      grabber
+      grabber={false}
       backgroundColor={theme.colors.sheetBackground}
       onDidDismiss={() => {
         setName(''); setDescription(''); setPrivate(false);
         useCreateClusterStore.setState({ onCreated: null, parent: null, editing: null });
       }}
     >
+      <SheetGrabber />
       <View style={[styles.container, { paddingBottom: insets.bottom + theme.spacing.md }]}>
         <Text style={styles.title}>{editing ? '编辑收藏' : parent ? '新子系列' : '新系列'}</Text>
         <TextInput
@@ -115,7 +117,7 @@ export function CreateClusterSheet() {
 }
 
 const styles = StyleSheet.create((theme) => ({
-  container: { paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.lg, gap: theme.spacing.md },
+  container: { paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.md, gap: theme.spacing.md },
   title: { ...theme.typography.headingMedium, color: theme.colors.primary, textAlign: 'center' },
   input: {
     ...theme.typography.large, color: theme.colors.primary, height: 52, paddingHorizontal: theme.spacing.md,

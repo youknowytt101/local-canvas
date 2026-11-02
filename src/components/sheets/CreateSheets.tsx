@@ -42,6 +42,7 @@ import { showToast } from '../../stores/useToastStore';
 import { Button } from '../Button';
 import { ALargeIcon, CameraRollIcon, CloseIcon, LinkIcon, PlusIcon } from '../icons';
 import { useCreateClusterStore } from './CreateClusterSheet';
+import { SheetGrabber } from './SheetGrabber';
 
 export const CREATE_SHEET = 'create';
 export const CREATE_URL_SHEET = 'create-url';
@@ -89,12 +90,6 @@ function ScalePressable({ targetScale, style, outerStyle, onPress, label, childr
       <Animated.View style={[style, pressed]}>{children}</Animated.View>
     </Pressable>
   );
-}
-
-// Sheet.Grabber (components/analytics/SheetGrabber.js): in the sheet's flow, 37 × 4, rounded 2.5, surfaceBorder, xs over
-// it and sm under it
-function SheetGrabber() {
-  return <View style={styles.grabber} />;
 }
 
 function MosaicPlaceholder({ size, dividerColor }: { size: number; dividerColor: string }) {
@@ -302,7 +297,6 @@ export function CreateNoteSheet() {
 }
 
 const styles = StyleSheet.create((theme) => ({
-  grabber: { width: 37, height: 4, backgroundColor: theme.colors.surfaceBorder, borderRadius: 2.5, alignSelf: 'center', marginTop: theme.spacing.xs, marginBottom: theme.spacing.sm },
   container: { paddingHorizontal: theme.spacing.lg, paddingTop: 6, gap: theme.spacing.sm },
   actionsRow: { flexDirection: 'row', gap: theme.spacing.sm },
   actionOuter: { flex: 1 },

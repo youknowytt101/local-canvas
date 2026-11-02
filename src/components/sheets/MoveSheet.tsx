@@ -32,6 +32,7 @@ import { announceElementSaved, MOVE_SHEET, useMoveSheetStore } from '../../store
 import { useSessionStore } from '../../stores/useSessionStore';
 import { showToast } from '../../stores/useToastStore';
 import { CheckIcon, PlusIcon, UserRound } from '../icons';
+import { SheetGrabber } from './SheetGrabber';
 
 const ROW_HEIGHT = 60;
 const THUMBNAIL_SIZE = 40;
@@ -175,7 +176,7 @@ export function MoveSheet() {
       name={MOVE_SHEET}
       detents={detents as never}
       cornerRadius={24}
-      grabber
+      grabber={false}
       backgroundColor={theme.colors.sheetBackground}
       onDidDismiss={() => useMoveSheetStore.setState({ element: null, move: null, destination: null })}
       footer={
@@ -200,6 +201,7 @@ export function MoveSheet() {
         </View>
       }
     >
+      <SheetGrabber />
       <View>
         {!compact ? (
           <View style={styles.searchContainer}>
