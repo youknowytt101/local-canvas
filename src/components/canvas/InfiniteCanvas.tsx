@@ -27,8 +27,10 @@
 // canvas, not a coloured placeholder; every video on screen loops its strip of first frames over its cover, moving or
 // not, without a decoder (StripCard, HANDOFF 6.165; Cosmos only draws the cover), and the ones nearest the middle also
 // get a real player, muted and looping,
-// as the web page's board-clip: nothing starts while the camera moves and what plays is paused, at rest the ones
-// nearest the middle play within VIDEO_PLAY_BUDGET (app.js syncPlayback).
+// as the web page's board-clip: nothing starts or lets go while the camera moves, and what plays pauses as the web
+// page's does, out of sight so that its strip under it keeps moving (the person wants them moving; decoding them through
+// a pan made it stutter, HANDOFF 6.170); at rest the ones nearest the middle play within VIDEO_PLAY_BUDGET
+// (app.js syncPlayback).
 import {
   Atlas, Blur, Canvas, FilterMode, Group, MipmapMode, Paint, RoundedRect, Skia, type SkImage, type SkRect, type SkRSXform,
 } from '@shopify/react-native-skia';
@@ -232,7 +234,6 @@ export function InfiniteCanvas(props: Props) {
     });
     return () => sub.remove();
   }, [strips, showClips]);
-  const [moving, setMoving] = useState(false);
   const [revealed, setRevealed] = useState(true);
   const revealWaiting = useRef(false);
   const [atlasVersion, setAtlasVersion] = useState(0);
@@ -378,7 +379,8 @@ export function InfiniteCanvas(props: Props) {
     () => `${Math.round(camX.get() / C.CULLING_BUCKET_SIZE)}:${Math.round(camY.get() / C.CULLING_BUCKET_SIZE)}:${Math.round(camS.get() / C.CULLING_SCALE_BUCKET_SIZE)}:${revision.get()}`,
     (key, prev) => { if (key !== prev) scheduleOnRN(cull); },
   );
-  // what plays is paused while the camera moves
+  // what plays is paused while the camera moves (and out of sight at once, ClipCard)
+  const [moving, setMoving] = useState(false);
   useAnimatedReaction(() => busy.get(), (now, prev) => { if (now !== prev) scheduleOnRN(setMoving, now); });
 
   // the reveal starts once the nearest pictures are in
@@ -704,7 +706,7 @@ export function InfiniteCanvas(props: Props) {
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
             {clips.map((inst) => (
               <ClipCard key={inst.key} inst={inst} camX={camX} camY={camY} camS={camS} reveal={revealOpacity} fade={fade}
-                focus={inst.key === special} pressScale={pressScale} playing={active} />
+                focus={inst.key === special} pressScale={pressScale} playing={active && !moving} busy={busy} />
             ))}
             {scene.notes.map((inst) => (
               <NoteCard key={inst.key} inst={inst} camX={camX} camY={camY} camS={camS} reveal={revealOpacity} fade={fade}
@@ -789,14 +791,20 @@ function StripCard({ inst, image, clock, radius }: { inst: CanvasInstance; image
 // a video on the canvas plays over its strip (the web page's board-clip, kept by the person's choice): muted and
 // looping, its preview first and the original if that does not play; it stays see-through until its first frame is
 // ready (VideoElementTsx1's videoReadyMap; the web page's .live), so the cover shows till then. Its VideoView is
-// VideoElement's (a texture, no picture in picture, no controls)
-function ClipCard({ playing, ...props }: CardProps & { playing: boolean }) {
+// VideoElement's (a texture, no picture in picture, no controls). While the camera moves it is out of sight from the
+// first frame of the move (busy, on the UI thread) until it plays again (playing, from JS), its strip showing instead
+function ClipCard({ playing, busy, ...props }: CardProps & { playing: boolean; busy: SharedValue<boolean> }) {
   const style = useCardStyle(props);
   const { inst } = props;
   const urls = useMemo(() => canvasVideoUrls(inst.element).map((u) => absoluteUrl(u)), [inst.element]);
+  const paused = useSharedValue(!playing);
+  useEffect(() => { paused.set(!playing); }, [playing, paused]);
+  const shown = useAnimatedStyle(() => ({ opacity: busy.get() || paused.get() ? 0 : 1 }));
   return (
     <Animated.View style={[styles.clip, { width: inst.item.width, height: inst.item.height }, style]}>
-      <PreviewVideo urls={urls} playing={playing} />
+      <Animated.View style={[StyleSheet.absoluteFill, shown]}>
+        <PreviewVideo urls={urls} playing={playing} />
+      </Animated.View>
     </Animated.View>
   );
 }

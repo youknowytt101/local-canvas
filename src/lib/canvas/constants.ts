@@ -84,12 +84,14 @@ export const CANVAS = {
   //     At most STRIP_MAX, the nearest the middle; the textures kept are STRIP_CACHE
   //   - at rest, the ones nearest the middle with this much of them in view also get a real player over the strip,
   //     so many from each lane (the web page's PLAY_BUDGET, syncPlayback), a few new ones at a time. Smaller than the web
-  //     page's 20 / 2: every one is a player and a decoder of its own on a phone. The Android emulator's previews decode
-  //     in software (its H.264 hardware allows 4 at a time), so its number is what its 4 cores can carry
+  //     page's 20 / 2: every one is a player and a decoder of its own on a phone (on iOS a view controller too; 12 made
+  //     the iPhone's pans stutter, HANDOFF 6.170). They get going one or two at a time (lib/previewStarts). The Android
+  //     emulator's previews decode in software (its H.264 hardware allows 4 at a time), so its number is what its 4
+  //     cores can carry
   STRIP_FPS: 8, // what derive.js makes them at
   STRIP_MAX: 32,
-  STRIP_CACHE: 48,
-  VIDEO_PLAY_BUDGET: Platform.OS === 'ios' ? { preview: 12, original: 1 } : IS_ANDROID_EMULATOR ? { preview: 8, original: 1 } : { preview: 6, original: 1 },
+  STRIP_CACHE: 36, // decoded, 3.6 MB each
+  VIDEO_PLAY_BUDGET: Platform.OS === 'ios' ? { preview: 6, original: 1 } : IS_ANDROID_EMULATOR ? { preview: 8, original: 1 } : { preview: 6, original: 1 },
   VIDEO_START_BATCH: 2,
   VIDEO_START_GAP_MS: 120,
   // the new ones start this long after the camera rests, the ones that stopped having let go of their decoders by then

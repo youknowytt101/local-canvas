@@ -1,14 +1,15 @@
 // Which video tiles of a grid play: the web page's watchVideo / syncPlayback, kept by the person's choice (HANDOFF 6.169;
 // Cosmos' grids only draw covers, MasonryGrid's allowVideoPlayback false). The tiles of the screen in front register; a
 // little later and every little while their places are read:
-//   - something moved (a scroll): the ones playing pause, and nothing new starts
+//   - something moved (a scroll): what plays plays on, and nothing starts or lets go until it is still (the web page
+//     pauses them; the person wants them to keep moving)
 //   - all still: the ones most in the middle with VISIBLE_FRACTION of them on screen play, within each lane's budget
 //     (a preview, or the original of a video without one), a few new ones at a time so that a screen of them does not
 //     hold everything up at once; the rest let go of their players
 // Out of sight (the app in the background) nothing is kept.
 import { AppState, Dimensions, Platform } from 'react-native';
 
-export type GridVideoState = 'off' | 'paused' | 'playing';
+export type GridVideoState = 'off' | 'playing';
 type Rect = { x: number; y: number; w: number; h: number };
 type Tile = { lane: 'preview' | 'original'; measure: (done: (x: number, y: number, w: number, h: number) => void) => void; set: (s: GridVideoState) => void; state: GridVideoState; rect: Rect | null; moved: boolean };
 
@@ -35,10 +36,7 @@ function decide() {
     return;
   }
   const list = [...tiles];
-  if (list.some((t) => t.moved)) {
-    list.forEach((t) => { if (t.state === 'playing') set(t, 'paused'); });
-    return;
-  }
+  if (list.some((t) => t.moved)) return;
   const dist = ({ x, y, w, h }: Rect) => (x + w / 2 - width / 2) ** 2 + (y + h / 2 - height / 2) ** 2;
   const shown = ({ x, y, w, h }: Rect) => (w > 0 && h > 0 ? (Math.max(0, Math.min(x + w, width) - Math.max(x, 0)) * Math.max(0, Math.min(y + h, height) - Math.max(y, 0))) / (w * h) : 0);
   const chosen = new Set<Tile>();

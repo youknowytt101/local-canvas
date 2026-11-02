@@ -40,7 +40,7 @@ function GridVideo({ element }: { element: Element }) {
   }, [focused, lane]);
   return (
     <View ref={view} style={RNStyleSheet.absoluteFill} pointerEvents="none" collapsable={false}>
-      {state !== 'off' ? <PreviewVideo urls={canvasVideoUrls(element).map((u) => absoluteUrl(u))} playing={state === 'playing'} /> : null}
+      {state === 'playing' ? <PreviewVideo urls={canvasVideoUrls(element).map((u) => absoluteUrl(u))} playing /> : null}
     </View>
   );
 }

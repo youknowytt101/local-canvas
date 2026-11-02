@@ -119,3 +119,57 @@ index 0000000..0000001 100644
  
      super.init()
      self.playerObserver = VideoPlayerObserver(delegate: self)
+diff --git a/node_modules/react-native-video/ios/view/VideoComponentView.swift b/node_modules/react-native-video/ios/view/VideoComponentView.swift
+index 40d28c2..92c3bd4 100644
+--- a/node_modules/react-native-video/ios/view/VideoComponentView.swift
++++ b/node_modules/react-native-video/ios/view/VideoComponentView.swift
+@@ -171,16 +171,28 @@ import UIKit
+         controller.allowsVideoFrameAnalysis = false
+       }
+ 
+-      // Find nearest UIViewController
+-      if let parentVC = self.findViewController() {
+-        parentVC.addChild(controller)
+-        playerView.addSubview(controller.view)
+-        controller.didMove(toParent: parentVC)
+-        self.playerViewController = controller
+-      }
++      // Find nearest UIViewController. A view not in a window yet (a page of react-native-pager-view's TabView that
++      // has no cell yet) has none: its picture is shown anyway and the controller joins one in didMoveToWindow, else
++      // the player plays with no picture for good
++      playerView.addSubview(controller.view)
++      self.playerViewController = controller
++      self.adoptPlayerViewController()
+     }
+   }
+ 
++  private func adoptPlayerViewController() {
++    guard let controller = playerViewController, controller.parent == nil,
++      let parentVC = findViewController()
++    else { return }
++    parentVC.addChild(controller)
++    controller.didMove(toParent: parentVC)
++  }
++
++  public override func didMoveToWindow() {
++    super.didMoveToWindow()
++    if window != nil { adoptPlayerViewController() }
++  }
++
+   // Helper to find nearest UIViewController
+   private func findViewController() -> UIViewController? {
+     var responder: UIResponder? = self
+diff --git a/node_modules/react-native-video/ios/view/VideoComponentViewObserver.swift b/node_modules/react-native-video/ios/view/VideoComponentViewObserver.swift
+index b6d4f93..44539dd 100644
+--- a/node_modules/react-native-video/ios/view/VideoComponentViewObserver.swift
++++ b/node_modules/react-native-video/ios/view/VideoComponentViewObserver.swift
+@@ -84,7 +84,8 @@ class VideoComponentViewObserver: NSObject, AVPlayerViewControllerDelegate {
+       return
+     }
+     
+-    onReadyToDisplayObserver = playerViewController.observe(\.isReadyForDisplay, options: [.new]) { [weak self] _, change in
++    // .initial too: a player already drawing when its controller is made would never say so
++    onReadyToDisplayObserver = playerViewController.observe(\.isReadyForDisplay, options: [.initial, .new]) { [weak self] _, change in
+       guard let self = self else { return }
+       if change.newValue == true {
+         self.delegate?.onReadyToDisplay()

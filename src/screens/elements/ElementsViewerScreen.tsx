@@ -80,7 +80,7 @@ export function ElementsViewerScreen() {
   }, []);
   const onIndexChange = useCallback((i: number) => {
     selectedNow.current = i;
-    playViewerVideo(elementsNow.current[i]);
+    playViewerVideo(elementsNow.current[i], true);
     startTransition(() => setIndex(i));
   }, []);
   const onIncoming = useCallback((i: number) => peekViewerVideo(elementsNow.current[i]), []);

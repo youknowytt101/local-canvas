@@ -6,6 +6,20 @@ import { absoluteUrl } from '../server';
 const LOADING_AT_ONCE = 3;
 const DISPOSE_DELAY_MS = 2000; // a frame being drawn may still hold it
 
+// An image made from a file is only decoded where it is first drawn: on the canvas' thread, in the middle of a pan, a
+// strip (a WebP of 800 × 1136) at a time, and the pan stuttered. Drawn once into a surface in memory here, on the JS
+// thread, the canvas only has to upload it.
+function decoded(image: SkImage | null) {
+  if (!image) return null;
+  const surface = Skia.Surface.Make(image.width(), image.height());
+  if (!surface) return image;
+  surface.getCanvas().drawImage(image, 0, 0);
+  surface.flush();
+  const raster = surface.makeImageSnapshot();
+  image.dispose();
+  return raster;
+}
+
 export class StripCache {
   private images = new Map<string, SkImage>(); // the last asked for at the end
   private failed = new Set<string>();
@@ -41,7 +55,7 @@ export class StripCache {
       this.loading.add(url);
       Skia.Data.fromURI(absoluteUrl(url))
         .then((data) => {
-          const image = Skia.Image.MakeImageFromEncoded(data);
+          const image = decoded(Skia.Image.MakeImageFromEncoded(data));
           if (image) {
             this.images.set(url, image);
             this.onChange();

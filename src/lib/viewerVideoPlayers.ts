@@ -109,11 +109,16 @@ function rewind(entry: ViewerVideoEntry) {
   entry.player.seekTo(0);
 }
 
-// the element on screen plays, the one before it goes back to its start and waits
-export function playViewerVideo(el: Element | null | undefined) {
+// the element on screen plays, the one before it goes back to its start and waits. A page sliding out plays on, silent,
+// until the slide ends (settleViewerVideos)
+export function playViewerVideo(el: Element | null | undefined, sliding = false) {
   if (el && active === el.id && entries.get(el.id)?.playing) return;
   for (const entry of entries.values()) {
-    if (entry.id !== el?.id && entry.playing) rewind(entry);
+    if (entry.id === el?.id || !entry.playing) continue;
+    if (sliding || entry.peeking) {
+      entry.peeking = true;
+      if (!muted) entry.player.muted = true;
+    } else rewind(entry);
   }
   const entry = el ? prepare(el) : null;
   active = entry?.id ?? null;
