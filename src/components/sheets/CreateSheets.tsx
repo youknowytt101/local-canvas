@@ -25,6 +25,7 @@
 // still mosaic (Cosmos animates ProfileCollectionAnimatedMosaic); the sheets close one by one rather than as a stack.
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
 import * as Haptics from 'expo-haptics';
+import { triggerImpactFeedback } from '../../lib/appearance';
 import { useRef, useState } from 'react';
 import { Keyboard, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { EnrichedTextInput, type EnrichedTextInputInstance, type OnChangeStateEvent } from 'react-native-enriched';
@@ -81,7 +82,7 @@ function ScalePressable({ targetScale, style, outerStyle, onPress, label, childr
   return (
     <Pressable
       style={outerStyle}
-      onPressIn={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); scale.set(withTiming(targetScale, { duration: 120 })); }}
+      onPressIn={() => { triggerImpactFeedback(Haptics.ImpactFeedbackStyle.Light); scale.set(withTiming(targetScale, { duration: 120 })); }}
       onPressOut={() => scale.set(withTiming(1, { duration: 120 }))}
       onPress={onPress}
       accessibilityRole="button"

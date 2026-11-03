@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { applyAppearance } from './src/lib/appearance';
+import { applyAppearance, initAppearanceStalenessGuard } from './src/lib/appearance';
 import { serverUrl } from './src/lib/server';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useSessionStore } from './src/stores/useSessionStore';
@@ -11,6 +11,7 @@ import { loadOracle } from './src/theme/fonts';
 
 void SplashScreen.preventAutoHideAsync();
 applyAppearance(); // the appearance chosen in the settings, before anything is drawn
+initAppearanceStalenessGuard();
 
 export default function App() {
   const phase = useSessionStore((s) => s.phase);

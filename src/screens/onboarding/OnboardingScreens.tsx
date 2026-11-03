@@ -2,19 +2,22 @@
 //   - OnboardingStepHeader: 44 high, the way back and an empty side 60 wide, OnboardingProgressBar between them (80 × 6,
 //     surfaceBorder, the fill primary, moving to the step's share)
 //   - AgeScreenContent: 你今年多大？, one field (年龄), 继续; what the server says is wrong replaces the subtitle in alert
-//   - GenderScreenContent: 选择你的性别, four selection Pills in the middle (choicePill: 212 wide, 56 high, round,
-//     pillElevated with a hairline and the default shadow; chosen: primary); pressing one saves it and goes on
+//   - GenderScreenContent: 选择你的性别, four selection Pills in the middle, md apart, size.xxl + spacing.xl over and
+//     under them, spacing.xl at the sides (Pill's selection variant: choicePill 212 wide, 56 high, round, pillElevated
+//     with a hairline and the small shadow, buttonLarge centred; chosen: primary, no outline, inverted words); pressing
+//     one saves it and goes on
 //   - OnboardingInterestsScreen: 请问您想看到什么？, InterestTags (44 high, round, largePlus, a 24 round icon: plus, chosen a
 //     check on primary), and the continue button (56 high, round, primary, xl in): 选择 N with "n/3" on its right until
 //     there are enough, then 继续; pressed too early it shakes (−8, 8, −6, 6, −3, 3, 0). Saved, the screen fades out in
 //     300 ms into the app.
 // Near Cosmos: the topics are the library's most common description terms in one list, not its sections of topic
-// categories (6.106), and the subtitle says 推荐 for its 算法 as the web page does; the progress counts these three steps;
-// the fill's timing and the gender Pills' gap and words' size were not read.
+// categories (6.106), and the subtitle says 推荐 for its 算法 as the web page does; the progress counts these three steps
+// (its fill moves in 250 ms, Easing.inOut(Easing.ease)); Cosmos' Pill shadow is a dropShadow filter (Android only),
+// here the same shadow as a boxShadow.
 import { useFocusEffect, useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { AuthInput } from '../../components/AuthInput';
@@ -27,13 +30,14 @@ import { useSessionStore } from '../../stores/useSessionStore';
 import { showToast } from '../../stores/useToastStore';
 
 const STEPS = 3;
+const PROGRESS_DURATION_MS = 250; // OnboardingProgressBar: Easing.inOut(Easing.ease)
 const message = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
 
 function StepHeader({ step }: { step: number }) {
   const { theme } = useUnistyles();
   const navigation = useNavigation();
   const fill = useSharedValue((step - 1) / STEPS);
-  useFocusEffect(useCallback(() => { fill.value = withTiming(step / STEPS, { duration: 300 }); }, [fill, step]));
+  useFocusEffect(useCallback(() => { fill.value = withTiming(step / STEPS, { duration: PROGRESS_DURATION_MS, easing: Easing.inOut(Easing.ease) }); }, [fill, step]));
   const fillStyle = useAnimatedStyle(() => ({ width: `${fill.value * 100}%` }));
   return (
     <View style={styles.header}>
@@ -213,13 +217,13 @@ const styles = StyleSheet.create((theme) => ({
   headerSide: { width: 60, height: 40, justifyContent: 'center', alignItems: 'center' },
   track: { width: theme.progressBar.width, height: theme.progressBar.height, borderRadius: theme.progressBar.height, backgroundColor: theme.colors.surfaceBorder, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: theme.progressBar.height, backgroundColor: theme.colors.primary },
-  pills: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.xl, paddingHorizontal: theme.spacing.md },
+  pills: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.size.xxl + theme.spacing.xl, paddingHorizontal: theme.spacing.xl },
   pill: {
     justifyContent: 'center', alignItems: 'center', width: theme.choicePill.width, maxWidth: '100%', minHeight: theme.choicePill.minHeight, paddingHorizontal: theme.choicePill.paddingHorizontal,
-    borderRadius: theme.borderRadius.full, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.surfaceBorder, backgroundColor: theme.colors.pillElevated, boxShadow: theme.shadows.default,
+    borderRadius: theme.borderRadius.full, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.surfaceBorder, backgroundColor: theme.colors.pillElevated, boxShadow: theme.shadows.small,
   },
-  pillOn: { backgroundColor: theme.colors.primary },
-  pillText: { ...theme.typography.largePlus, color: theme.colors.primary },
+  pillOn: { backgroundColor: theme.colors.primary, borderColor: 'transparent' },
+  pillText: { ...theme.typography.buttonLarge, color: theme.colors.primary, textAlign: 'center' },
   pillTextOn: { color: theme.colors.inverted },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: theme.spacing.xl },
   errorText: { ...theme.typography.large, color: theme.colors.tertiary, textAlign: 'center' },

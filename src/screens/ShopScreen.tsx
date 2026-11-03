@@ -14,6 +14,7 @@
 // 新品 / 热卖 under a brand's cover and how many cards each block has are made up; the shelf header spacing (28 over,
 // 16 in, 12 under) is Cosmos' usual one; 申请添加品牌 only says it cannot be sent (Cosmos mails its partnerships address).
 import * as Haptics from 'expo-haptics';
+import { triggerImpactFeedback } from '../lib/appearance';
 import { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, SectionList, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
@@ -176,7 +177,7 @@ function HeroCard({ name, index, step, x, width, onPress }: { name: string; inde
   });
   return (
     <Animated.View style={[{ width }, style]}>
-      <PressScale onPress={onPress} onPressIn={() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)} style={styles.heroCard} label={name}>
+      <PressScale onPress={onPress} onPressIn={() => triggerImpactFeedback(Haptics.ImpactFeedbackStyle.Light)} style={styles.heroCard} label={name}>
         <View style={[styles.cover, styles.dim15]} />
         <Text style={styles.coverName}>{name}</Text>
       </PressScale>

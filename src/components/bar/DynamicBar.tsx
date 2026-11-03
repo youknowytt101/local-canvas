@@ -13,7 +13,7 @@
 // Phones only: the tablet sizes (TAB_BAR_DEFAULT_WIDTH from TAB_BAR_TABLET_BREAKPOINT) are not used (no iPad build).
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { Easing, useWindowDimensions, View } from 'react-native';
 import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -96,9 +96,12 @@ function getBarTargets(windowWidth: number): Targets {
   };
 }
 
-// easeGradient (module 2059): 12 eased steps (ease-in-out) between the two colours; here the alpha of each stop
-const EASED = [0, 0.0125, 0.055, 0.13, 0.2325, 0.36, 0.5, 0.64, 0.7675, 0.87, 0.945, 0.9875, 1];
-const LOCATIONS = EASED.map((_, i) => i / (EASED.length - 1));
+// easeGradient (module 2059) between background 00 and 66: extraColorStopsPerTransition 12, so 14 stops at i / 13, each
+// the colour eased by Easing.bezier(0.42, 0, 0.58, 1) (its default); here the alpha of each stop
+const EXTRA_COLOR_STOPS = 12;
+const GRADIENT_EASING = Easing.bezier(0.42, 0, 0.58, 1);
+const LOCATIONS = Array.from({ length: EXTRA_COLOR_STOPS + 2 }, (_, i) => i / (EXTRA_COLOR_STOPS + 1));
+const EASED = LOCATIONS.map((t) => GRADIENT_EASING(t));
 const easeGradient = (background: string) =>
   EASED.map((f) => `${background}${Math.round(0x66 * f).toString(16).padStart(2, '0')}`);
 

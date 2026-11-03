@@ -15,6 +15,7 @@
 // out of sight while the picture flies out of it or into it over this page.
 import { NavigationRouteContext, useIsFocused } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { triggerImpactFeedback } from '../../lib/appearance';
 import { Image } from 'expo-image';
 import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet as RNStyleSheet, Text, View } from 'react-native';
@@ -118,7 +119,7 @@ export const ElementTile = memo(function ElementTile({ element, width, imageScal
         if (element.mediaKind === 'video') prewarmViewerVideo(element);
       }}
       onPress={() => onPress?.(element)}
-      onLongPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); useMoveSheetStore.getState().open(element); }}
+      onLongPress={() => { triggerImpactFeedback(Haptics.ImpactFeedbackStyle.Light); useMoveSheetStore.getState().open(element); }}
       accessibilityRole="button"
       accessibilityLabel={element.title || undefined}
     >

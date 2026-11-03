@@ -1,5 +1,13 @@
-// Cosmos' AppearanceSheet (settings.appearance): 系统 / 浅色 / 深色, kept on the phone (applyAppearance). 系统 follows the
-// phone (Unistyles' adaptiveThemes, as module 618 configures it); the other two pin the theme.
+// The phone's own preferences (Cosmos module 643, its keys), kept on the phone in MMKV:
+//   - preferredAppearance (AppearanceSheet: 系统 / 浅色 / 深色, applyAppearance). 系统 follows the phone (Unistyles'
+//     adaptiveThemes, as module 618 configures it); the other two pin the theme. initAppearanceStalenessGuard
+//     (createStalenessNudgeController): after the phone switches light / dark while 系统 is chosen, every 250 ms, up to
+//     4 more times, it looks whether the theme has caught up and then commits it again so every style is redrawn
+//   - hapticsEnabled (HapticsSheet: 开 / 关, on unless turned off); triggerImpactFeedback (module 1300) gives a haptic
+//     only when it is on
+import * as Haptics from 'expo-haptics';
+import { useSyncExternalStore } from 'react';
+import { Appearance as PhoneAppearance } from 'react-native';
 import { createMMKV } from 'react-native-mmkv';
 import { UnistylesRuntime } from 'react-native-unistyles';
 
@@ -7,9 +15,11 @@ export type Appearance = 'system' | 'light' | 'dark';
 export const APPEARANCES: [Appearance, string][] = [['system', '系统'], ['light', '浅色'], ['dark', '深色']];
 
 const store = createMMKV({ id: 'app-settings' });
+const APPEARANCE_KEY = 'appearance';
+const HAPTICS_KEY = 'hapticsEnabled';
 
 export const getAppearance = (): Appearance => {
-  const v = store.getString('appearance');
+  const v = store.getString(APPEARANCE_KEY);
   return v === 'light' || v === 'dark' ? v : 'system';
 };
 
@@ -22,6 +32,56 @@ export function applyAppearance(a: Appearance = getAppearance()) {
 }
 
 export function setAppearance(a: Appearance) {
-  store.set('appearance', a);
+  store.set(APPEARANCE_KEY, a);
   applyAppearance(a);
+}
+
+// createStalenessNudgeController
+const NUDGE_INTERVAL_MS = 250;
+const NUDGE_RETRIES = 4;
+let nudgeTimer: ReturnType<typeof setTimeout> | null = null;
+let nudgesLeft = 0;
+
+function onNudge() {
+  nudgeTimer = null;
+  if (getAppearance() !== 'system') return;
+  const scheme = PhoneAppearance.getColorScheme();
+  const colorScheme = scheme === 'light' || scheme === 'dark' ? scheme : null;
+  if (colorScheme == null || UnistylesRuntime.themeName === colorScheme) {
+    const name = UnistylesRuntime.themeName;
+    if (name) UnistylesRuntime.updateTheme(name, (t) => ({ ...t }));
+    return;
+  }
+  if (nudgesLeft <= 0) return;
+  nudgesLeft -= 1;
+  nudgeTimer = setTimeout(onNudge, NUDGE_INTERVAL_MS);
+}
+
+let guarded = false;
+export function initAppearanceStalenessGuard() {
+  if (guarded) return;
+  guarded = true;
+  PhoneAppearance.addChangeListener(() => {
+    if (getAppearance() !== 'system') return;
+    nudgesLeft = NUDGE_RETRIES;
+    if (nudgeTimer != null) clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(onNudge, NUDGE_INTERVAL_MS);
+  });
+}
+
+// haptics
+const hapticsListeners = new Set<() => void>();
+export const getIsHapticsEnabled = () => store.getBoolean(HAPTICS_KEY) !== false;
+export function setIsHapticsEnabled(on: boolean) {
+  store.set(HAPTICS_KEY, on);
+  hapticsListeners.forEach((l) => l());
+}
+const subscribeHaptics = (l: () => void) => {
+  hapticsListeners.add(l);
+  return () => { hapticsListeners.delete(l); };
+};
+export const useIsHapticsEnabled = () => useSyncExternalStore(subscribeHaptics, getIsHapticsEnabled, getIsHapticsEnabled);
+
+export function triggerImpactFeedback(style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) {
+  if (getIsHapticsEnabled()) Haptics.impactAsync(style).catch(() => undefined);
 }

@@ -35,6 +35,7 @@ import {
   Atlas, Blur, Canvas, FilterMode, Group, MipmapMode, Paint, RoundedRect, Skia, type SkImage, type SkRect, type SkRSXform,
 } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
+import { triggerImpactFeedback } from '../../lib/appearance';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -512,7 +513,7 @@ export function InfiniteCanvas(props: Props) {
   const handleLongPress = useCallback((fx: number, fy: number) => {
     const inst = hit(fx, fy);
     if (!inst) return;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    triggerImpactFeedback(Haptics.ImpactFeedbackStyle.Medium);
     cb.current.onLongPressElement(inst.element);
   }, [hit]);
 

@@ -1,14 +1,19 @@
-// The settings' parts (Cosmos' SettingsHeader, SettingsRow and buildSettingsListItems' groups; sizes as the web page has
-// them, 6.103 — Cosmos' are filled in at run time and were not read):
+// The settings' parts (Cosmos' SettingsHeader, SettingsRow and buildSettingsListItems' groups):
 //   - SettingsHeader: the way back, the title in the middle (headingMedium), something on the right (保存)
 //   - SettingsGroup: a label (captionPlus, tertiary, 8 over the rows) and its rows on elevated, borderRadius.md, a
-//     hairline between them; SettingsRow: 52 high, 16 in, the label (large), a value (regular, tertiary) and a chevron
+//     hairline between them (the web page's, 6.103)
+//   - SettingsRow (module 3384, its styles read from the third restore): spacing.md all round; on the left the Icon
+//     (22, primary) and the title (regularPlus, primary) sm apart; on the right, xs apart, a pill (pillLabel:
+//     surfaceInverted, captionPlus in the background's colour, sm × 6, round), a status (statusLabel: 2 up, muted =
+//     regular tertiary, alert = regularPlus alert) and the chevron (20, tertiary, at 0.7) unless hideChevron; pressed
+//     it is a CustomPressable
 //   - Field: a label (captionPlus, tertiary) over an input on elevated, borderRadius.md, 16 in, 48 high
 import { useNavigation } from '@react-navigation/native';
 import { Children, isValidElement, type ReactNode } from 'react';
 import { Pressable, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { CustomPressable } from '../CustomPressable';
 import { HEADER_CONTENT_HEIGHT } from '../home/HomeHeader';
 import { ChevronLeftIcon, ChevronRightIcon } from '../icons';
 
@@ -48,19 +53,33 @@ export function SettingsGroup({ label, children }: { label?: string; children: R
   );
 }
 
-export function SettingsRow({ label, value, onPress, chevron = true, danger = false, note }: {
-  label: string; value?: string | null; onPress?: () => void; chevron?: boolean; danger?: boolean; note?: string;
+export function SettingsRow({ label, Icon, statusLabel, statusVariant = 'muted', pillLabel, onPress, chevron = true, danger = false, note }: {
+  label: string;
+  Icon?: (p: { color: string; size?: number }) => ReactNode;
+  statusLabel?: string | null;
+  statusVariant?: 'muted' | 'alert';
+  pillLabel?: string | null;
+  onPress?: () => void;
+  chevron?: boolean;
+  danger?: boolean; // sign out: the title in the alert colour
+  note?: string; // under the title (this app's server rows)
 }) {
   const { theme } = useUnistyles();
   return (
-    <Pressable style={({ pressed }) => [styles.row, pressed && onPress && styles.pressed]} onPress={onPress} disabled={!onPress} accessibilityRole="button">
-      <View style={styles.rowText}>
-        <Text style={[styles.rowLabel, danger && styles.danger]} numberOfLines={1}>{label}</Text>
-        {note ? <Text style={styles.note} numberOfLines={2}>{note}</Text> : null}
+    <CustomPressable style={styles.row} onPress={onPress} disabled={!onPress} accessibilityRole="button">
+      <View style={[styles.rowContent, styles.rowLeft]}>
+        {Icon ? <Icon color={danger ? theme.colors.alert : theme.colors.primary} size={22} /> : null}
+        <View style={styles.rowText}>
+          <Text style={[styles.rowLabel, danger && styles.danger]} numberOfLines={1}>{label}</Text>
+          {note ? <Text style={styles.note} numberOfLines={2}>{note}</Text> : null}
+        </View>
       </View>
-      {value ? <Text style={styles.value} numberOfLines={1}>{value}</Text> : null}
-      {chevron && onPress ? <ChevronRightIcon color={theme.colors.tertiary} size={20} /> : null}
-    </Pressable>
+      <View style={[styles.rowContent, styles.rowRight]}>
+        {pillLabel ? <View style={styles.pill}><Text style={styles.pillText}>{pillLabel}</Text></View> : null}
+        {statusLabel ? <Text style={[styles.status, statusVariant === 'alert' ? styles.statusAlert : styles.statusMuted]} numberOfLines={1}>{statusLabel}</Text> : null}
+        {chevron && onPress ? <View style={styles.chevron}><ChevronRightIcon color={theme.colors.tertiary} size={20} /></View> : null}
+      </View>
+    </CustomPressable>
   );
 }
 
@@ -90,12 +109,19 @@ const styles = StyleSheet.create((theme) => ({
   label: { ...theme.typography.captionPlus, color: theme.colors.tertiary, marginBottom: theme.spacing.xs },
   rows: { borderRadius: theme.borderRadius.md, overflow: 'hidden', backgroundColor: theme.colors.elevated },
   divider: { borderTopWidth: 1, borderTopColor: theme.colors.background },
-  row: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, minHeight: 52, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs },
-  pressed: { opacity: 0.6 },
-  rowText: { flex: 1, minWidth: 0 },
-  rowLabel: { ...theme.typography.large, color: theme.colors.primary },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: theme.spacing.md, width: '100%' },
+  rowContent: { flexDirection: 'row', alignItems: 'center' },
+  rowLeft: { gap: theme.spacing.sm, flex: 1, minWidth: 0 },
+  rowRight: { gap: theme.spacing.xs, flexShrink: 1, marginLeft: theme.spacing.xs },
+  rowText: { flexShrink: 1, minWidth: 0 },
+  rowLabel: { ...theme.typography.regularPlus, color: theme.colors.primary },
   note: { ...theme.typography.caption, color: theme.colors.tertiary, marginTop: 2 },
-  value: { ...theme.typography.regular, color: theme.colors.tertiary, flexShrink: 1 },
+  chevron: { opacity: 0.7 },
+  pill: { paddingHorizontal: theme.spacing.sm, paddingVertical: 6, borderRadius: theme.borderRadius.full, backgroundColor: theme.colors.surfaceInverted },
+  pillText: { ...theme.typography.captionPlus, color: theme.colors.background },
+  status: { marginTop: -2, flexShrink: 1 },
+  statusMuted: { ...theme.typography.regular, color: theme.colors.tertiary },
+  statusAlert: { ...theme.typography.regularPlus, color: theme.colors.alert },
   danger: { color: theme.colors.alert },
   field: { marginTop: theme.spacing.md },
   input: {

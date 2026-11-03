@@ -14,6 +14,7 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { triggerImpactFeedback } from '../../lib/appearance';
 import { Image } from 'expo-image';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet as RNStyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -72,7 +73,7 @@ export function OrganizeClusterScreen() {
     const index = orderRef.current.findIndex((e) => e.id === el.id);
     const layout = index >= 0 ? listRef.current?.getLayout(index) : undefined;
     if (!layout) return;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    triggerImpactFeedback(Haptics.ImpactFeedbackStyle.Medium);
     tx.set(0);
     ty.set(0);
     setDrag({

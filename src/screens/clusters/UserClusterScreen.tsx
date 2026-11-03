@@ -1,30 +1,34 @@
 // Cosmos' UserClusterScreen (module 3262): a collection.
 //   - a header row HEADER_CONTENT_HEIGHT (64) high under the status bar with the way back
-//   - ClusterBodyPager's two pages, one over the other: the collection (UserClusterHeader over ClusterElementGrid,
-//     CollectionOwn) and its similar elements (ClusterSimilarElementsGrid, ClusterRecommendations, asked for the first
-//     time 相似 is pressed). Going to the similar page the collection rises by PAGE_DISTANCE (64) and fades while the
-//     similar page comes up the same way, PAGE_TRANSITION_DURATION_MS (280); there the bar is a scroll-to-top (black,
-//     round): pressed it scrolls the similar page up, or at the top goes back to the collection
+//   - ClusterBodyPager's two pages, the pager's height each, one under the other with a 64 gap: the collection
+//     (UserClusterHeader over ClusterElementGrid, CollectionOwn) and its similar elements (ClusterSimilarElementsGrid,
+//     ClusterRecommendations, asked for the first time 相似 is pressed). Going to the similar page the whole stack
+//     moves up by the pager's height + 64 while the collection fades out, PAGE_TRANSITION_DURATION_MS (280); there the
+//     bar is a scroll-to-top (black, round): pressed it scrolls the similar page up, or at the top goes back to the
+//     collection. Pulled down at its top (useSimilarPageReturnGesture) the stack follows the finger and goes back to
+//     the collection past EDGE_DRAG_COMPLETE_DISTANCE, or past EDGE_DRAG_VELOCITY_MIN_DISTANCE fast enough
 //   - the bar (useClusterActionBarState): one's own or one worked on gets 整理 / 添加 / 相似 / 分享, anyone else's 看相似
 //     - 整理: OrganizeClusterScreen; 添加: the create sheet (照片 / 链接 / 笔记 made in here; 创建子集合, inside it for its
 //       owner at the top level; sub-collections here go one level deep, so elsewhere it makes a top-level one)
 //     - 分享: the system's share with the collection's address on the computer (Cosmos opens its share sheet)
 //   - empty: one's own 建议要素 · 开始策划您的收藏 (Cosmos shows suggested elements under it), anyone else's
 //     无元素 · 该集合为空; no similar ones: 没有相似元素 · 稍后再来查看。
-// The values of ClusterBodyPager's constants are read in order (64, 280, 6, 96, 56, 1000, 16) and matched to their
-// names by how they are used: near. The header's 更多 opens the collection's menu (ClusterMenuSheet). Not here yet:
-// pulling down at the top of the similar page to go back.
+// ClusterBodyPager's constants are named by its worklets' sources (Cosmos\source, the third restore); the 64 is the
+// pages' gap (pageGap, pagesContainer 2 × height + 64, pageDistance height + 64). The header's 更多 opens the
+// collection's menu (ClusterMenuSheet).
 // The header's search (UserClusterSearchOverlay): the search button left of 更多 turns the header into the field with
 // the collection's badge and 取消, its results over the collection (components/clusters/UserClusterSearch.tsx).
 import { useFocusEffect, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import type { FlashListRef } from '@shopify/flash-list';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, Text, useWindowDimensions, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { clamp, Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { BAR_BOTTOM_OFFSET, BAR_RETAINED_UNDER_ELEMENT_VIEWER_SCREENS, TAB_BAR_HOME_HEIGHT } from '../../components/bar/constants';
-import { ClusterElementGrid } from '../../components/clusters/ClusterElementGrid';
+import { ClusterElementGrid, TOP_OFFSET_THRESHOLD } from '../../components/clusters/ClusterElementGrid';
 import type { Collection } from '../../components/clusters/CollectionCard';
 import { UserClusterHeader, type ClusterDetail } from '../../components/clusters/UserClusterHeader';
 import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
@@ -37,7 +41,6 @@ import { useCreateSheetStore } from '../../components/sheets/CreateSheets';
 import { onUploadDone } from '../../lib/uploads';
 import { useBarState } from '../../hooks/useBarState';
 import { SIMILAR_PAGE_SIZE } from '../../hooks/useSimilarElements';
-import { SCROLL_AT_TOP_THRESHOLD } from '../../hooks/useTabReselect';
 import { usePagedList } from '../../hooks/usePagedList';
 import { get } from '../../lib/api';
 import { takeClusterChanged } from '../../lib/clusterChanges';
@@ -48,8 +51,15 @@ import { Routes } from '../../navigation/routes';
 import type { BarActiveState } from '../../stores/useBarStore';
 import { useSessionStore } from '../../stores/useSessionStore';
 
-const PAGE_DISTANCE = 64;
+// ClusterBodyPager (module 3263)
+const PAGE_GAP = 64;
 const PAGE_TRANSITION_DURATION_MS = 280;
+const EDGE_DRAG_DECISION_DISTANCE = 6;
+const EDGE_DRAG_COMPLETE_DISTANCE = 96;
+const EDGE_DRAG_VELOCITY_MIN_DISTANCE = 56;
+const EDGE_DRAG_COMPLETE_VELOCITY = 1000;
+const EDGE_DRAG_HORIZONTAL_FAIL_DISTANCE = 16;
+const PAGE_PROGRESS = { collection: 0, similar: 1 } as const;
 const ELEMENTS_PAGE_SIZE = 40;
 const NO_BAR: BarActiveState = { type: 'default' };
 const RETAINED_UNDER_VIEWER = { retainOnBlurForScreens: BAR_RETAINED_UNDER_ELEMENT_VIEWER_SCREENS };
@@ -106,21 +116,68 @@ export function UserClusterScreen() {
 
   useEffect(() => onUploadDone((id) => { if (id === clusterId) { void load(); void elementsRef.current.refresh(); } }), [clusterId, load]);
 
-  // ---------- the two pages ----------
-  const progress = useSharedValue(0);
-  useEffect(() => { progress.set(withTiming(similarOn ? 1 : 0, { duration: PAGE_TRANSITION_DURATION_MS })); }, [similarOn, progress]);
-  const collectionStyle = useAnimatedStyle(() => ({
-    opacity: 1 - progress.get(),
-    transform: [{ translateY: -progress.get() * PAGE_DISTANCE }],
-  }));
-  const similarStyle = useAnimatedStyle(() => ({
-    opacity: progress.get(),
-    transform: [{ translateY: (1 - progress.get()) * PAGE_DISTANCE }],
-  }));
+  // ---------- the two pages (ClusterBodyPager) ----------
+  const [pagerHeight, setPagerHeight] = useState(0);
+  const pageDistance = pagerHeight + PAGE_GAP;
+  const progress = useSharedValue<number>(PAGE_PROGRESS.collection);
+  useEffect(() => {
+    progress.set(withTiming(similarOn ? PAGE_PROGRESS.similar : PAGE_PROGRESS.collection, { duration: PAGE_TRANSITION_DURATION_MS }));
+  }, [similarOn, progress]);
+  const stackStyle = useAnimatedStyle(() => ({ transform: [{ translateY: -progress.get() * pageDistance }] }));
+  const collectionStyle = useAnimatedStyle(() => ({ opacity: interpolate(progress.get(), [0, 1], [1, 0], Extrapolation.CLAMP) }));
   const toggleSimilar = useCallback(() => {
     setSimilarAsked(true);
     setSimilarOn((on) => !on);
   }, []);
+  // useSimilarPageReturnGesture: a pull down that starts at the similar page's top takes it back to the collection
+  const [similarAtTop, setSimilarAtTop] = useState(true);
+  const hasDragDecision = useSharedValue(false);
+  const dragDidEnd = useSharedValue(true);
+  const dragStartX = useSharedValue(0);
+  const dragStartY = useSharedValue(0);
+  const returnToCollection = useCallback(() => setSimilarOn(false), []);
+  const returnGesture = useMemo(() => Gesture.Pan()
+    .enabled(similarOn && pageDistance > PAGE_GAP)
+    .manualActivation(true)
+    .maxPointers(1)
+    .onTouchesDown((e, state) => {
+      const touch = e.changedTouches[0];
+      dragStartX.set(touch?.x ?? 0);
+      dragStartY.set(touch?.y ?? 0);
+      hasDragDecision.set(false);
+      state.begin();
+    })
+    .onTouchesMove((e, state) => {
+      if (hasDragDecision.get()) return;
+      const touch = e.changedTouches[0];
+      if (touch == null) return;
+      const deltaX = touch.x - dragStartX.get();
+      const deltaY = touch.y - dragStartY.get();
+      if (Math.abs(deltaX) < EDGE_DRAG_DECISION_DISTANCE && Math.abs(deltaY) < EDGE_DRAG_DECISION_DISTANCE) return;
+      hasDragDecision.set(true);
+      const isVerticalPull = Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaX) <= EDGE_DRAG_HORIZONTAL_FAIL_DISTANCE;
+      if (isVerticalPull && deltaY > 0 && similarAtTop) state.activate();
+      else state.fail();
+    })
+    .onStart(() => { dragDidEnd.set(false); })
+    .onUpdate((e) => { progress.set(clamp(1 - e.translationY / pageDistance, 0, 1)); })
+    .onEnd((e) => {
+      dragDidEnd.set(true);
+      const shouldReturn = e.translationY >= EDGE_DRAG_COMPLETE_DISTANCE
+        || (e.translationY >= EDGE_DRAG_VELOCITY_MIN_DISTANCE && e.velocityY >= EDGE_DRAG_COMPLETE_VELOCITY);
+      if (shouldReturn) {
+        progress.set(withTiming(PAGE_PROGRESS.collection, { duration: PAGE_TRANSITION_DURATION_MS }));
+        scheduleOnRN(returnToCollection);
+        return;
+      }
+      progress.set(withTiming(PAGE_PROGRESS.similar, { duration: PAGE_TRANSITION_DURATION_MS }));
+    })
+    .onFinalize(() => {
+      hasDragDecision.set(false);
+      if (dragDidEnd.get()) return;
+      dragDidEnd.set(true);
+      progress.set(withTiming(PAGE_PROGRESS.similar, { duration: PAGE_TRANSITION_DURATION_MS }));
+    }), [similarOn, pageDistance, similarAtTop, progress, hasDragDecision, dragDidEnd, dragStartX, dragStartY, returnToCollection]);
 
   // ---------- the bar ----------
   // useClusterActionBarState: one's own or one worked on gets the actions, anyone else's 看相似; kept under the viewer
@@ -150,7 +207,7 @@ export function UserClusterScreen() {
     type: 'scroll-to-top',
     onPress: () => {
       const list = similarList.current;
-      if (list && list.getAbsoluteLastScrollOffset() > SCROLL_AT_TOP_THRESHOLD) list.scrollToOffset({ offset: 0, animated: true });
+      if (list && list.getAbsoluteLastScrollOffset() > TOP_OFFSET_THRESHOLD) list.scrollToOffset({ offset: 0, animated: true });
       else setSimilarOn(false);
     },
   }), []);
@@ -175,8 +232,10 @@ export function UserClusterScreen() {
   return (
     <View style={styles.screen}>
       {cluster ? (
-        <>
-          <Animated.View style={[styles.page, collectionStyle]} pointerEvents={similarOn ? 'none' : 'auto'}>
+        <View style={styles.pager} onLayout={(e) => setPagerHeight(e.nativeEvent.layout.height)}>
+          <GestureDetector gesture={returnGesture}>
+          <Animated.View style={[{ height: pagerHeight * 2 + PAGE_GAP }, stackStyle]}>
+          <Animated.View collapsable={false} style={[{ height: pagerHeight }, collectionStyle]} pointerEvents={similarOn ? 'none' : 'auto'}>
             <GridVideosShown.Provider value={!similarOn}>
               <ClusterElementGrid
                 list={elements}
@@ -201,8 +260,9 @@ export function UserClusterScreen() {
               />
             </GridVideosShown.Provider>
           </Animated.View>
-          {similarAsked ? (
-            <Animated.View style={[styles.page, similarStyle]} pointerEvents={similarOn ? 'auto' : 'none'}>
+          <View pointerEvents="none" style={{ height: PAGE_GAP }} />
+          <View collapsable={false} style={{ height: pagerHeight }} pointerEvents={similarOn ? 'auto' : 'none'}>
+            {similarAsked ? (
               <GridVideosShown.Provider value={similarOn}>
                 <ClusterElementGrid
                   list={similar}
@@ -211,11 +271,14 @@ export function UserClusterScreen() {
                   topInset={topInset + DEFAULT_GRID_GAP}
                   bottomInset={bottomInset}
                   empty={{ title: '没有相似元素', hint: '稍后再来查看。' }}
+                  onTopStateChange={setSimilarAtTop}
                 />
               </GridVideosShown.Provider>
-            </Animated.View>
-          ) : null}
-        </>
+            ) : null}
+          </View>
+          </Animated.View>
+          </GestureDetector>
+        </View>
       ) : (
         <View style={[styles.center, { paddingTop: topInset }]}>
           {failed ? <Text style={styles.failed}>打不开这个收藏夹</Text> : <ActivityIndicator color={theme.colors.tertiary} />}
@@ -250,7 +313,7 @@ export function UserClusterScreen() {
 
 const styles = StyleSheet.create((theme) => ({
   screen: { flex: 1, backgroundColor: theme.colors.background },
-  page: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
+  pager: { flex: 1, overflow: 'hidden' },
   center: { flex: 1, alignItems: 'center', paddingHorizontal: theme.spacing.md },
   failed: { ...theme.typography.regular, color: theme.colors.tertiary, marginTop: theme.spacing.xxxxl },
   header: {

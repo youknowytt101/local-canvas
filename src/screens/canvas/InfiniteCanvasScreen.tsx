@@ -22,6 +22,7 @@
 //     the person's choice, HANDOFF 6.178), else with the 'fade' animation
 import { useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { triggerImpactFeedback } from '../../lib/appearance';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, Share, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -184,13 +185,13 @@ export function InfiniteCanvasScreen() {
 
   // ---------- what a card does ----------
   const onFocusElement = useCallback(({ element, sourceIndex }: { element: Element; elementIndex: number; sourceIndex: number }) => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    triggerImpactFeedback(Haptics.ImpactFeedbackStyle.Medium);
     pushHistory(element, sourceIndex);
     void loadSeed(element, { sourceIndex, insertIndex: sourceIndex, useCache: false, focusAfterLoad: false });
   }, [loadSeed]);
   const onHistoryPress = useCallback((item: SeedHistoryItem) => {
     if (item.elementId === similarRef.current?.seed.id) return;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    triggerImpactFeedback(Haptics.ImpactFeedbackStyle.Medium);
     void loadSeed(item.element, { sourceIndex: 0, insertIndex: 0, useCache: true, focusAfterLoad: true });
   }, [loadSeed]);
   const onOpenElement = useCallback((element: Element) => {

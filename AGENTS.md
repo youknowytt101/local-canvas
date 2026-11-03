@@ -11,7 +11,7 @@
 ## 规矩
 
 - **技术栈照 Cosmos，不照 Expo 模板**：导航是 React Navigation（RootNavigator → MainNavigator → BottomTabNavigator，每个标签一个原生页面栈，底部胶囊 DynamicBar 画在最外层），不是 Expo Router；样式用 react-native-unistyles 3；状态用 zustand；视频用 expo-video（用户 2026-11-02 定的偏离：Cosmos 用 react-native-video 7，但它还是 beta、要靠补丁绕 bug；不要打补丁，见 cosmos-lite HANDOFF 6.175）；存储用 react-native-mmkv 4 + expo-secure-store。
-- **先读 Cosmos 再写**：反编译出的源码在 `E:\cosmos-projects\Cosmos\restored\src`（另有 `analysis\04-modules\modules\<id>.js`）。数值、文案照它；照不了的地方写清楚是“近似”，记进 cosmos-lite 的 `HANDOFF.md`。
+- **先读 Cosmos 再写**：反编译出的源码在 `E:\cosmos-projects\Cosmos\source\src`（第三轮还原：结构化的 if / 循环，函数名、导入导出是原名；旧的 `restored\src` 有 hermes-dec 翻译错误，已删）。只有常量的模块不在里面（写成 `from "library:1747"`），去 `analysis\04-modules-v7\modules\<id>.js` 读；负数可能显示成大整数（`4294967294` 是 −2）。数值、文案照它；照不了的地方写清楚是“近似”，记进 cosmos-lite 的 `HANDOFF.md`。
 - **这是公开仓库**：不放 Cosmos Oracle 字体文件（商业字体，运行时从电脑服务的 `/public/fonts/` 加载）、不复制反编译原文件和 `zh.json`。
 - **不打补丁**：库的 bug 不用 patch-package 绕（用户 2026-11-02：“我要在根本上解决”），换合适的库或从用法上解决。
 - **原生目录是生成的**：`ios/`、`android/` 由 `npx expo prebuild` 生成，别手改；原生配置写在 `app.json` 和配置插件里。

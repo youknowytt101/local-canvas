@@ -5,7 +5,7 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';
 import { useCallback, useRef, type ReactElement } from 'react';
-import { ActivityIndicator, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Text, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { usePagedList } from '../../hooks/usePagedList';
 import { FEED_IMAGE_SCALE, type Element } from '../../lib/elements';
@@ -15,6 +15,8 @@ import { ElementTile } from '../elements/ElementTile';
 import { DEFAULT_GRID_GAP } from '../home/ForYouFeed';
 
 const NUM_COLUMNS = 2;
+// ClusterSimilarElementsGrid: scrolled at most this far it is at its top (isScrolledToTop, onTopStateChange)
+export const TOP_OFFSET_THRESHOLD = 8;
 
 type Props = {
   list: ReturnType<typeof usePagedList<Element>>;
@@ -25,9 +27,10 @@ type Props = {
   empty?: { title: string; hint: string } | null; // none: nothing when there are none
   topInset: number;
   bottomInset: number;
+  onTopStateChange?: (atTop: boolean) => void; // the similar grid: told when it comes to or leaves its top
 };
 
-export function ClusterElementGrid({ list, listRef, source, removeFrom, header, empty, topInset, bottomInset }: Props) {
+export function ClusterElementGrid({ list, listRef, source, removeFrom, header, empty, topInset, bottomInset, onTopStateChange }: Props) {
   const { theme } = useUnistyles();
   const { width, height } = useWindowDimensions();
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -48,6 +51,13 @@ export function ClusterElementGrid({ list, listRef, source, removeFrom, header, 
     </View>
   ), [tileWidth, onPress]);
   const none = list.items.length === 0;
+  const atTop = useRef(true);
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    noteGridMoved();
+    if (!onTopStateChange) return;
+    const top = e.nativeEvent.contentOffset.y <= TOP_OFFSET_THRESHOLD;
+    if (top !== atTop.current) { atTop.current = top; onTopStateChange(top); }
+  }, [onTopStateChange]);
   return (
     <FlashList
       ref={listRef}
@@ -58,8 +68,8 @@ export function ClusterElementGrid({ list, listRef, source, removeFrom, header, 
       renderItem={renderItem}
       onEndReached={list.loadMore}
       onEndReachedThreshold={1}
-      onScroll={noteGridMoved}
-      scrollEventThrottle={100}
+      onScroll={onScroll}
+      scrollEventThrottle={onTopStateChange ? 16 : 100}
       drawDistance={height}
       style={styles.list}
       contentContainerStyle={{ paddingTop: topInset, paddingHorizontal: DEFAULT_GRID_GAP / 2, paddingBottom: bottomInset }}

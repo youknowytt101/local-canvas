@@ -4,6 +4,7 @@
 // " · <owner> 的"; one pinned to the profile has PinIcon 16 (tertiary) before the count, spacing.xxs from it.
 // Pressed it scales as PressScaleContainer does on a long press only (0.975 in 70 ms, back with a 220 ms spring).
 import * as Haptics from 'expo-haptics';
+import { triggerImpactFeedback } from '../../lib/appearance';
 import { Image } from 'expo-image';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
@@ -32,7 +33,7 @@ export function CollectionCard({ collection: c, width, onPress, onLongPress }: {
     <Pressable
       onPress={onPress}
       onLongPress={() => {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        triggerImpactFeedback(Haptics.ImpactFeedbackStyle.Light);
         scale.set(withSequence(withTiming(0.975, { duration: 70 }), withSpring(1, { duration: 220, dampingRatio: 0.8 })));
         onLongPress?.();
       }}

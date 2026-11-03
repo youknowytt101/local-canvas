@@ -192,7 +192,7 @@ export function AccountDetailsScreen() {
               onChangeText={(v) => setForm((f) => ({ ...f, countryCode: v }))} />
             <FormError text={error} />
             <SettingsGroup>
-              <SettingsRow label="更新密码" value={me.hasPassword ? null : '未设置'} onPress={() => navigation.navigate(Routes.UPDATE_PASSWORD)} />
+              <SettingsRow label="更新密码" statusLabel={me.hasPassword ? null : '未设置'} onPress={() => navigation.navigate(Routes.UPDATE_PASSWORD)} />
             </SettingsGroup>
           </>
         ) : error ? <FormError text={error} /> : <ActivityIndicator style={styles.loading} />}
