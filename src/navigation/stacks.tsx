@@ -6,6 +6,7 @@
 // their followers (ProfileConnections) and search (ProfileSearch) are here, the others
 // are added in their steps. Each page is laid out in a StackPage (Android: the pages that cannot be seen under a run of
 // viewers are not drawn, HANDOFF 6.183).
+import { LanguageScreen } from '../screens/settings/LanguageScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OrganizeClusterScreen } from '../screens/clusters/OrganizeClusterScreen';
 import { UserClusterScreen } from '../screens/clusters/UserClusterScreen';
@@ -143,6 +144,7 @@ export function SettingsNavigator() {
       <SettingsStack.Screen name={Routes.UPDATE_PASSWORD} component={UpdatePasswordScreen} />
       <SettingsStack.Screen name={Routes.CONTENT_FILTERING} component={ContentFilteringScreen} />
       <SettingsStack.Screen name={Routes.BLOCKED_ACCOUNTS} component={BlockedAccountsScreen} />
+      <SettingsStack.Screen name={Routes.LANGUAGE} component={LanguageScreen} />
       <SettingsStack.Screen name={Routes.ALL_ELEMENTS} component={AllElementsScreen} />
       <SettingsStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <SettingsStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />

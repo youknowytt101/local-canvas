@@ -21,6 +21,7 @@ export type ProfileUser = {
   id: string; username: string; fullName?: string; bio?: string; websiteUrl?: string; avatarUrl?: string | null;
   socialLinks?: Partial<Record<SocialPlatform, string>>;
   statistics?: { numberOfElements: number; numberOfClusters: number; numberOfFollowers: number; numberOfFollowing: number };
+  verifiedProfile?: { name?: string; coverImage?: { url: string } | null } | null;
 };
 
 const SOCIAL_URL: Record<SocialPlatform, (v: string) => string> = {
@@ -49,6 +50,15 @@ type Props = {
   onCreate?: () => void; onEdit?: () => void; onFollowers?: () => void; onFollowing?: () => void;
 };
 
+// the profile's social buttons, in Cosmos' order, and the website: [platform or 网站, where it goes]
+export const profileSocialLinks = (user: Pick<ProfileUser, 'socialLinks' | 'websiteUrl'>): [string, string][] => {
+  const site = user.websiteUrl ? linkOf(user.websiteUrl) : null;
+  return [
+    ...(['instagram', 'x', 'tiktok', 'spotify'] as SocialPlatform[]).filter((k) => user.socialLinks?.[k]).map((k): [string, string] => [k, SOCIAL_URL[k](user.socialLinks![k]!)]),
+    ...(site ? [['网站', site] as [string, string]] : []),
+  ];
+};
+
 export function ProfileInfo({ user, isMe = true, isFollowed, onFollow, onCreate, onEdit, onFollowers, onFollowing }: Props) {
   const { theme } = useUnistyles();
   const st = user.statistics;
@@ -58,11 +68,9 @@ export function ProfileInfo({ user, isMe = true, isFollowed, onFollow, onCreate,
     get<{ items: ProfileUser[] }>(`/api/users/${encodeURIComponent(user.id)}/followers`).then((r) => setFaces(r.items.slice(0, 3)), () => undefined);
   }, [user.id, st?.numberOfFollowers]);
   const site = user.websiteUrl ? linkOf(user.websiteUrl) : null;
-  const socials: [string, string, React.ReactNode][] = [
-    ...(['instagram', 'x', 'tiktok', 'spotify'] as SocialPlatform[]).filter((k) => user.socialLinks?.[k])
-      .map((k) => [k, SOCIAL_URL[k](user.socialLinks![k]!), <SocialIcon key={k} platform={k} color={theme.colors.primary} />] as [string, string, React.ReactNode]),
-    ...(site ? [['网站', site, <GlobalIcon key="site" color={theme.colors.primary} />] as [string, string, React.ReactNode]] : []),
-  ];
+  const socials: [string, string, React.ReactNode][] = profileSocialLinks(user).map(([k, href]) => [
+    k, href, k === '网站' ? <GlobalIcon key="site" color={theme.colors.primary} /> : <SocialIcon key={k} platform={k as SocialPlatform} color={theme.colors.primary} />,
+  ]);
   return (
     <View style={styles.container}>
       <View style={styles.identity}>

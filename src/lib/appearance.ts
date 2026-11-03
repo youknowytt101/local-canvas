@@ -18,6 +18,7 @@ const store = createMMKV({ id: 'app-settings' });
 const APPEARANCE_KEY = 'appearance';
 const HAPTICS_KEY = 'hapticsEnabled';
 const INTRO_KEY = 'hasSeenIntro';
+const LANGUAGE_KEY = 'appLanguage';
 
 export const getAppearance = (): Appearance => {
   const v = store.getString(APPEARANCE_KEY);
@@ -69,6 +70,34 @@ export function initAppearanceStalenessGuard() {
     nudgeTimer = setTimeout(onNudge, NUDGE_INTERVAL_MS);
   });
 }
+
+// the language chosen on LanguageScreen (Cosmos' getSupportedLanguageByCode, in its order): remembered and shown, nothing
+// more; the app's words stay Chinese (the person's choice, HANDOFF 6.190)
+export type SupportedLanguage = { code: string; nativeLabel: string; englishLabel: string };
+export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
+  { code: 'en', nativeLabel: 'English', englishLabel: 'English' },
+  { code: 'ja', nativeLabel: '日本語', englishLabel: 'Japanese' },
+  { code: 'ko', nativeLabel: '한국어', englishLabel: 'Korean' },
+  { code: 'es', nativeLabel: 'Español', englishLabel: 'Spanish' },
+  { code: 'pt', nativeLabel: 'Português', englishLabel: 'Portuguese' },
+  { code: 'fr', nativeLabel: 'Français', englishLabel: 'French' },
+  { code: 'it', nativeLabel: 'Italiano', englishLabel: 'Italian' },
+  { code: 'de', nativeLabel: 'Deutsch', englishLabel: 'German' },
+  { code: 'nl', nativeLabel: 'Nederlands', englishLabel: 'Dutch' },
+  { code: 'zh', nativeLabel: '中文', englishLabel: 'Chinese' },
+  { code: 'vi', nativeLabel: 'Tiếng Việt', englishLabel: 'Vietnamese' },
+];
+const languageListeners = new Set<() => void>();
+const getAppLanguage = () => store.getString(LANGUAGE_KEY) ?? 'zh';
+export function setAppLanguage(code: string) {
+  store.set(LANGUAGE_KEY, code);
+  languageListeners.forEach((l) => l());
+}
+const subscribeLanguage = (l: () => void) => {
+  languageListeners.add(l);
+  return () => { languageListeners.delete(l); };
+};
+export const useAppLanguage = () => useSyncExternalStore(subscribeLanguage, getAppLanguage, getAppLanguage);
 
 // haptics
 const hapticsListeners = new Set<() => void>();

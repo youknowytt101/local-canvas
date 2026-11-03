@@ -5,7 +5,7 @@
 //   - 一般 (settings.general): 账户详情 (GearIcon, AccountDetails, 更新密码 inside), 内容过滤 (EyeOffIcon,
 //     ContentFiltering)
 //   - 其他 (settings.other), in useSettingsOptions' order: 外观 (FilterIcon, its choice as a muted status;
-//     AppearanceSheet: 系统 / 浅色 / 深色), 触觉 (VoiceIcon, 开 / 关 as a muted status; HapticsSheet), 已屏蔽账号
+//     AppearanceSheet: 系统 / 浅色 / 深色), 语言 (GlobalIcon, LanguageScreen), 触觉 (VoiceIcon, 开 / 关 as a muted status; HapticsSheet), 已屏蔽账号
 //     (BlockedUserIcon, BlockedAccounts); both kept on the phone (lib/appearance)
 //   - 登出 (SignOutIcon; settings.signOutConfirmTitle / Message, then sign out), the version under it
 // Not in Cosmos, kept for this app (it reaches the computer's cosmos-lite): 电脑上的服务 — the address, 重试 when it
@@ -21,13 +21,14 @@ import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
-import { BlockedUserIcon, CheckIcon, ChevronRightIcon, DarkAppearanceIcon, EyeOffIcon, FilterIcon, GearIcon, LightAppearanceIcon, SignOutIcon, SystemAppearanceIcon, VoiceIcon } from '../../components/icons';
+import { BlockedUserIcon, CheckIcon, ChevronRightIcon, DarkAppearanceIcon, EyeOffIcon, FilterIcon, GearIcon, GlobeIcon, LightAppearanceIcon, SignOutIcon, SystemAppearanceIcon, VerifiedProfileIcon, VoiceIcon } from '../../components/icons';
 import { Avatar } from '../../components/profile/ProfileInfo';
 import { SettingsGroup, SettingsHeader, SettingsRow } from '../../components/settings/SettingsParts';
 import { SheetGrabber } from '../../components/sheets/SheetGrabber';
-import { get } from '../../lib/api';
+import { api, get } from '../../lib/api';
+import { showToast } from '../../stores/useToastStore';
 import type { Element } from '../../lib/elements';
-import { APPEARANCES, getAppearance, setAppearance, setIsHapticsEnabled, useIsHapticsEnabled, type Appearance } from '../../lib/appearance';
+import { APPEARANCES, getAppearance, setAppearance, setIsHapticsEnabled, SUPPORTED_LANGUAGES, useAppLanguage, useIsHapticsEnabled, type Appearance } from '../../lib/appearance';
 import { absoluteUrl, serverUrl } from '../../lib/server';
 import { Routes } from '../../navigation/routes';
 import { useSessionStore } from '../../stores/useSessionStore';
@@ -61,6 +62,20 @@ export function SettingsScreen() {
     void TrueSheet.dismiss(APPEARANCE_SHEET).catch(() => undefined);
   };
   const hapticsOn = useIsHapticsEnabled();
+  const language = useAppLanguage();
+  // not Cosmos': the local verified mark on one's own account (others': their profile's menu)
+  const isAdmin = useSessionStore((x) => x.me?.adminRole === 'ADMIN');
+  const myVerified = useSessionStore((x) => !!x.me?.verifiedProfile);
+  const toggleMyVerified = async () => {
+    const me = useSessionStore.getState().me;
+    if (!me) return;
+    try {
+      const v = await api<{ verifiedProfile?: { name?: string } | null }>(myVerified ? 'DELETE' : 'POST', `/api/users/${encodeURIComponent(me.id)}/verified-profile`);
+      useSessionStore.setState({ me: { ...me, verifiedProfile: v.verifiedProfile ?? null } });
+    } catch (e) {
+      showToast({ text: e instanceof Error ? e.message : '操作失败' });
+    }
+  };
   const chooseHaptics = (on: boolean) => {
     setIsHapticsEnabled(on);
     void TrueSheet.dismiss(HAPTICS_SHEET).catch(() => undefined);
@@ -103,9 +118,11 @@ export function SettingsScreen() {
         <SettingsGroup label="其他">
           <SettingsRow Icon={FilterIcon} label="外观" statusLabel={APPEARANCES.find(([v]) => v === appearance)?.[1]}
             onPress={() => void TrueSheet.present(APPEARANCE_SHEET).catch(() => undefined)} />
+          <SettingsRow Icon={GlobeIcon} label="语言" statusLabel={SUPPORTED_LANGUAGES.find((l) => l.code === language)?.nativeLabel} onPress={() => go(Routes.LANGUAGE)} />
           <SettingsRow Icon={VoiceIcon} label="触觉" statusLabel={hapticsOn ? '开' : '关'}
             onPress={() => void TrueSheet.present(HAPTICS_SHEET).catch(() => undefined)} />
           <SettingsRow Icon={BlockedUserIcon} label="已屏蔽账号" onPress={() => go(Routes.BLOCKED_ACCOUNTS)} />
+          {isAdmin ? <SettingsRow Icon={VerifiedProfileIcon} label={myVerified ? '取消我的认证' : '把我设为认证账户'} onPress={() => void toggleMyVerified()} /> : null}
         </SettingsGroup>
         <SettingsGroup label="电脑上的服务">
           <SettingsRow label={serverUrl() ?? ''} note={offline ? '连不上电脑上的服务' : undefined} chevron={false} />

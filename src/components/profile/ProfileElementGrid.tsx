@@ -22,10 +22,11 @@ const NUM_COLUMNS = 2;
 
 type Props = ProfileListProps & {
   list: ReturnType<typeof usePagedList<Element>>;
+  listHeader?: React.ReactElement; // over the grid (VerifiedProfileView's overview)
   listRef: React.RefObject<FlashListRef<Element> | null>;
 };
 
-export function ProfileElementGrid({ list, listRef, headerHeight, headerScrollMax, viewport, bottomInset, onScroll, isMe, refreshing, onRefresh }: Props) {
+export function ProfileElementGrid({ listHeader, list, listRef, headerHeight, headerScrollMax, viewport, bottomInset, onScroll, isMe, refreshing, onRefresh }: Props) {
   const { theme } = useUnistyles();
   const { width } = useWindowDimensions();
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -67,6 +68,7 @@ export function ProfileElementGrid({ list, listRef, headerHeight, headerScrollMa
       style={styles.list}
       contentContainerStyle={{ paddingTop: headerHeight + DEFAULT_GRID_GAP, paddingHorizontal: DEFAULT_GRID_GAP / 2, paddingBottom: bottomInset }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} progressViewOffset={headerHeight} tintColor={theme.colors.tertiary} />}
+      ListHeaderComponent={listHeader}
       ListEmptyComponent={
         list.loading ? <View style={styles.loading}><ActivityIndicator color={theme.colors.tertiary} /></View>
           : list.done ? (

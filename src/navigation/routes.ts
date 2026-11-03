@@ -33,6 +33,7 @@ export const Routes = {
   SELECT_CLUSTER_ELEMENTS: 'SelectClusterElements',
   ACCEPT_INVITE: 'AcceptInvite',
   GET_STARTED: 'GetStarted',
+  LANGUAGE: 'Language',
   CROP_PROFILE_PICTURE: 'CropProfilePicture',
   USER_PROFILE: 'UserProfile',
   PROFILE_CONNECTIONS: 'ProfileConnections',

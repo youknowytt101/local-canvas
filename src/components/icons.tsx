@@ -3,7 +3,7 @@
 // UserRound (lucide's; iOS' icon-avatar is a photo), PauseIcon, and QuadDotsIcon (the colour search's dots, Cosmos' Android
 // drawing; iOS' 24x24-grid is another icon, GridIcon).
 import type { StyleProp, ViewStyle } from 'react-native';
-import Svg, { Circle, Ellipse, Path } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, Stop } from 'react-native-svg';
 import { IosIcon } from './IosIcon';
 import type { IosIconName } from './iosIconData';
 
@@ -72,6 +72,22 @@ export const BoldIcon = icon('bold');
 export const ItalicIcon = icon('italic');
 export const UnderlineIcon = icon('underline');
 export const ListIcon = icon('unordered-list');
+
+// iOS' 18x18-verified-profile-badge (its outline and tick; the PDF's shine is left out) with Cosmos' gradient
+export function VerifiedProfileIcon({ size = 18 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18">
+      <Defs>
+        <LinearGradient id="verified" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor="#FFD824" />
+          <Stop offset="1" stopColor="#DCAA00" />
+        </LinearGradient>
+      </Defs>
+      <Path d="M8.999 1.593C10.389 1.593 11.603 2.411 12.153 3.605C12.243 3.598 12.334 3.594 12.426 3.594C14.323 3.594 15.893 5.119 15.893 7.041C15.893 7.771 15.667 8.444 15.282 8.997C15.667 9.551 15.893 10.223 15.893 10.953C15.893 12.876 14.322 14.401 12.426 14.401C12.335 14.401 12.244 14.397 12.155 14.39C11.605 15.586 10.39 16.405 8.999 16.405C7.612 16.405 6.401 15.591 5.849 14.401L5.573 14.401C3.675 14.401 2.106 12.875 2.106 10.954C2.106 10.225 2.332 9.552 2.717 8.998C2.332 8.445 2.106 7.772 2.106 7.042C2.106 5.12 3.675 3.594 5.573 3.594C5.665 3.594 5.756 3.598 5.845 3.605C6.396 2.411 7.61 1.593 8.999 1.593Z" fill="url(#verified)" />
+      <Path d="M5.639 9.664L7.954 11.88C9.175 9.836 10.554 7.935 12.119 6.12" fill="none" stroke="#FFFFFF" strokeWidth={1.312} strokeLinejoin="round" />
+    </Svg>
+  );
+}
 
 export function UserRound({ color, size = 24 }: IconProps) {
   const line = { stroke: color, strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' } as const;

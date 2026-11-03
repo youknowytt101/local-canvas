@@ -7,7 +7,7 @@ import { ApiError, hasSession, signOut } from '../lib/auth';
 import { startHub, stopHub } from '../lib/hub';
 import { serverUrl, setServerUrl } from '../lib/server';
 
-export type Me = { id: string; username: string; fullName?: string; avatarUrl?: string | null; hasCompletedOnboarding?: boolean };
+export type Me = { id: string; username: string; fullName?: string; avatarUrl?: string | null; adminRole?: string; verifiedProfile?: { name?: string; coverImage?: { url: string } | null } | null; hasCompletedOnboarding?: boolean };
 type Phase = 'boot' | 'server' | 'login' | 'onboarding' | 'main';
 
 type SessionState = {

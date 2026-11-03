@@ -39,6 +39,7 @@ import { useCreateSheetStore } from '../../components/sheets/CreateSheets';
 import { onUploadDone } from '../../lib/uploads';
 import { useCreateClusterStore } from '../../components/sheets/CreateClusterSheet';
 import { ProfileTabBar } from '../../components/profile/ProfileTabBar';
+import { VerifiedProfileView } from '../../components/profile/VerifiedProfileView';
 import { pinnedFirst } from '../../components/profile/profileLists';
 import { usePagedList } from '../../hooks/usePagedList';
 import { api, get } from '../../lib/api';
@@ -190,6 +191,16 @@ export function ProfileScreen() {
   useEffect(() => (isMe ? onUploadDone(() => { void refresh(); }) : undefined), [isMe]); // eslint-disable-line react-hooks/exhaustive-deps
   const listProps = { headerHeight, headerScrollMax, viewport, bottomInset, refreshing, onRefresh: () => void refresh() };
   const button = [styles.headerButton, { width: HEADER_CONTROL_SIZE, height: HEADER_CONTROL_SIZE }];
+  // Cosmos' resolveUserProfileRoute sends an account with a verified profile to VerifiedProfileScreen; it is known here once read
+  if (profile?.verifiedProfile) {
+    return (
+      <VerifiedProfileView
+        profile={profile} isMe={isMe} isRoot={isRoot} userId={userId} elements={elements} collections={collections}
+        refreshing={refreshing} onRefresh={() => void refresh()} onFollow={toggleFollow} onSearch={openSearch}
+        onCreateCollection={() => useCreateClusterStore.getState().open(() => { void loadCollections(); void loadProfile(); }, null, true)}
+      />
+    );
+  }
   return (
     <View style={styles.screen}>
       <View style={[styles.headerRow, { paddingTop: insets.top, height: insets.top + HEADER_CONTENT_HEIGHT }]}>
@@ -219,7 +230,7 @@ export function ProfileScreen() {
             <Pressable style={button} onPress={openSearch} accessibilityRole="button" accessibilityLabel="搜索">
               <SearchIcon color={theme.colors.primary} size={20} />
             </Pressable>
-            <Pressable style={button} onPress={() => useUserMenuStore.getState().open(userId)} accessibilityRole="button" accessibilityLabel="更多">
+            <Pressable style={button} onPress={() => useUserMenuStore.getState().open(userId, () => { void refresh(); })} accessibilityRole="button" accessibilityLabel="更多">
               <MoreIcon color={theme.colors.primary} size={20} />
             </Pressable>
           </View>
