@@ -30,6 +30,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { BAR_BOTTOM_OFFSET, BAR_RETAINED_UNDER_ELEMENT_VIEWER_SCREENS, TAB_BAR_HOME_HEIGHT } from '../../components/bar/constants';
 import { ClusterElementGrid, TOP_OFFSET_THRESHOLD } from '../../components/clusters/ClusterElementGrid';
 import type { Collection } from '../../components/clusters/CollectionCard';
+import { ClusterSuggestedElementsEmptyState } from '../../components/clusters/ClusterSuggestedElementsEmptyState';
 import { ClusterHeaderTitle, UserClusterHeader, type ClusterDetail } from '../../components/clusters/UserClusterHeader';
 import type { UserClusterParams } from '../../lib/clusters/buildSubClusterRouteParams';
 import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
@@ -250,7 +251,12 @@ export function UserClusterScreen() {
                 removeFrom={mine ? cluster.id : null}
                 topInset={topInset}
                 bottomInset={bottomInset}
-                empty={mine ? { title: '建议要素', hint: '开始策划您的收藏' } : { title: '无元素', hint: '该集合为空' }}
+                empty={mine ? (
+                  <ClusterSuggestedElementsEmptyState
+                    clusterName={cluster.name}
+                    onPress={() => navigation.navigate(Routes.SELECT_CLUSTER_ELEMENTS, { clusterId: cluster.id, searchTerm: cluster.name, completionLabel: 'done' })}
+                  />
+                ) : { title: '无元素', hint: '该集合为空' }}
                 header={
                   <UserClusterHeader
                     cluster={cluster} parent={shownParent} subClusters={subClusters} width={width}

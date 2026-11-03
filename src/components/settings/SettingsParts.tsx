@@ -17,12 +17,12 @@ import { CustomPressable } from '../CustomPressable';
 import { HEADER_CONTENT_HEIGHT } from '../home/HomeHeader';
 import { ChevronLeftIcon, ChevronRightIcon } from '../icons';
 
-export function SettingsHeader({ title, right }: { title: string; right?: ReactNode }) {
+export function SettingsHeader({ title, right, backgroundColor }: { title: string; right?: ReactNode; backgroundColor?: string }) {
   const { theme } = useUnistyles();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.header, { paddingTop: insets.top, height: insets.top + HEADER_CONTENT_HEIGHT }]}>
+    <View style={[styles.header, { paddingTop: insets.top, height: insets.top + HEADER_CONTENT_HEIGHT }, backgroundColor ? { backgroundColor } : null]}>
       <Pressable style={styles.side} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="返回" hitSlop={4}>
         <ChevronLeftIcon color={theme.colors.primary} />
       </Pressable>

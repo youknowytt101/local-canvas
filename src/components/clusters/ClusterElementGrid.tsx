@@ -24,7 +24,7 @@ type Props = {
   source: string;
   removeFrom?: string | null; // the collection one may take its elements out of
   header?: ReactElement | null;
-  empty?: { title: string; hint: string } | null; // none: nothing when there are none
+  empty?: { title: string; hint: string } | React.ReactElement | null; // none: nothing when there are none
   topInset: number;
   bottomInset: number;
   onTopStateChange?: (atTop: boolean) => void; // the similar grid: told when it comes to or leaves its top
@@ -76,7 +76,8 @@ export function ClusterElementGrid({ list, listRef, source, removeFrom, header, 
       ListHeaderComponent={header ? <View style={styles.header}>{header}</View> : null}
       ListEmptyComponent={
         list.loading ? <View style={styles.loading}><ActivityIndicator color={theme.colors.tertiary} /></View>
-          : list.done && empty ? (
+          : list.done && empty && 'type' in empty ? empty
+          : list.done && empty && 'title' in empty ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>{empty.title}</Text>
               <Text style={styles.emptyHint}>{empty.hint}</Text>

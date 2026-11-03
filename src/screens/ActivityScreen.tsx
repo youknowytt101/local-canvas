@@ -151,17 +151,7 @@ export function ActivityScreen() {
       showToast({ text: e instanceof Error ? e.message : '打不开这个元素' });
     }
   };
-  // the invite: still good → 接受 / 拒绝; already in → the collection; else it says so
-  const openInvite = async (code: string) => {
-    const v = await get<{ valid?: boolean; alreadyCollaborator?: boolean; clusterId: string; cluster?: { name: string } }>(`/api/invites/${encodeURIComponent(code)}`).catch(() => null);
-    if (v?.alreadyCollaborator) { openCluster(v.clusterId); return; }
-    if (!v || !v.valid) { Alert.alert('此邀请不再有效', '它可能已过期、被撤销或已被使用。'); return; }
-    const enc = encodeURIComponent(code);
-    Alert.alert('邀请', `加入「${v.cluster?.name ?? ''}」？`, [
-      { text: '拒绝', style: 'destructive', onPress: () => void api('POST', `/api/invites/${enc}/decline`).catch(() => showToast({ text: '没能拒绝邀请' })) },
-      { text: '接受', onPress: () => void api<{ clusterId: string }>('POST', `/api/invites/${enc}/accept`).then((d) => { showToast({ text: '已接受邀请' }); openCluster(d.clusterId); }, () => showToast({ text: '无法接受邀请' })) },
-    ]);
-  };
+  const openInvite = (code: string) => navigation.navigate(Routes.ACCEPT_INVITE, { inviteCode: code });
 
   const row = (a: Activity) => {
     const [title, sub] = activityText(a);
@@ -196,7 +186,7 @@ export function ActivityScreen() {
         </Pressable>
       );
     }
-    const open = a.type === 'CollaborationInviteActivity' && a.inviteCode ? () => void openInvite(a.inviteCode!) : a.cluster ? () => openCluster(a.cluster!.id) : undefined;
+    const open = a.type === 'CollaborationInviteActivity' && a.inviteCode ? () => openInvite(a.inviteCode!) : a.cluster ? () => openCluster(a.cluster!.id) : undefined;
     const when = new Date(a.createdAt);
     return (
       <Pressable key={a.id} style={styles.row} onPress={open} disabled={!open} accessibilityRole={open ? 'button' : undefined}>

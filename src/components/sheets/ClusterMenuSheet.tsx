@@ -12,6 +12,9 @@
 // The questions use the web page's words, asked with the system's alert as Cosmos does. 整理 is on the bar
 // (OrganizeClusterScreen).
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
+import { CommonActions } from '@react-navigation/native';
+import { navigationRef } from '../../navigation/navigationRef';
+import { Routes } from '../../navigation/routes';
 import { pushInfiniteCanvas } from '../../lib/openInfiniteCanvas';
 import * as Clipboard from 'expo-clipboard';
 import { Fragment, type ReactNode } from 'react';
@@ -25,7 +28,6 @@ import { showToast } from '../../stores/useToastStore';
 import type { ClusterDetail } from '../clusters/UserClusterHeader';
 import { EditIcon, FlagIcon, GridIcon, LinkIcon, PinIcon, ShareIcon, SignOutIcon, TrashIcon, UserPlusIcon } from '../icons';
 import { useCollaboratorsStore } from './CollaboratorsSheet';
-import { useCreateClusterStore } from './CreateClusterSheet';
 import { reportTarget } from './ReportSheet';
 import { SheetGrabber } from './SheetGrabber';
 
@@ -102,7 +104,7 @@ export function ClusterMenuSheet() {
       }
       owner.push({
         label: '编辑收藏', icon: <EditIcon color={color} />,
-        onPress: async () => { await close(); useCreateClusterStore.getState().edit(c, () => handlers?.onChanged()); },
+        onPress: async () => { await close(); navigationRef.dispatch(CommonActions.navigate({ name: Routes.MAIN, params: { screen: Routes.EDIT_CLUSTER, params: { clusterId: c.id } } })); },
       });
       owner.push({
         label: '邀请协作者', icon: <UserPlusIcon color={color} />,

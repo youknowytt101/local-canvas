@@ -245,7 +245,7 @@ export function ProfileScreen() {
               onScroll={onScroll[1]}
               isMe={isMe}
               onOpen={(c) => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_CLUSTER, params: { clusterId: c.id } } })}
-              onCreate={() => useCreateClusterStore.getState().open(() => { void loadCollections(); void loadProfile(); })}
+              onCreate={() => useCreateClusterStore.getState().open(() => { void loadCollections(); void loadProfile(); }, null, true)}
             />
           </View>
         </PagerView>

@@ -118,7 +118,7 @@ export function CreateSheet() {
   const collection = async () => {
     const c = context;
     await dismiss(CREATE_SHEET);
-    if (c) useCreateClusterStore.getState().open(() => c.onChanged(), c.isOnProfile ? null : c.subParent);
+    if (c) useCreateClusterStore.getState().open(() => c.onChanged(), c.isOnProfile ? null : c.subParent, c.isOnProfile);
   };
   return (
     <TrueSheet name={CREATE_SHEET} detents={['auto'] as never} cornerRadius={24} grabber={false} backgroundColor={theme.colors.sheetBackground}>

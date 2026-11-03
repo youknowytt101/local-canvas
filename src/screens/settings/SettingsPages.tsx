@@ -1,5 +1,5 @@
 // The settings' own pages (SettingsNavigator), with the web page's fields, rules and words (6.103 / 6.106):
-//   - EditProfile (EditProfileScreen): the avatar (picked from the phone and sent as it is; 移除), 用户名 (whether it
+//   - EditProfile (EditProfileScreen): the avatar (picked from the phone, cropped on CropPictureScreen; 移除), 用户名 (whether it
 //     is free is asked as it is typed, GetUsernameStatus), 全名, 简介 (240, counted), 网站, up to two of Instagram /
 //     X / TikTok / Spotify; 保存 on the header's right (toast 个人资料已更新)
 //   - AccountDetails (AccountDetailsScreen): 邮箱, 出生日期 (YYYY-MM-DD), 国家或地区 (a code such as CN); 保存; and
@@ -9,9 +9,8 @@
 //     and what the library has been sorted into. Near Cosmos: no AI content row and no age confirmation (as the web
 //     page); the phone's lists show the new setting once they are read again
 //   - BlockedAccounts: the accounts blocked, each with 解除屏蔽; none: 没有已屏蔽的账号
-// Near Cosmos: the country is typed as its code (the web page lists the countries by name); the avatar is not cropped.
+// Near Cosmos: the country is typed as its code (the web page lists the countries by name).
 import { useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';
-import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, View } from 'react-native';
@@ -22,8 +21,6 @@ import { Button } from '../../components/Button';
 import { Avatar } from '../../components/profile/ProfileInfo';
 import { Field, FormError, HeaderAction, SettingsGroup, SettingsHeader, SettingsRow } from '../../components/settings/SettingsParts';
 import { api, get } from '../../lib/api';
-import { authFetch } from '../../lib/auth';
-import { absoluteUrl } from '../../lib/server';
 import { Routes } from '../../navigation/routes';
 import { useSessionStore } from '../../stores/useSessionStore';
 import { showToast } from '../../stores/useToastStore';
@@ -41,7 +38,8 @@ const meAgain = (me: MeFull) => useSessionStore.setState({ me: { ...useSessionSt
 const message = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
 
 export function EditProfileScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
+  const sessionAvatar = useSessionStore((x) => x.me?.avatarUrl);
   const insets = useSafeAreaInsets();
   const [me, setMe] = useState<MeFull | null>(null);
   const [form, setForm] = useState({ username: '', fullName: '', bio: '', website: '', social: {} as Record<string, string> });
@@ -93,20 +91,14 @@ export function EditProfileScreen() {
       setBusy(false);
     }
   };
+  // the crop page has saved a new picture
+  useEffect(() => {
+    setMe((m) => (m && sessionAvatar !== undefined ? { ...m, avatarUrl: sessionAvatar } : m));
+  }, [sessionAvatar]);
   const pickPhoto = async () => {
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1 });
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 1 });
     if (r.canceled || !r.assets[0]) return;
-    const a = r.assets[0];
-    try {
-      const bytes = await new File(a.uri).bytes();
-      const res = await authFetch(absoluteUrl('/api/me/photo'), { method: 'POST', headers: { 'Content-Type': a.mimeType || 'image/jpeg' }, body: bytes as unknown as BodyInit });
-      const data = await res.json().catch(() => ({})) as MeFull & { error?: string };
-      if (!res.ok) throw new Error(data.error || '无法更新头像');
-      setMe(data);
-      meAgain(data);
-    } catch (e) {
-      fail(message(e, '无法更新头像'));
-    }
+    navigation.navigate(Routes.CROP_PROFILE_PICTURE, { imageUri: r.assets[0].uri }); // it saves it, and the session's picture with it
   };
   const removePhoto = async () => {
     try {
