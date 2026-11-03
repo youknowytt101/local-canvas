@@ -21,7 +21,7 @@ import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
-import { BlockedUserIcon, CheckIcon, ChevronRightIcon, EyeOffIcon, FilterIcon, GearIcon, SignOutIcon, VoiceIcon } from '../../components/icons';
+import { BlockedUserIcon, CheckIcon, ChevronRightIcon, DarkAppearanceIcon, EyeOffIcon, FilterIcon, GearIcon, LightAppearanceIcon, SignOutIcon, SystemAppearanceIcon, VoiceIcon } from '../../components/icons';
 import { Avatar } from '../../components/profile/ProfileInfo';
 import { SettingsGroup, SettingsHeader, SettingsRow } from '../../components/settings/SettingsParts';
 import { SheetGrabber } from '../../components/sheets/SheetGrabber';
@@ -123,7 +123,10 @@ export function SettingsScreen() {
           <Text style={styles.sheetTitle}>外观</Text>
           {APPEARANCES.map(([v, label]) => (
             <Pressable key={v} style={styles.sheetRow} onPress={() => choose(v)} accessibilityRole="button" accessibilityState={{ selected: v === appearance }}>
-              <Text style={styles.sheetLabel}>{label}</Text>
+              <View style={styles.sheetRowLabel}>
+                {v === 'system' ? <SystemAppearanceIcon color={theme.colors.primary} size={18} /> : v === 'light' ? <LightAppearanceIcon color={theme.colors.primary} size={18} /> : <DarkAppearanceIcon color={theme.colors.primary} size={18} />}
+                <Text style={styles.sheetLabel}>{label}</Text>
+              </View>
               {v === appearance ? <CheckIcon color={theme.colors.primary} size={20} /> : null}
             </Pressable>
           ))}
@@ -164,5 +167,6 @@ const styles = StyleSheet.create((theme) => ({
   sheet: { paddingHorizontal: theme.spacing.md },
   sheetTitle: { ...theme.typography.largePlus, color: theme.colors.primary, textAlign: 'center', marginBottom: theme.spacing.md },
   sheetRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 52, paddingHorizontal: theme.spacing.xs },
+  sheetRowLabel: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
   sheetLabel: { ...theme.typography.large, color: theme.colors.primary },
 }));

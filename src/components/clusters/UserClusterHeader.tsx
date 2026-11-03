@@ -16,7 +16,7 @@
 // the sub-collections are cards two to a row (Cosmos' SubCluster list is not read).
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { UserPlusIcon } from '../icons';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { api, get } from '../../lib/api';
 import { showToast } from '../../stores/useToastStore';
@@ -94,7 +94,7 @@ export function UserClusterHeader({ cluster: c, parent, subClusters, width, onPa
           ))}
           {c.role === 'Owner' ? (
             <Pressable style={[styles.avatarColumn, styles.overlap, styles.addAvatarColumn]} onPress={onInvite} accessibilityRole="button" accessibilityLabel="邀请合作者">
-              <AddUserIcon color={theme.colors.primary} />
+              <UserPlusIcon color={theme.colors.primary} size={20} />
             </Pressable>
           ) : null}
         </Pressable>
@@ -149,11 +149,3 @@ const styles = StyleSheet.create((theme) => ({
   },
 }));
 
-// lucide's user-plus (Cosmos' AddUserIcon), 20
-function AddUserIcon({ color }: { color: string }) {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <Path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6" stroke={color} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    </Svg>
-  );
-}

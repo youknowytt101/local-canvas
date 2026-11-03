@@ -14,7 +14,7 @@ import { TrueSheet } from '@lodev09/react-native-true-sheet';
 import { useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import { ChevronRightIcon } from '../icons';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { create } from 'zustand';
 import { api } from '../../lib/api';
@@ -111,9 +111,7 @@ export function ReportSheet() {
                     <Text style={styles.reasonTitle}>{r.title}</Text>
                     <Text style={styles.reasonDescription}>{r.description}</Text>
                   </View>
-                  <Svg width={14} height={14} viewBox="0 0 24 24">
-                    <Path d="M9.25 4.25L17 12L9.25 19.75" stroke={theme.colors.tertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                  </Svg>
+                  <ChevronRightIcon color={theme.colors.tertiary} size={14} />
                 </Pressable>
               ))}
             </View>

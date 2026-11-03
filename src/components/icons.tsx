@@ -1,205 +1,90 @@
-// Cosmos' icons (24 × 24 view box, a 1.75 line, round caps and joins): the paths cosmos-lite took from the app.
-// HomeIcon and ShopIcon fill in when `focused` (the fill is their colour, the line stays); UserRound is lucide's.
+// Cosmos iOS 2.64's icons (the person's choice, instead of the Android app's): each is its drawings at the sizes iOS has
+// (18, 24, 28), and the one nearest the size asked is used, so a small icon keeps its heavier line. Three iOS does not have:
+// UserRound (lucide's; iOS' icon-avatar is a photo), PauseIcon, and QuadDotsIcon (the colour search's dots, Cosmos' Android
+// drawing; iOS' 24x24-grid is another icon, GridIcon).
+import type { StyleProp, ViewStyle } from 'react-native';
 import Svg, { Circle, Ellipse, Path } from 'react-native-svg';
+import { IosIcon } from './IosIcon';
+import type { IosIconName } from './iosIconData';
 
-type IconProps = { color: string; size?: number; strokeWidth?: number };
+export type IconProps = { color: string; size?: number; style?: StyleProp<ViewStyle> };
 type FocusIconProps = IconProps & { focused?: boolean };
 
-const line = (color: string, strokeWidth = 1.75) =>
-  ({ stroke: color, strokeWidth, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }) as const;
+const nearest = (size: number, names: IosIconName[]) =>
+  names.reduce((a, b) => (Math.abs(parseInt(b, 10) - size) < Math.abs(parseInt(a, 10) - size) ? b : a));
 
-export function HomeIcon({ color, size = 24, strokeWidth, focused }: FocusIconProps) {
+const icon = (...names: IosIconName[]) =>
+  function Icon({ color, size = 24, style }: IconProps) {
+    return <IosIcon name={nearest(size, names)} color={color} size={size} style={style} />;
+  };
+
+const focusIcon = (idle: IosIconName[], focused: IosIconName[]) =>
+  function Icon({ color, size = 24, focused: on }: FocusIconProps) {
+    return <IosIcon name={nearest(size, on ? focused : idle)} color={color} size={size} />;
+  };
+
+export const HomeIcon = focusIcon(['24x24-home-inactive', '28x28-home-inactive'], ['24x24-home-active', '28x28-home-active']);
+export const GlobeIcon = icon('24x24-globe', '28x28-globe');
+export const ShopIcon = focusIcon(['18x18-shop', '24x24-shop'], ['18x18-shop-filled', '24x24-shop-filled']);
+export const SearchIcon = icon('18x18-search', '24x24-search', '28x28-search');
+export const CloseIcon = icon('18x18-close', '24x24-close');
+export const PlusIcon = icon('18x18-plus', '24x24-plus');
+export const ShareIcon = icon('24x24-share');
+export const MoreIcon = icon('24x24-overflow');
+export const CheckIcon = icon('18x18-checkmark', '24x24-checkmark');
+export const ChevronUpIcon = icon('18x18-chevron-up', '24x24-chevron-up');
+export const ChevronDownIcon = icon('18x18-chevron-down', '24x24-chevron-down');
+export const ChevronLeftIcon = icon('18x18-chevron-left', '24x24-chevron-left');
+export const ChevronRightIcon = icon('18x18-chevron-right', '24x24-chevron-right');
+export const ArrowUpRight = icon('18x18-external-link', '24x24-link-arrow');
+export const SettingsIcon = icon('24x24-settings');
+export const GearIcon = SettingsIcon;
+export const BellIcon = icon('24x24-bell');
+export const SixDotsIcon = icon('24x24-cosmos');
+export const OrganizeIcon = icon('24x24-organize');
+export const MagicSearchIcon = icon('24x24-search-similar');
+export const MoveIcon = icon('24x24-move');
+export const TrashIcon = icon('24x24-trash');
+export const ClockIcon = icon('24x24-clock');
+export const CameraRollIcon = icon('24x24-camera-roll');
+export const LinkIcon = icon('24x24-link');
+export const ALargeIcon = icon('24x24-text');
+export const SlidersIcon = icon('24x24-sliders');
+export const FilterIcon = SlidersIcon;
+export const EyeOffIcon = icon('24x24-eye-off');
+export const VoiceIcon = icon('24x24-wave');
+export const BlockedUserIcon = icon('24x24-block');
+export const SignOutIcon = icon('24x24-sign-out');
+export const SystemAppearanceIcon = icon('18x18-system');
+export const LightAppearanceIcon = icon('18x18-light');
+export const DarkAppearanceIcon = icon('18x18-dark');
+export const PinIcon = icon('18x18-pin-filled');
+export const EditIcon = icon('24x24-edit');
+export const UserPlusIcon = icon('18x18-user-plus', '24x24-user-plus');
+export const GridIcon = icon('24x24-grid');
+export const FlagIcon = icon('24x24-flag');
+export const PlayIcon = icon('24x24-play');
+export const MuteIcon = icon('24x24-mute');
+export const UnmuteIcon = icon('24x24-unmute');
+export const Heading1Icon = icon('h1');
+export const Heading2Icon = icon('h2');
+export const BoldIcon = icon('bold');
+export const ItalicIcon = icon('italic');
+export const UnderlineIcon = icon('underline');
+export const ListIcon = icon('unordered-list');
+
+export function UserRound({ color, size = 24 }: IconProps) {
+  const line = { stroke: color, strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' } as const;
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} fill={focused ? color : 'none'} d="M3 12.23V16.2C3 17.88 3 18.72 3.33 19.36C3.61 19.93 4.07 20.39 4.64 20.67C5.28 21 6.12 21 7.8 21H16.2C17.88 21 18.72 21 19.36 20.67C19.93 20.39 20.39 19.93 20.67 19.36C21 18.72 21 17.88 21 16.2V12.23C21 11.36 21 10.93 20.89 10.53C20.79 10.17 20.62 9.84 20.4 9.54C20.15 9.21 19.8 8.94 19.11 8.42L14.91 5.22C13.87 4.42 13.35 4.03 12.77 3.87C12.27 3.74 11.73 3.74 11.23 3.87C10.65 4.03 10.13 4.42 9.09 5.22L4.89 8.42C4.2 8.94 3.85 9.21 3.6 9.54C3.38 9.84 3.21 10.17 3.11 10.53C3 10.93 3 11.36 3 12.23Z" />
+      <Circle {...line} cx="12" cy="8" r="5" />
+      <Path {...line} d="M20 21a8 8 0 0 0-16 0" />
     </Svg>
   );
 }
 
-export function GlobeIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Circle {...line(color, strokeWidth)} cx="12" cy="12" r="9" />
-      <Path {...line(color, strokeWidth)} d="M12 3a13 13 0 0 0 0 18 13 13 0 0 0 0-18M3 12h18" />
-    </Svg>
-  );
-}
-
-export function ShopIcon({ color, size = 24, strokeWidth, focused }: FocusIconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} fill={focused ? color : 'none'} d="M17.43 21.25H6.56C5.34 21.25 4.41 20.16 4.58 18.96L5.99 9.46C6.14 8.48 6.98 7.75 7.97 7.75H16.02C17.01 7.75 17.85 8.48 18 9.46L19.41 18.96C19.58 20.16 18.65 21.25 17.43 21.25Z" />
-      <Path {...line(color, strokeWidth)} d="M15.2 7.75V6C15.2 4.21 13.75 2.75 11.95 2.75C10.16 2.75 8.7 4.21 8.7 6V7.75" />
-    </Svg>
-  );
-}
-
-export function SearchIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Circle {...line(color, strokeWidth)} cx="10.75" cy="10.75" r="7.5" />
-      <Path {...line(color, strokeWidth)} d="M20.25 20.25L16 16" />
-    </Svg>
-  );
-}
-
-export function CloseIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M6.5 6.5L17.5 17.5M17.5 6.5L6.5 17.5" />
-    </Svg>
-  );
-}
-
-export function PlusIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M12 5V19M5 12H19" />
-    </Svg>
-  );
-}
-
-export function ShareIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M8 6.75L12 2.75L16 6.75M12 3.5V14M8 9.75C7.54 9.75 7.3 9.75 7.11 9.78C5.76 9.95 4.7 11.01 4.53 12.36C4.5 12.55 4.5 12.79 4.5 13.25L4.5 15.45C4.5 17.13 4.5 17.97 4.83 18.61C5.11 19.18 5.57 19.64 6.14 19.92C6.78 20.25 7.62 20.25 9.3 20.25H14.7C16.38 20.25 17.22 20.25 17.86 19.92C18.43 19.64 18.89 19.18 19.17 18.61C19.5 17.97 19.5 17.13 19.5 15.45V13.25C19.5 12.79 19.5 12.55 19.47 12.36C19.3 11.01 18.24 9.95 16.89 9.78C16.7 9.75 16.46 9.75 16 9.75" />
-    </Svg>
-  );
-}
-
-export function MoreIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      {[5, 12, 19].map((cx) => <Circle key={cx} cx={cx} cy={12} r={2} fill={color} />)}
-    </Svg>
-  );
-}
-
-export function CheckIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M6.35 13L10.36 16.85C12.48 13.3 14.88 10 17.6 6.85" />
-    </Svg>
-  );
-}
-
-export function ChevronUpIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M4.25 14.75L12 7L19.75 14.75" />
-    </Svg>
-  );
-}
-
-export function ChevronLeftIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M14.75 19.75L7 12L14.75 4.25" />
-    </Svg>
-  );
-}
-
-// lucide's arrow-up-right (Cosmos' SourceLabel)
-export function ArrowUpRight({ color, size = 24, strokeWidth = 2 }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M7 7h10v10M7 17 17 7" />
-    </Svg>
-  );
-}
-
-// Cosmos' SettingsIcon (filled cog with a 2.6 ring in the middle, as cosmos-lite took it)
-export function SettingsIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path d="M13.70 3.16L14.44 2.70C14.31 2.49 14.10 2.35 13.86 2.30L13.70 3.16ZM15.32 5.76L14.58 6.23C14.66 6.36 14.78 6.47 14.91 6.54L15.32 5.76ZM15.79 6.04L15.32 6.78C15.46 6.86 15.61 6.91 15.76 6.91L15.79 6.04ZM18.83 6.14L19.49 5.57C19.33 5.39 19.10 5.28 18.86 5.27L18.83 6.14ZM20.50 9.06L21.28 9.47C21.39 9.25 21.41 9.00 21.33 8.77L20.50 9.06ZM19.00 11.89L18.23 11.47C18.16 11.60 18.12 11.74 18.12 11.88L19.00 11.89ZM18.99 12.11L18.12 12.08C18.11 12.23 18.15 12.38 18.22 12.52L18.99 12.11ZM20.50 14.95L21.33 15.23C21.41 15.00 21.39 14.75 21.28 14.54L20.50 14.95ZM18.83 17.86L18.86 18.74C19.10 18.73 19.33 18.62 19.49 18.43L18.83 17.86ZM15.49 17.98L15.46 17.10C15.17 17.11 14.90 17.27 14.75 17.51L15.49 17.98ZM13.70 20.84L13.87 21.70C14.10 21.65 14.31 21.51 14.44 21.30L13.70 20.84ZM10.38 20.85L9.64 21.32C9.77 21.52 9.98 21.67 10.23 21.71L10.38 20.85ZM8.59 17.98L9.33 17.52C9.18 17.27 8.91 17.11 8.62 17.10L8.59 17.98ZM5.17 17.86L4.51 18.43C4.67 18.61 4.90 18.73 5.14 18.73L5.17 17.86ZM3.52 15.03L2.75 14.62C2.64 14.84 2.62 15.10 2.70 15.33L3.52 15.03ZM5.14 12.00L5.91 12.41C6.05 12.16 6.05 11.85 5.91 11.59L5.14 12.00ZM3.52 8.97L2.70 8.68C2.62 8.91 2.64 9.16 2.75 9.38L3.52 8.97ZM5.17 6.15L5.14 5.27C4.89 5.28 4.66 5.39 4.50 5.58L5.17 6.15ZM8.43 6.03L8.46 6.91C8.62 6.90 8.77 6.85 8.90 6.77L8.43 6.03ZM8.67 5.89L9.11 6.64C9.24 6.57 9.34 6.47 9.42 6.35L8.67 5.89ZM10.39 3.15L10.23 2.29C9.99 2.33 9.77 2.47 9.64 2.68L10.39 3.15ZM12 3V3.88C12.52 3.88 13.04 3.93 13.53 4.02L13.70 3.16L13.86 2.30C13.26 2.19 12.64 2.12 12 2.12V3ZM13.70 3.16L12.96 3.62L14.58 6.23L15.32 5.76L16.06 5.30L14.44 2.70L13.70 3.16ZM15.32 5.76L14.91 6.54C15.05 6.61 15.19 6.69 15.32 6.78L15.79 6.04L16.26 5.30C16.09 5.19 15.91 5.09 15.73 4.99L15.32 5.76ZM15.79 6.04L15.76 6.91L18.80 7.02L18.83 6.14L18.86 5.27L15.82 5.16L15.79 6.04ZM18.83 6.14L18.17 6.71C18.82 7.48 19.34 8.37 19.68 9.34L20.50 9.06L21.33 8.77C20.92 7.58 20.29 6.50 19.49 5.57L18.83 6.14ZM20.50 9.06L19.73 8.64L18.23 11.47L19.00 11.89L19.77 12.30L21.28 9.47L20.50 9.06ZM19.00 11.89L18.12 11.88C18.12 11.94 18.12 12.00 18.12 12.08L18.99 12.11L19.87 12.14C19.87 12.07 19.87 11.98 19.87 11.89L19.00 11.89ZM18.99 12.11L18.22 12.52L19.73 15.36L20.50 14.95L21.28 14.54L19.77 11.70L18.99 12.11ZM20.50 14.95L19.68 14.66C19.34 15.63 18.82 16.52 18.16 17.29L18.83 17.86L19.49 18.43C20.29 17.50 20.92 16.42 21.33 15.23L20.50 14.95ZM18.83 17.86L18.79 16.99L15.46 17.10L15.49 17.98L15.52 18.85L18.86 18.74L18.83 17.86ZM15.49 17.98L14.75 17.51L12.96 20.37L13.70 20.84L14.44 21.30L16.23 18.44L15.49 17.98ZM13.70 20.84L13.54 19.98C13.04 20.07 12.52 20.12 12 20.12V21V21.88C12.64 21.88 13.26 21.81 13.87 21.70L13.70 20.84ZM12 21V20.12C11.50 20.12 11.02 20.08 10.54 19.99L10.38 20.85L10.23 21.71C10.80 21.82 11.39 21.88 12 21.88V21ZM10.38 20.85L11.12 20.39L9.33 17.52L8.59 17.98L7.85 18.44L9.64 21.32L10.38 20.85ZM8.59 17.98L8.62 17.10L5.20 16.98L5.17 17.86L5.14 18.73L8.56 18.85L8.59 17.98ZM5.17 17.86L5.84 17.29C5.19 16.54 4.69 15.68 4.35 14.74L3.52 15.03L2.70 15.33C3.11 16.48 3.73 17.52 4.51 18.43L5.17 17.86ZM3.52 15.03L4.30 15.44L5.91 12.41L5.14 12.00L4.37 11.59L2.75 14.62L3.52 15.03ZM5.14 12.00L5.91 11.59L4.30 8.56L3.52 8.97L2.75 9.38L4.37 12.41L5.14 12.00ZM3.52 8.97L4.35 9.26C4.68 8.32 5.19 7.46 5.83 6.72L5.17 6.15L4.50 5.58C3.73 6.48 3.11 7.53 2.70 8.68L3.52 8.97ZM5.17 6.15L5.20 7.02L8.46 6.91L8.43 6.03L8.40 5.16L5.14 5.27L5.17 6.15ZM8.43 6.03L8.90 6.77C8.97 6.73 9.04 6.69 9.11 6.64L8.67 5.89L8.24 5.13C8.15 5.18 8.06 5.24 7.97 5.29L8.43 6.03ZM8.67 5.89L9.42 6.35L11.13 3.61L10.39 3.15L9.64 2.68L7.93 5.42L8.67 5.89ZM10.39 3.15L10.54 4.01C11.02 3.92 11.50 3.88 12 3.88V3V2.12C11.39 2.12 10.80 2.18 10.23 2.29L10.39 3.15Z" fill={color} />
-      <Circle cx="12" cy="12" r="2.6" fill="none" stroke={color} strokeWidth={1.75} />
-    </Svg>
-  );
-}
-
-export function BellIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M15.25 17.25C15.25 19.18 13.79 20.75 12 20.75C10.21 20.75 8.75 19.18 8.75 17.25" />
-      <Path {...line(color, strokeWidth)} d="M6 9.25V9.98C6 11.29 5.55 12.56 4.74 13.58L4 14.5V17H20V14.5L19.26 13.58C18.45 12.56 18 11.29 18 9.98V9.25C18 5.94 15.31 3.25 12 3.25C8.69 3.25 6 5.94 6 9.25Z" />
-    </Svg>
-  );
-}
-
-// the home header's logo: six dots in place of Cosmos' wordmark (the user's choice, cosmos-lite HANDOFF 6.59)
-export function SixDotsIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      {[[8.5, 5.5], [15.5, 5.5], [8.5, 12], [15.5, 12], [8.5, 18.5], [15.5, 18.5]].map(([cx, cy]) => (
-        <Circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={1.9} fill={color} />
-      ))}
-    </Svg>
-  );
-}
-
-export function UserRound({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Circle {...line(color, strokeWidth)} cx="12" cy="8" r="5" />
-      <Path {...line(color, strokeWidth)} d="M20 21a8 8 0 0 0-16 0" />
-    </Svg>
-  );
-}
-
-// Cosmos' OrganizeIcon (components/OrganizeIcon.js)
-export function OrganizeIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M6 4H18M4 7.5H20" />
-      <Path {...line(color, strokeWidth)} d="M20.57 12.95C20.72 12.28 20.79 11.95 20.7 11.69C20.63 11.46 20.47 11.26 20.26 11.14C20.03 11 19.69 11 19.01 11H4.99C4.31 11 3.97 11 3.74 11.14C3.53 11.26 3.37 11.46 3.3 11.69C3.21 11.95 3.28 12.28 3.43 12.95L4.16 16.24C4.46 17.58 4.61 18.25 4.97 18.75C5.29 19.2 5.72 19.54 6.22 19.76C6.79 20 7.48 20 8.85 20H15.15C16.52 20 17.21 20 17.78 19.76C18.28 19.54 18.71 19.2 19.03 18.75C19.39 18.25 19.54 17.58 19.84 16.24L20.57 12.95Z" />
-    </Svg>
-  );
-}
-
-// Cosmos' MagicSearchIcon (the collection's 相似): a filled spark over a magnifier
-export function MagicSearchIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path fill={color} d="M16.41 2.48C16.34 2.26 16.14 2.1 15.9 2.1C15.66 2.1 15.46 2.26 15.39 2.48C14.78 4.49 14.29 4.98 12.28 5.59C12.06 5.66 11.9 5.86 11.9 6.1C11.9 6.34 12.06 6.54 12.28 6.61C14.29 7.22 14.78 7.71 15.39 9.72C15.46 9.94 15.66 10.1 15.9 10.1C16.14 10.1 16.34 9.94 16.41 9.72C17.02 7.71 17.51 7.22 19.52 6.61C19.74 6.54 19.9 6.34 19.9 6.1C19.9 5.86 19.74 5.66 19.52 5.59C17.51 4.98 17.02 4.49 16.41 2.48Z" />
-      <Path {...line(color, strokeWidth)} d="M20 20L16.5 16.5M10 3.04C6.07 3.41 3 6.72 3 10.75C3 15.03 6.47 18.5 10.75 18.5C14.6 18.5 17.8 15.69 18.4 12" />
-    </Svg>
-  );
-}
-
-// Cosmos' ChevronDownIcon (ClusterSeeSimilarTabBarContent)
-export function ChevronDownIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M4.25 9.25L12 17L19.75 9.25" />
-    </Svg>
-  );
-}
-
-// Cosmos' MoveIcon (filled) and TrashIcon (the organize bar's 移动 / 移除)
-export function MoveIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path fill={color} d="M4.72 18.70C4.52 18.70 4.36 18.66 4.23 18.57C4.10 18.49 4.00 18.38 3.92 18.25C3.85 18.12 3.81 17.98 3.78 17.83C3.75 17.66 3.72 17.46 3.71 17.24C3.70 17.02 3.69 16.78 3.69 16.52C3.69 14.46 4.15 12.93 5.06 11.96C5.97 10.99 7.44 10.50 9.48 10.50H15.30L17.40 10.63L14.78 8.25L12.83 6.27C12.74 6.18 12.67 6.08 12.62 5.97C12.57 5.85 12.54 5.72 12.54 5.58C12.54 5.32 12.63 5.10 12.81 4.93C12.99 4.75 13.22 4.67 13.49 4.67C13.75 4.67 13.98 4.77 14.20 4.97L19.98 10.75C20.19 10.95 20.30 11.19 20.30 11.47C20.30 11.75 20.19 11.99 19.98 12.20L14.18 17.98C13.97 18.18 13.75 18.28 13.49 18.28C13.22 18.28 12.99 18.19 12.81 18.02C12.63 17.84 12.54 17.62 12.54 17.36C12.54 17.22 12.57 17.10 12.62 16.98C12.67 16.86 12.74 16.75 12.83 16.66L14.78 14.69L17.40 12.31L15.30 12.44H9.60C8.62 12.44 7.84 12.58 7.26 12.86C6.69 13.14 6.28 13.59 6.02 14.19C5.77 14.80 5.65 15.60 5.65 16.59C5.65 16.83 5.65 17.04 5.65 17.23C5.67 17.41 5.67 17.58 5.67 17.75C5.67 18.03 5.58 18.25 5.41 18.43C5.23 18.61 5.00 18.70 4.72 18.70Z" />
-    </Svg>
-  );
-}
-
-export function TrashIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M5 4.5L5.35 15.35C5.40 16.99 5.43 17.80 5.76 18.42C6.06 18.97 6.51 19.41 7.07 19.69C7.70 20 8.52 20 10.15 20H13.85C15.48 20 16.30 20 16.93 19.69C17.49 19.41 17.94 18.97 18.24 18.42C18.57 17.80 18.60 16.99 18.65 15.35L19 4.5M10 8V16M14 8V16M3 4H21" />
-    </Svg>
-  );
-}
-
-// the recent searches' button (Cosmos' ClockIcon; lucide's clock)
-export function ClockIcon({ color, size = 24, strokeWidth }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 7v5l3 2" />
-    </Svg>
-  );
+export function PauseIcon({ color, size = 24 }: IconProps) {
+  return <Svg width={size} height={size} viewBox="0 0 24 24"><Path d="M7 4h3v16H7zM14 4h3v16h-3z" fill={color} /></Svg>;
 }
 
 // Cosmos' QuadDotsIcon (components/QuadDotsIcon.js): eight dots round a ring, each its own colour unless one is given
@@ -212,114 +97,6 @@ export function QuadDotsIcon({ color, size = 24 }: { color?: string; size?: numb
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       {QUAD_DOTS.map(([cx, cy, fill]) => <Ellipse key={`${cx},${cy}`} cx={cx} cy={cy} rx={1.84929} ry={1.8385} fill={color ?? fill} />)}
-    </Svg>
-  );
-}
-
-// Cosmos' CameraRollIcon, LinkIcon (a 12 view box, a 0.75 line) and ALargeIcon (the create sheet's 照片 / 链接 / 笔记)
-export function CameraRollIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path fill={color} d="M20 7H19.12V17H20H20.88V7H20ZM17 20V19.12H7V20V20.88H17V20ZM4 17H4.88V7H4H3.12V17H4ZM7 4V4.88H17V4V3.12H7V4ZM4 7H4.88C4.88 5.83 5.83 4.88 7 4.88V4V3.12C4.86 3.12 3.12 4.86 3.12 7H4ZM7 20V19.12C5.83 19.12 4.88 18.17 4.88 17H4H3.12C3.12 19.14 4.86 20.88 7 20.88V20ZM20 17H19.12C19.12 18.17 18.17 19.12 17 19.12V20V20.88C19.14 20.88 20.88 19.14 20.88 17H20ZM20 7H20.88C20.88 4.86 19.14 3.12 17 3.12V4V4.88C18.17 4.88 19.12 5.83 19.12 7H20Z" />
-      <Path {...line(color)} d="M19.86 15.06C19.35 14.75 19.05 14.59 18.68 14.53C18.41 14.49 18.13 14.49 17.86 14.53C17.43 14.60 17.08 14.81 16.38 15.25C15.68 15.69 15.34 15.90 14.91 15.97C14.64 16.01 14.35 16.01 14.08 15.97C13.65 15.90 13.30 15.69 12.60 15.25C11.91 14.81 11.56 14.60 11.13 14.53C10.86 14.49 10.57 14.49 10.30 14.53C9.87 14.60 9.52 14.81 8.83 15.25C8.13 15.69 7.78 15.90 7.35 15.97C7.08 16.01 6.79 16.01 6.53 15.97C6.09 15.90 5.75 15.69 5.05 15.25C4.71 15.04 4.46 14.88 4.23 14.76" />
-      <Circle {...line(color)} cx="14.5" cy="9.25" r="2" />
-    </Svg>
-  );
-}
-export function LinkIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 12 12" fill="none">
-      <Path {...line(color, 0.75)} d="M8.38 6.63L9 6.00C9.83 5.17 9.83 3.83 9 3.00C8.17 2.17 6.83 2.17 6 3.00L5.38 3.63" />
-      <Path {...line(color, 0.75)} d="M3.62 5.38L3.00 6C2.17 6.83 2.17 8.17 3.00 9C3.83 9.83 5.17 9.83 6.00 9L6.62 8.38" />
-      <Path {...line(color, 0.75)} d="M7.12 4.88L4.88 7.12" />
-    </Svg>
-  );
-}
-export function ALargeIcon({ color, size = 24 }: { color: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path fill={color} d="M5.54 9.40C6.16 9.40 6.60 9.73 6.84 10.36L10.08 18.96C10.09 18.98 10.09 18.99 10.10 19H8.23L7.59 17.10H3.51L2.86 19H1.00C1.00 18.99 1.01 18.98 1.01 18.96L4.26 10.36C4.50 9.71 4.94 9.40 5.54 9.40ZM3.97 15.75H7.13L5.67 11.40H5.43L3.97 15.75Z" />
-      <Path fill={color} d="M16.76 5C17.42 5.00 17.85 5.32 18.09 5.96L22.99 18.96C22.99 18.98 23.00 18.99 23 19H20.97L19.86 15.91H13.65L12.54 19H10.54C10.54 18.99 10.54 18.98 10.54 18.98L15.44 5.95C15.67 5.31 16.11 5 16.76 5ZM14.21 14.35H19.29L16.78 7.32H16.72L14.21 14.35Z" />
-    </Svg>
-  );
-}
-
-// lucide's sliders-horizontal (BrandFilterRail's filter button), as the web page took it
-export function SlidersIcon({ color, size = 24, strokeWidth = 2 }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4" />
-    </Svg>
-  );
-}
-
-// lucide's chevron-right (BrandFilterSheet's rows)
-export function ChevronRightIcon({ color, size = 24, strokeWidth = 2 }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path {...line(color, strokeWidth)} d="M9 18l6-6-6-6" />
-    </Svg>
-  );
-}
-
-// The settings rows' icons (useSettingsOptions: GearIcon, EyeOffIcon, FilterIcon, VoiceIcon, BlockedUserIcon), their
-// shapes and strokes as Cosmos draws them (Cosmos\source: components/GearIcon … profile/BlockedUserIcon)
-export function GearIcon({ color, size = 24 }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="3" stroke={color} strokeWidth={1.75} />
-      <Path fill={color} d="M13.70 3.16L14.44 2.70C14.31 2.49 14.10 2.35 13.86 2.30L13.70 3.16ZM15.32 5.76L14.58 6.23C14.66 6.36 14.78 6.47 14.91 6.54L15.32 5.76ZM15.79 6.04L15.32 6.78C15.46 6.86 15.61 6.91 15.76 6.91L15.79 6.04ZM18.83 6.14L19.49 5.57C19.33 5.39 19.10 5.28 18.86 5.27L18.83 6.14ZM20.50 9.06L21.28 9.47C21.39 9.25 21.41 9.00 21.33 8.77L20.50 9.06ZM19.00 11.89L18.23 11.47C18.16 11.60 18.12 11.74 18.12 11.88L19.00 11.89ZM18.99 12.11L18.12 12.08C18.11 12.23 18.15 12.38 18.22 12.52L18.99 12.11ZM20.50 14.95L21.33 15.23C21.41 15.00 21.39 14.75 21.28 14.54L20.50 14.95ZM18.83 17.86L18.86 18.74C19.10 18.73 19.33 18.62 19.49 18.43L18.83 17.86ZM15.49 17.98L15.46 17.10C15.17 17.11 14.90 17.27 14.75 17.51L15.49 17.98ZM13.70 20.84L13.87 21.70C14.10 21.65 14.31 21.51 14.44 21.30L13.70 20.84ZM10.38 20.85L9.64 21.32C9.77 21.52 9.98 21.67 10.23 21.71L10.38 20.85ZM8.59 17.98L9.33 17.52C9.18 17.27 8.91 17.11 8.62 17.10L8.59 17.98ZM5.17 17.86L4.51 18.43C4.67 18.61 4.90 18.73 5.14 18.73L5.17 17.86ZM3.52 15.03L2.75 14.62C2.64 14.84 2.62 15.10 2.70 15.33L3.52 15.03ZM5.14 12.00L5.91 12.41C6.05 12.16 6.05 11.85 5.91 11.59L5.14 12.00ZM3.52 8.97L2.70 8.68C2.62 8.91 2.64 9.16 2.75 9.38L3.52 8.97ZM5.17 6.15L5.14 5.27C4.89 5.28 4.66 5.39 4.50 5.58L5.17 6.15ZM8.43 6.03L8.46 6.91C8.62 6.90 8.77 6.85 8.90 6.77L8.43 6.03ZM8.67 5.89L9.11 6.64C9.24 6.57 9.34 6.47 9.42 6.35L8.67 5.89ZM10.39 3.15L10.23 2.29C9.99 2.33 9.77 2.47 9.64 2.68L10.39 3.15ZM12 3V3.88C12.52 3.88 13.04 3.93 13.53 4.02L13.70 3.16L13.86 2.30C13.26 2.19 12.64 2.12 12 2.12V3ZM13.70 3.16L12.96 3.62L14.58 6.23L15.32 5.76L16.06 5.30L14.44 2.70L13.70 3.16ZM15.32 5.76L14.91 6.54C15.05 6.61 15.19 6.69 15.32 6.78L15.79 6.04L16.26 5.30C16.09 5.19 15.91 5.09 15.73 4.99L15.32 5.76ZM15.79 6.04L15.76 6.91L18.80 7.02L18.83 6.14L18.86 5.27L15.82 5.16L15.79 6.04ZM18.83 6.14L18.17 6.71C18.82 7.48 19.34 8.37 19.68 9.34L20.50 9.06L21.33 8.77C20.92 7.58 20.29 6.50 19.49 5.57L18.83 6.14ZM20.50 9.06L19.73 8.64L18.23 11.47L19.00 11.89L19.77 12.30L21.28 9.47L20.50 9.06ZM19.00 11.89L18.12 11.88C18.12 11.94 18.12 12.00 18.12 12.08L18.99 12.11L19.87 12.14C19.87 12.07 19.87 11.98 19.87 11.89L19.00 11.89ZM18.99 12.11L18.22 12.52L19.73 15.36L20.50 14.95L21.28 14.54L19.77 11.70L18.99 12.11ZM20.50 14.95L19.68 14.66C19.34 15.63 18.82 16.52 18.16 17.29L18.83 17.86L19.49 18.43C20.29 17.50 20.92 16.42 21.33 15.23L20.50 14.95ZM18.83 17.86L18.79 16.99L15.46 17.10L15.49 17.98L15.52 18.85L18.86 18.74L18.83 17.86ZM15.49 17.98L14.75 17.51L12.96 20.37L13.70 20.84L14.44 21.30L16.23 18.44L15.49 17.98ZM13.70 20.84L13.54 19.98C13.04 20.07 12.52 20.12 12 20.12V21V21.88C12.64 21.88 13.26 21.81 13.87 21.70L13.70 20.84ZM12 21V20.12C11.50 20.12 11.02 20.08 10.54 19.99L10.38 20.85L10.23 21.71C10.80 21.82 11.39 21.88 12 21.88V21ZM10.38 20.85L11.12 20.39L9.33 17.52L8.59 17.98L7.85 18.44L9.64 21.32L10.38 20.85ZM8.59 17.98L8.62 17.10L5.20 16.98L5.17 17.86L5.14 18.73L8.56 18.85L8.59 17.98ZM5.17 17.86L5.84 17.29C5.19 16.54 4.69 15.68 4.35 14.74L3.52 15.03L2.70 15.33C3.11 16.48 3.73 17.52 4.51 18.43L5.17 17.86ZM3.52 15.03L4.30 15.44L5.91 12.41L5.14 12.00L4.37 11.59L2.75 14.62L3.52 15.03ZM5.14 12.00L5.91 11.59L4.30 8.56L3.52 8.97L2.75 9.38L4.37 12.41L5.14 12.00ZM3.52 8.97L4.35 9.26C4.68 8.32 5.19 7.46 5.83 6.72L5.17 6.15L4.50 5.58C3.73 6.48 3.11 7.53 2.70 8.68L3.52 8.97ZM5.17 6.15L5.20 7.02L8.46 6.91L8.43 6.03L8.40 5.16L5.14 5.27L5.17 6.15ZM8.43 6.03L8.90 6.77C8.97 6.73 9.04 6.69 9.11 6.64L8.67 5.89L8.24 5.13C8.15 5.18 8.06 5.24 7.97 5.29L8.43 6.03ZM8.67 5.89L9.42 6.35L11.13 3.61L10.39 3.15L9.64 2.68L7.93 5.42L8.67 5.89ZM10.39 3.15L10.54 4.01C11.02 3.92 11.50 3.88 12 3.88V3V2.12C11.39 2.12 10.80 2.18 10.23 2.29L10.39 3.15Z" />
-    </Svg>
-  );
-}
-
-export function EyeOffIcon({ color, size = 24 }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path stroke={color} strokeWidth={1.75} d="M3 3L21 21" />
-      <Path fill={color} fillRule="evenodd" clipRule="evenodd" d="M4.90 8.61C4.06 9.55 3.26 10.68 2.50 12C5.30 16.90 8.75 19.12 12 19.12C12.94 19.12 13.89 18.94 14.84 18.56L16.17 19.88C14.82 20.54 13.42 20.87 12 20.88C7.76 20.88 3.73 17.90 0.73 12.42C0.59 12.16 0.59 11.84 0.73 11.58C1.62 9.95 2.61 8.54 3.66 7.37L4.90 8.61ZM12 3.12C16.24 3.13 20.27 6.10 23.27 11.58C23.41 11.84 23.41 12.16 23.27 12.42C22.38 14.05 21.39 15.45 20.34 16.63L19.10 15.39C19.94 14.45 20.74 13.32 21.50 12C18.70 7.10 15.25 4.88 12 4.88C11.06 4.88 10.11 5.06 9.16 5.44L7.83 4.12C9.17 3.46 10.58 3.12 12 3.12ZM12.62 16.33C12.42 16.36 12.21 16.38 12 16.38C9.58 16.38 7.62 14.42 7.62 12C7.62 11.79 7.64 11.58 7.67 11.38L12.62 16.33ZM12 7.62C14.42 7.63 16.38 9.58 16.38 12C16.38 12.21 16.36 12.42 16.33 12.62L11.38 7.67C11.58 7.64 11.79 7.62 12 7.62Z" />
-    </Svg>
-  );
-}
-
-export function FilterIcon({ color, size = 24 }: IconProps) {
-  const ring = { stroke: color, strokeWidth: 1.75, strokeLinecap: 'square', strokeLinejoin: 'round' } as const;
-  const bar = { stroke: color, strokeWidth: 1.75, strokeLinejoin: 'round' } as const;
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path {...ring} d="M14.25 4.75C12.73 4.75 11.5 5.98 11.5 7.5C11.5 9.02 12.73 10.25 14.25 10.25C15.77 10.25 17 9.02 17 7.5C17 5.98 15.77 4.75 14.25 4.75Z" />
-      <Path {...ring} d="M9.75 13.75C8.23 13.75 7 14.98 7 16.5C7 18.02 8.23 19.25 9.75 19.25C11.27 19.25 12.5 18.02 12.5 16.5C12.5 14.98 11.27 13.75 9.75 13.75Z" />
-      <Path {...bar} d="M11.5 7.5H4" />
-      <Path {...bar} d="M20 7.5H17" />
-      <Path {...bar} d="M20 16.5H12.50" />
-      <Path {...bar} d="M7 16.5H4" />
-    </Svg>
-  );
-}
-
-export function VoiceIcon({ color, size = 24 }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {['M4 8V16', 'M8 3V21', 'M12 9V15', 'M16 6V18', 'M20 10V14'].map((d) => <Path key={d} stroke={color} strokeWidth={1.75} d={d} />)}
-    </Svg>
-  );
-}
-
-export function BlockedUserIcon({ color, size = 24 }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.75} />
-      <Path stroke={color} strokeWidth={1.75} d="M6 18L18 6" />
-    </Svg>
-  );
-}
-
-export function SignOutIcon({ color, size = 24 }: IconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path stroke={color} strokeWidth={1.75} strokeLinejoin="round" d="M15.25 7.25L20 12L15.25 16.75" />
-      <Path stroke={color} strokeWidth={1.75} d="M12 4H7C5.34 4 4 5.34 4 7V17C4 18.66 5.34 20 7 20H12" />
-      <Path stroke={color} strokeWidth={1.75} d="M19.5 12H10" />
     </Svg>
   );
 }

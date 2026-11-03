@@ -16,7 +16,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation, Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming,
 } from 'react-native-reanimated';
-import { Path, Svg } from 'react-native-svg';
+import { MuteIcon, PauseIcon, PlayIcon, UnmuteIcon } from '../icons';
 import { StyleSheet } from 'react-native-unistyles';
 import { isViewerMuted, setViewerMuted } from '../../lib/viewerVideoPlayers';
 
@@ -39,16 +39,8 @@ export const formatTime = (seconds: number) => {
 type Feedback = 'muted' | 'unmuted' | 'paused' | 'resumed';
 
 function FeedbackIcon({ kind }: { kind: Feedback }) {
-  const line = { stroke: '#FFFFFF', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      {kind === 'paused' ? <Path d="M7 4h3v16H7zM14 4h3v16h-3z" fill="#FFFFFF" /> : null}
-      {kind === 'resumed' ? <Path d="M7 4l13 8-13 8z" fill="#FFFFFF" /> : null}
-      {kind === 'muted' || kind === 'unmuted' ? <Path {...line} d="M11 5 6 9H2v6h4l5 4z" /> : null}
-      {kind === 'muted' ? <Path {...line} d="m22 9-6 6M16 9l6 6" /> : null}
-      {kind === 'unmuted' ? <Path {...line} d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" /> : null}
-    </Svg>
-  );
+  const Icon = { paused: PauseIcon, resumed: PlayIcon, muted: MuteIcon, unmuted: UnmuteIcon }[kind];
+  return <Icon color="#FFFFFF" size={24} />;
 }
 
 export function VideoScrubber({ player }: { player: VideoPlayer }) {

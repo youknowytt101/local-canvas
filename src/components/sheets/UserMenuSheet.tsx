@@ -6,7 +6,7 @@ import { TrueSheet } from '@lodev09/react-native-true-sheet';
 import * as Clipboard from 'expo-clipboard';
 import { Pressable, StyleSheet as RNStyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import { FlagIcon, GridIcon, LinkIcon } from '../icons';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { create } from 'zustand';
 import { serverUrl } from '../../lib/server';
@@ -25,31 +25,6 @@ export const useUserMenuStore = create<State>((set) => ({
     void TrueSheet.present(USER_MENU_SHEET).catch(() => undefined);
   },
 }));
-
-const line = (color: string) => ({ stroke: color, strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }) as const;
-export function FlagIcon({ color }: { color: string }) {
-  return (
-    <Svg width={23} height={23} viewBox="0 0 24 24">
-      <Path {...line(color)} d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7" />
-    </Svg>
-  );
-}
-// Cosmos' GridIcon (lucide's layout-grid)
-function GridIcon({ color }: { color: string }) {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path {...line(color)} d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />
-    </Svg>
-  );
-}
-function LinkIcon({ color }: { color: string }) {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path {...line(color)} d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-      <Path {...line(color)} d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-    </Svg>
-  );
-}
 
 export function UserMenuSheet() {
   const { theme } = useUnistyles();

@@ -25,11 +25,9 @@ import { api, get } from '../../lib/api';
 import type { Element } from '../../lib/elements';
 import type { RemoveTarget } from '../../stores/useElementViewerStore';
 import { useReportStore } from './ReportSheet';
-import { FlagIcon } from './UserMenuSheet';
 import { serverUrl } from '../../lib/server';
 import { showToast } from '../../stores/useToastStore';
-import Svg, { Path } from 'react-native-svg';
-import { ShareIcon } from '../icons';
+import { EyeOffIcon, FlagIcon, GridIcon, LinkIcon, ShareIcon, TrashIcon } from '../icons';
 import { SheetGrabber } from './SheetGrabber';
 import { pushInfiniteCanvas } from '../../lib/openInfiniteCanvas';
 
@@ -130,42 +128,6 @@ export function ElementMenuSheet() {
         ))}
       </View>
     </TrueSheet>
-  );
-}
-
-// lucide's link and eye-off (Cosmos' LinkIcon / EyeOffIcon), 24 with a 1.75 line
-const iconLine = (color: string) => ({ stroke: color, strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }) as const;
-function LinkIcon({ color }: { color: string }) {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path {...iconLine(color)} d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-      <Path {...iconLine(color)} d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-    </Svg>
-  );
-}
-// Cosmos' GridIcon (lucide's layout-grid)
-export function GridIcon({ color }: { color: string }) {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path {...iconLine(color)} d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" />
-    </Svg>
-  );
-}
-// Cosmos' TrashIcon (lucide's trash-2)
-function TrashIcon({ color }: { color: string }) {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path {...iconLine(color)} d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
-    </Svg>
-  );
-}
-function EyeOffIcon({ color }: { color: string }) {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path {...iconLine(color)} d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-      <Path {...iconLine(color)} d="M6.61 6.61A13.53 13.53 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-      <Path {...iconLine(color)} d="M14.12 14.12a3 3 0 1 1-4.24-4.24M2 2l20 20" />
-    </Svg>
   );
 }
 

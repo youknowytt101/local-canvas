@@ -17,7 +17,7 @@ export function TabBarProfileIcon({ color, focused }: { color: string; focused: 
         <Image source={{ uri: absoluteUrl(avatarUrl) }} style={styles.avatar} contentFit="cover" />
       ) : (
         <View style={[styles.avatar, styles.empty]}>
-          <UserRound color={theme.colors.tertiary} size={16} strokeWidth={2.3} />
+          <UserRound color={theme.colors.tertiary} size={16} />
         </View>
       )}
     </View>

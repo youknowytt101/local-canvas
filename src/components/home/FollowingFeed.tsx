@@ -106,7 +106,7 @@ function FeedItem({ item }: { item: FollowingItem }) {
       <View style={styles.header}>
         {who ? (
           <View style={styles.avatar}>
-            {who.avatarUrl ? <Image source={{ uri: absoluteUrl(who.avatarUrl) }} style={styles.avatarImage} /> : <UserRound color={theme.colors.tertiary} size={16} strokeWidth={2.3} />}
+            {who.avatarUrl ? <Image source={{ uri: absoluteUrl(who.avatarUrl) }} style={styles.avatarImage} /> : <UserRound color={theme.colors.tertiary} size={16} />}
           </View>
         ) : null}
         <Text style={styles.headerText} numberOfLines={1}>

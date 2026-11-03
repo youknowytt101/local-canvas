@@ -17,18 +17,16 @@ import * as Clipboard from 'expo-clipboard';
 import { Fragment, type ReactNode } from 'react';
 import { Alert, Pressable, Share, StyleSheet as RNStyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { create } from 'zustand';
 import { api } from '../../lib/api';
 import { serverUrl } from '../../lib/server';
 import { showToast } from '../../stores/useToastStore';
 import type { ClusterDetail } from '../clusters/UserClusterHeader';
-import { ShareIcon } from '../icons';
+import { EditIcon, FlagIcon, GridIcon, LinkIcon, PinIcon, ShareIcon, SignOutIcon, TrashIcon, UserPlusIcon } from '../icons';
 import { useCollaboratorsStore } from './CollaboratorsSheet';
 import { useCreateClusterStore } from './CreateClusterSheet';
 import { reportTarget } from './ReportSheet';
-import { FlagIcon } from './UserMenuSheet';
 import { SheetGrabber } from './SheetGrabber';
 
 export const CLUSTER_MENU_SHEET = 'cluster-menu';
@@ -74,7 +72,7 @@ export function ClusterMenuSheet() {
     ]);
     if (c.role === 'Collaborator') {
       groups.push([{
-        label: '离开收藏', icon: <LeaveIcon color={alert} />, danger: true,
+        label: '离开收藏', icon: <SignOutIcon color={alert} />, danger: true,
         onPress: async () => {
           await close();
           ask(`离开“${c.name}”？您将无法再就该收藏夹进行协作。`, '离开', async () => {
@@ -103,11 +101,11 @@ export function ClusterMenuSheet() {
         });
       }
       owner.push({
-        label: '编辑收藏', icon: <PencilIcon color={color} />,
+        label: '编辑收藏', icon: <EditIcon color={color} />,
         onPress: async () => { await close(); useCreateClusterStore.getState().edit(c, () => handlers?.onChanged()); },
       });
       owner.push({
-        label: '邀请协作者', icon: <AddUserIcon color={color} />,
+        label: '邀请协作者', icon: <UserPlusIcon color={color} />,
         onPress: async () => { await close(); useCollaboratorsStore.getState().openInvite(c.id); },
       });
       if (parent) {
@@ -155,26 +153,6 @@ export function ClusterMenuSheet() {
         ))}
       </View>
     </TrueSheet>
-  );
-}
-
-// lucide's icons (Cosmos' LinkIcon / SignOutIcon / PencilIcon / AddUserIcon / GridIcon / TrashIcon), 24 with a 1.75
-// line; PinIcon is Cosmos' filled pin
-const iconLine = (color: string) => ({ stroke: color, strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }) as const;
-const Icon = ({ color, d }: { color: string; d: string[] }) => (
-  <Svg width={24} height={24} viewBox="0 0 24 24">{d.map((p) => <Path key={p} {...iconLine(color)} d={p} />)}</Svg>
-);
-const LinkIcon = ({ color }: { color: string }) => <Icon color={color} d={['M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71', 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71']} />;
-const LeaveIcon = ({ color }: { color: string }) => <Icon color={color} d={['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4', 'M16 17l5-5-5-5', 'M21 12H9']} />;
-const PencilIcon = ({ color }: { color: string }) => <Icon color={color} d={['M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z']} />;
-const AddUserIcon = ({ color }: { color: string }) => <Icon color={color} d={['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8', 'M19 8v6M22 11h-6']} />;
-const GridIcon = ({ color }: { color: string }) => <Icon color={color} d={['M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z']} />;
-const TrashIcon = ({ color }: { color: string }) => <Icon color={color} d={['M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6']} />;
-function PinIcon({ color }: { color: string }) {
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24">
-      <Path fill={color} d="M6.31 13.98C6.31 12.43 7.55 10.80 9.60 10.05L9.85 6.69C8.78 6.08 7.90 5.39 7.52 4.90C7.33 4.65 7.24 4.40 7.24 4.18C7.24 3.74 7.58 3.41 8.10 3.41H15.90C16.42 3.41 16.76 3.74 16.76 4.18C16.76 4.40 16.67 4.65 16.48 4.90C16.09 5.39 15.22 6.08 14.15 6.69L14.39 10.05C16.45 10.80 17.68 12.43 17.68 13.98C17.68 14.60 17.27 15.01 16.61 15.01H12.64V18.43C12.64 19.55 12.18 20.48 12 20.48C11.82 20.48 11.35 19.55 11.35 18.43V15.01H7.39C6.73 15.01 6.31 14.60 6.31 13.98Z" />
-    </Svg>
   );
 }
 

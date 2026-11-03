@@ -4,7 +4,7 @@
 //   - left, ConnectionsInfo (useElementConnectionsProfiles, pageSize 3): who has it — an AvatarStack of the first
 //     three (24 rings in the background colour, each 6 over the one before, the later on top, a 20 avatar inside) and
 //     "+N" (regular, secondary) 6 apart; rings while it loads; nobody: nothing. Pressed, ElementConnectionsSheet
-//   - right, SourceLabel: lucide ArrowUpRight 13 (tertiary, 2 down), 10 of slop, opening the element's site
+//   - right, SourceLabel: ArrowUpRight 13 (tertiary, 2 down), 10 of slop, opening the element's site
 //     (useVisitElementSite: an ElementSiteVisited event), when it has one (getLinkFallbackDomain)
 // Local: a person without a picture shows the first letter of their name (cosmos-lite does the same).
 import { useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native';

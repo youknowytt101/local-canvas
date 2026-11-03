@@ -16,7 +16,7 @@ import { ElementTile } from '../../components/elements/ElementTile';
 import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
 import { PROFILE_IMAGE_SCALE } from '../../components/profile/ProfileElementGrid';
 import { SettingsHeader } from '../../components/settings/SettingsParts';
-import { GridIcon } from '../../components/sheets/ElementMenuSheet';
+import { GridIcon } from '../../components/icons';
 import { usePagedList } from '../../hooks/usePagedList';
 import type { Element } from '../../lib/elements';
 import { noteGridMoved } from '../../lib/gridVideos';

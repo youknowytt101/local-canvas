@@ -31,7 +31,6 @@ import { Keyboard, Pressable, Text, TextInput, useWindowDimensions, View } from 
 import { EnrichedTextInput, type EnrichedTextInputInstance, type OnChangeStateEvent } from 'react-native-enriched';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Line, Path } from 'react-native-svg';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { create } from 'zustand';
 import { api } from '../../lib/api';
@@ -41,7 +40,7 @@ import { htmlToMarkdown } from '../../lib/markdown';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 import { showToast } from '../../stores/useToastStore';
 import { Button } from '../Button';
-import { ALargeIcon, CameraRollIcon, CloseIcon, LinkIcon, PlusIcon } from '../icons';
+import { ALargeIcon, BoldIcon, CameraRollIcon, CloseIcon, Heading1Icon, Heading2Icon, ItalicIcon, LinkIcon, ListIcon, PlusIcon, UnderlineIcon } from '../icons';
 import { useCreateClusterStore } from './CreateClusterSheet';
 import { SheetGrabber } from './SheetGrabber';
 
@@ -216,17 +215,9 @@ export function CreateUrlSheet() {
   );
 }
 
-// editorOptions' icons (lucide, as the web page draws them)
-const stroke = (color: string) => ({ stroke: color, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }) as const;
-const EDITOR_ICONS: Record<string, (c: string) => React.ReactNode> = {
-  heading1: (c) => <><Path {...stroke(c)} d="M4 12h8M4 18V6M12 18V6" /><Path {...stroke(c)} d="m17 12 3-2v8" /></>,
-  heading2: (c) => <><Path {...stroke(c)} d="M4 12h8M4 18V6M12 18V6" /><Path {...stroke(c)} d="M21 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1" /></>,
-  bold: (c) => <Path {...stroke(c)} d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" />,
-  italic: (c) => <><Line {...stroke(c)} x1="19" x2="10" y1="4" y2="4" /><Line {...stroke(c)} x1="14" x2="5" y1="20" y2="20" /><Line {...stroke(c)} x1="15" x2="9" y1="4" y2="20" /></>,
-  'unordered-list': (c) => <Path {...stroke(c)} d="M3 5h.01M3 12h.01M3 19h.01M8 5h13M8 12h13M8 19h13" />,
-  underline: (c) => <><Path {...stroke(c)} d="M6 4v6a6 6 0 0 0 12 0V4" /><Line {...stroke(c)} x1="4" x2="20" y1="20" y2="20" /></>,
-};
-const EDITOR_OPTIONS: { action: string; label: string; state: keyof OnChangeStateEvent; run: (e: EnrichedTextInputInstance) => void }[] = [
+// editorOptions' icons
+const EDITOR_ICONS = { heading1: Heading1Icon, heading2: Heading2Icon, bold: BoldIcon, italic: ItalicIcon, 'unordered-list': ListIcon, underline: UnderlineIcon };
+const EDITOR_OPTIONS: { action: keyof typeof EDITOR_ICONS; label: string; state: keyof OnChangeStateEvent; run: (e: EnrichedTextInputInstance) => void }[] = [
   { action: 'heading1', label: '标题 1', state: 'h1', run: (e) => e.toggleH1() },
   { action: 'heading2', label: '标题 2', state: 'h2', run: (e) => e.toggleH2() },
   { action: 'bold', label: '粗体', state: 'bold', run: (e) => e.toggleBold() },
@@ -285,6 +276,7 @@ export function CreateNoteSheet() {
           {EDITOR_OPTIONS.map((o, i) => {
             const s = state?.[o.state] as { isActive: boolean; isBlocking: boolean } | undefined;
             const active = !!s?.isActive;
+            const EditorIcon = EDITOR_ICONS[o.action];
             return (
               <View key={o.action} style={styles.optionCell}>
                 {i > 0 ? <View style={styles.separator} /> : null}
@@ -294,9 +286,7 @@ export function CreateNoteSheet() {
                   onPress={() => { if (editor.current) o.run(editor.current); }}
                   accessibilityRole="button" accessibilityLabel={o.label} accessibilityState={{ selected: active }}
                 >
-                  <Svg width={16} height={16} viewBox="0 0 24 24" style={{ opacity: s?.isBlocking ? 0.5 : 1 }}>
-                    {EDITOR_ICONS[o.action](active ? theme.colors.inverted : theme.colors.primary)}
-                  </Svg>
+                  <EditorIcon color={active ? theme.colors.inverted : theme.colors.primary} size={16} style={{ opacity: s?.isBlocking ? 0.5 : 1 }} />
                 </Pressable>
               </View>
             );
