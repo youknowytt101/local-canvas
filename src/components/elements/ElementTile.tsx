@@ -8,8 +8,8 @@
 // (cosmos-lite's ContentFilterPill: at least 32 high, a 16 corner, #00000066, white); 查看 shows it for this session.
 // The grid's tiles do not scale when pressed (scaleOnLongPress false: PlainPressableContainer); a long press gives a
 // light haptic and opens the save sheet (useElementMoveLongPress). Pressing opens the viewer.
-// A video plays its preview, silent and looping, over its picture when lib/gridVideos says so: the web page's grids, by
-// the person's choice (HANDOFF 6.169). Cosmos' do not play (MasonryGrid passes allowVideoPlayback false to ElementMedia).
+// A video plays its preview, silent and looping, over its picture when lib/gridVideos says so, and is prepared, paused on
+// its first frame, just before: the web page's grids, by the person's choice (HANDOFF 6.169 / 6.183). Cosmos' do not play (MasonryGrid passes allowVideoPlayback false to ElementMedia).
 // A tile with a picture opens the viewer with its picture flying out of it, and the viewer goes back into it
 // (lib/viewerTransition, the person's choice, HANDOFF 6.176 / 6.177): it says when it is pressed, and where it is, and is
 // out of sight while the picture flies out of it or into it over this page.
@@ -45,7 +45,7 @@ function GridVideo({ element }: { element: Element }) {
   }, [focused, shown, preview]);
   return (
     <View ref={view} style={RNStyleSheet.absoluteFill} pointerEvents="none" collapsable={false}>
-      {state === 'playing' ? <PreviewVideo element={element} playing /> : null}
+      {state !== 'off' ? <PreviewVideo element={element} playing={state === 'playing'} /> : null}
     </View>
   );
 }

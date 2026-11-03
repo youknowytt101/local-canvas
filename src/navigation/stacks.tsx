@@ -4,7 +4,8 @@
 // it is opened from the canvas: getElementsViewerOptions) and the canvas (InfiniteCanvas: animation 'fade', freezeOnBlur).
 // Cosmos also puts collections and profiles on each of them; collections (UserCluster, OrganizeCluster), profiles (UserProfile) and
 // their followers (ProfileConnections) and search (ProfileSearch) are here, the others
-// are added in their steps.
+// are added in their steps. Each page is laid out in a StackPage (Android: the pages that cannot be seen under a run of
+// viewers are not drawn, HANDOFF 6.183).
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { OrganizeClusterScreen } from '../screens/clusters/OrganizeClusterScreen';
 import { UserClusterScreen } from '../screens/clusters/UserClusterScreen';
@@ -27,6 +28,7 @@ import { BrandProfileScreen } from '../screens/shop/BrandProfileScreen';
 import { ShopProductScreen } from '../screens/shop/ShopProductScreen';
 import { TRANSITION_OVER_LIVE_PAGE } from '../lib/viewerTransition';
 import { Routes } from './routes';
+import { stackPageLayout } from './StackPage';
 
 const screenOptions = { headerShown: false } as const;
 const CANVAS_OPTIONS = { animation: 'fade', freezeOnBlur: true } as const;
@@ -46,7 +48,7 @@ const getElementsViewerOptions = ({ route }: { route: { params?: object } }) => 
 const HomeStack = createNativeStackNavigator();
 export function HomeNavigator() {
   return (
-    <HomeStack.Navigator initialRouteName={Routes.HOME_ROOT} screenOptions={screenOptions}>
+    <HomeStack.Navigator initialRouteName={Routes.HOME_ROOT} screenOptions={screenOptions} screenLayout={stackPageLayout}>
       <HomeStack.Screen name={Routes.HOME_ROOT} component={HomeScreen} />
       <HomeStack.Screen name={Routes.ACTIVITY} component={ActivityScreen} />
       <HomeStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
@@ -63,7 +65,7 @@ export function HomeNavigator() {
 const ExploreStack = createNativeStackNavigator();
 export function ExploreNavigator() {
   return (
-    <ExploreStack.Navigator initialRouteName={Routes.EXPLORE_ROOT} screenOptions={screenOptions}>
+    <ExploreStack.Navigator initialRouteName={Routes.EXPLORE_ROOT} screenOptions={screenOptions} screenLayout={stackPageLayout}>
       <ExploreStack.Screen name={Routes.EXPLORE_ROOT} component={ExploreScreen} />
       <ExploreStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <ExploreStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
@@ -79,7 +81,7 @@ export function ExploreNavigator() {
 const ShopStack = createNativeStackNavigator();
 export function ShopNavigator() {
   return (
-    <ShopStack.Navigator initialRouteName={Routes.SHOP_ROOT} screenOptions={screenOptions}>
+    <ShopStack.Navigator initialRouteName={Routes.SHOP_ROOT} screenOptions={screenOptions} screenLayout={stackPageLayout}>
       <ShopStack.Screen name={Routes.SHOP_ROOT} component={ShopScreen} />
       <ShopStack.Screen name={Routes.BRAND_PROFILE} component={BrandProfileScreen} />
       <ShopStack.Screen name={Routes.SHOP_PRODUCT} component={ShopProductScreen} />
@@ -97,7 +99,7 @@ export function ShopNavigator() {
 const ProfileStack = createNativeStackNavigator();
 export function ProfileNavigator() {
   return (
-    <ProfileStack.Navigator initialRouteName={Routes.PROFILE_ROOT} screenOptions={screenOptions}>
+    <ProfileStack.Navigator initialRouteName={Routes.PROFILE_ROOT} screenOptions={screenOptions} screenLayout={stackPageLayout}>
       <ProfileStack.Screen name={Routes.PROFILE_ROOT} component={ProfileScreen} />
       <ProfileStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <ProfileStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
@@ -113,7 +115,7 @@ export function ProfileNavigator() {
 const SearchStack = createNativeStackNavigator();
 export function SearchNavigator() {
   return (
-    <SearchStack.Navigator initialRouteName={Routes.SEARCH_ROOT} screenOptions={screenOptions}>
+    <SearchStack.Navigator initialRouteName={Routes.SEARCH_ROOT} screenOptions={screenOptions} screenLayout={stackPageLayout}>
       <SearchStack.Screen name={Routes.SEARCH_ROOT} component={SearchScreen} />
       <SearchStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <SearchStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
@@ -129,7 +131,7 @@ export function SearchNavigator() {
 const SettingsStack = createNativeStackNavigator();
 export function SettingsNavigator() {
   return (
-    <SettingsStack.Navigator initialRouteName={Routes.SETTINGS_ROOT} screenOptions={screenOptions}>
+    <SettingsStack.Navigator initialRouteName={Routes.SETTINGS_ROOT} screenOptions={screenOptions} screenLayout={stackPageLayout}>
       <SettingsStack.Screen name={Routes.SETTINGS_ROOT} component={SettingsScreen} />
       <SettingsStack.Screen name={Routes.EDIT_PROFILE} component={EditProfileScreen} />
       <SettingsStack.Screen name={Routes.ACCOUNT_DETAILS} component={AccountDetailsScreen} />

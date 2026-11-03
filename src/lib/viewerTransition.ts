@@ -19,7 +19,7 @@
 // and those in sight are (noteOpenedCard), its picture is decoded before the push (it is not in expo-image's cache),
 // and the cards are covered by the viewer rather than hidden (the canvas is frozen under it). The viewer's media boxes
 // register too (mountViewerMedia), so that the viewer can measure the one on screen.
-import { makeImageFromView, type SkImage } from '@shopify/react-native-skia';
+import { ImageFormat, makeImageFromView, Skia, type SkImage } from '@shopify/react-native-skia';
 import { Image, type ImageRef } from 'expo-image';
 import type { RefObject } from 'react';
 import { Dimensions, Platform, type View } from 'react-native';
@@ -36,6 +36,7 @@ export type ViewerTransition = {
   from: TransitionTile; // the tile it opened from, in the window
   tiles: TransitionTile[]; // the tiles in sight on that page, where they are
   backdrop: SkImage | null; // iOS: the page under it
+  packed: Uint8Array | null; // ...as a JPEG while the viewer is deep under others
   picture: ImageRef | null; // a drawn card's picture, decoded ahead (it is not in expo-image's cache)
 };
 // a card the canvas draws: which element, where it is in the window, its picture and corners
@@ -69,6 +70,9 @@ export const setTransitionRoot = (ref: RefObject<View | null>) => { root = ref; 
 // rather than on the next render of a page busy with the viewer
 export const hiddenTileKey = makeMutable(-1);
 export const hiddenViewerMedia = makeMutable('');
+// Android: the route under the viewer in front while it is open and still, which nothing shows and so is not drawn
+// (components/StackPage); '' while it is opening, dragged or going back
+export const pageUnder = makeMutable('');
 export const useTransitionTileStyle = (key: number) => useAnimatedStyle(() => ({ opacity: hiddenTileKey.value === key ? 0 : 1 }));
 export const useViewerMediaStyle = (elementId: string) => useAnimatedStyle(() => ({ opacity: hiddenViewerMedia.value === elementId ? 0 : 1 }));
 
@@ -139,7 +143,7 @@ export async function prepareViewerTransition(el: Element, viewerId: string): Pr
     }
     const drawn = (c: DrawnCard, key: number): TransitionTile => ({ ...c, key, blurred: false, drawn: true });
     const tilesInSight = card.others.filter((c) => onScreen(c.rect)).map((c, i) => drawn(c, -2 - i));
-    transitions.set(viewerId, { from: drawn(card.from, -1), tiles: tilesInSight, backdrop, picture });
+    transitions.set(viewerId, { from: drawn(card.from, -1), tiles: tilesInSight, backdrop, packed: null, picture });
     return true;
   }
   const tile = press && Date.now() - press.at < PRESS_FRESH_MS && press.tile.elementId === el.id && tiles.has(press.tile.key) ? press.tile : null;
@@ -154,11 +158,40 @@ export async function prepareViewerTransition(el: Element, viewerId: string): Pr
     return false;
   }
   // as it was pressed (what it shows can have changed since it was mounted)
-  transitions.set(viewerId, { from: { ...from, image: tile.image, blurred: tile.blurred }, backdrop, tiles: measured, picture: null });
+  transitions.set(viewerId, { from: { ...from, image: tile.image, blurred: tile.blurred }, backdrop, packed: null, tiles: measured, picture: null });
   return true;
 }
 
 export const viewerTransitionFor = (viewerId: string) => transitions.get(viewerId) ?? null;
+
+// A snapshot is the screen's pixels (about 12 MB on a 3x iPhone), one for each viewer in a run of them; one deep under
+// others packs it as a JPEG (a few hundred KB) and unpacks it once it is near the top again, well before it is shown
+const PACK_QUALITY = 90;
+// true when it has packed it (its viewer stops drawing it)
+export function parkViewerTransition(viewerId: string) {
+  const t = transitions.get(viewerId);
+  if (!t?.backdrop) return false;
+  try {
+    const bytes = t.backdrop.encodeToBytes(ImageFormat.JPEG, PACK_QUALITY);
+    if (!bytes?.length) return false;
+    const image = t.backdrop;
+    t.packed = bytes;
+    t.backdrop = null;
+    setTimeout(() => image.dispose(), 500); // a frame may still be drawing it
+    return true;
+  } catch {
+    return false; // kept as it is
+  }
+}
+// true when it has its snapshot back (its viewer draws it again)
+export function unparkViewerTransition(viewerId: string) {
+  const t = transitions.get(viewerId);
+  if (!t?.packed) return false;
+  const image = Skia.Image.MakeImageFromEncoded(Skia.Data.fromBytes(t.packed));
+  t.packed = null;
+  t.backdrop = image;
+  return !!image;
+}
 
 // the viewer has gone: its snapshot and picture are let go (a frame may still be drawing them)
 export function forgetViewerTransition(viewerId: string) {

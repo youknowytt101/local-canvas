@@ -2,20 +2,22 @@
 // a preview asks for its turn once its file is here (lib/previewFiles), its player is made when the turn comes, and the
 // next one starts once its first frame is drawn. A screen of them made at once had every decoder start together (their
 // first second dropped frames) and making the players held up the main thread while the canvas was being moved. In the
-// order asked for (the grids and the canvas ask nearest the middle first).
+// order asked for (the grids ask nearest the middle first), except that one wanted on screen goes before those only
+// being prepared ahead (lib/gridVideos).
 import { Platform } from 'react-native';
 
 const AT_ONCE = Platform.OS === 'ios' ? 2 : 1;
 const WAIT_MS = 1500; // one whose first frame does not come makes way anyway (its file is here: it is the decoder)
 
-type Waiting = { go: () => void; state: 'waiting' | 'starting' | 'done'; timer?: ReturnType<typeof setTimeout> };
+type Waiting = { go: () => void; urgent: () => boolean; state: 'waiting' | 'starting' | 'done'; timer?: ReturnType<typeof setTimeout> };
 
 const queue: Waiting[] = [];
 let starting = 0;
 
 function pump() {
   while (starting < AT_ONCE && queue.length) {
-    const next = queue.shift()!;
+    const first = queue.findIndex((w) => w.urgent());
+    const next = queue.splice(first >= 0 ? first : 0, 1)[0];
     next.state = 'starting';
     starting += 1;
     next.timer = setTimeout(() => finish(next), WAIT_MS);
@@ -35,10 +37,10 @@ function finish(w: Waiting) {
   pump();
 }
 
-// go is called once it is this one's turn; the function returned is called once its first frame is drawn, it has
-// failed or it is no longer wanted (waiting or not)
-export function waitForPreviewTurn(go: () => void): () => void {
-  const w: Waiting = { go, state: 'waiting' };
+// go is called once it is this one's turn (urgent: it is wanted on screen now, not only prepared); the function returned
+// is called once its first frame is drawn, it has failed or it is no longer wanted (waiting or not)
+export function waitForPreviewTurn(go: () => void, urgent: () => boolean = () => true): () => void {
+  const w: Waiting = { go, urgent, state: 'waiting' };
   queue.push(w);
   queueMicrotask(pump); // the ones mounted in the same render line up first, in their order
   return () => finish(w);

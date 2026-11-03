@@ -13,7 +13,8 @@
 //     the media once that has shown its own and the page is in; going back, the media's own (kept ready, out of sight),
 //     from there into the tile of the element on screen, the media out of sight under it
 // The page's heavy content is only mounted once it is OPEN_SETTLED of the way (mounting it on the way held the UI
-// thread up and the motion jumped).
+// thread up and the motion jumped). On Android, once it is open and still, the page under it is not drawn (pageUnder,
+// navigation/StackPage), and is again on the frame it is dragged or goes back (HANDOFF 6.183).
 // Motion is springs without a bounce (the system's for its zoom; interruptible, and taking a drag's speed along):
 //   - opening, OPEN; going back (the back button, Android's back) into the tile of the element on screen, CLOSE, the
 //     page only popped once it is there; without that element's tile in sight (or a picture) the page only fades
@@ -25,6 +26,7 @@ import { Image } from 'expo-image';
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet as RNStyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector, type GestureType } from 'react-native-gesture-handler';
+import { useIsFocused } from '@react-navigation/native';
 import Animated, {
   useAnimatedReaction, useAnimatedStyle, useDerivedValue, useSharedValue, withSpring, withTiming, type SharedValue,
 } from 'react-native-reanimated';
@@ -32,8 +34,8 @@ import { StyleSheet } from 'react-native-unistyles';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 import type { ImageRef } from 'expo-image';
 import {
-  hiddenTileKey, hiddenViewerMedia, isViewerMediaShown, measureInWindow, TILE_RADIUS, viewerMediaView, watchViewerMedia,
-  type Rect, type TransitionTile, type ViewerTransition,
+  hiddenTileKey, hiddenViewerMedia, isViewerMediaShown, measureInWindow, pageUnder, TILE_RADIUS, viewerMediaView,
+  watchViewerMedia, type Rect, type TransitionTile, type ViewerTransition,
 } from '../../lib/viewerTransition';
 
 const SCRIM = 0.32; // MaterialContainerTransform's scrim, #52000000
@@ -99,6 +101,7 @@ type Props = {
   flyImage: (elementId: string) => FlyImage | null; // the picture the page's media shows of this element
   atTop: SharedValue<boolean>; // the page's list is scrolled to its top
   scrollGesture: GestureType; // the list's own scrolling, which waits until a drag back has been ruled out
+  underKey: string; // the route under it: the page it was opened from
   onDragging: (on: boolean) => void;
   onDismissed: () => void; // dragged back into its tile: the screen goes
   onOpenSettled: () => void; // nearly open: the page's heavy content may come
@@ -107,14 +110,14 @@ type Props = {
 
 export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(function ViewerTransitionFrame(
   {
-    transition, initialElementId, initialMedia, currentId, currentElementId, flyImage, atTop, scrollGesture, onDragging,
-    onDismissed, onOpenSettled, children,
+    transition, initialElementId, initialMedia, currentId, currentElementId, flyImage, atTop, scrollGesture, underKey,
+    onDragging, onDismissed, onOpenSettled, children,
   }, ref,
 ) {
   const { width: W, height: H } = useWindowDimensions();
   const T = transition.from.rect;
   const TR = transition.from.radius;
-  const live = !transition.backdrop; // the page under it is drawn (Android)
+  const live = !transition.backdrop && !transition.packed; // the page under it is drawn (Android)
   const drawn = transition.from.drawn; // the page draws its own cards (the canvas): they are covered by the hole
   const p = useSharedValue(0);
   const fromGeo = useSharedValue<Geo>(at(T, TR, 0));
@@ -195,7 +198,19 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
   });
 
   // ---------- opening ----------
-  const opened = () => { if (!closing.current) enabled.value = true; };
+  // open and still: the page under it is not drawn until it is dragged or goes (Android)
+  const under = useSharedValue(underKey);
+  useEffect(() => { under.value = underKey; }, [under, underKey]);
+  const focused = useIsFocused();
+  useEffect(() => {
+    // in front again (a viewer over it has gone)
+    if (live && focused && enabled.value) pageUnder.value = underKey;
+  }, [focused]); // eslint-disable-line react-hooks/exhaustive-deps
+  const opened = () => {
+    if (closing.current) return;
+    enabled.value = true;
+    if (live) pageUnder.value = under.value;
+  };
   const settled = useRef(false);
   const openSettled = () => {
     if (settled.current) return;
@@ -232,6 +247,7 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
     // there: the tile shows again under the picture, and the screen goes a frame later, so no frame lacks both
     const land = () => requestAnimationFrame(done);    scheduleOnUI(() => {
       'worklet';
+      if (live) pageUnder.value = '';
       const g = geo.value;
       const from = p.value === 1 && !drag.value.on ? at(m, 0, 1) : g;
       const flies = target !== null && flyReady.value; // its picture is drawn, ready over the media
@@ -296,6 +312,7 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
       if (!fin) return;
       fly.value = 0;
       hiddenViewerMedia.value = '';
+      if (live && enabled.value) pageUnder.value = under.value;
     });
     scheduleOnRN(setDragging, false);
   };
@@ -320,6 +337,7 @@ export const ViewerTransitionFrame = forwardRef<ViewerTransitionHandle, Props>(f
       if (Math.abs(dx) > DRAG_START || dy < -DRAG_START || dy > DRAG_START) state.fail();
     })
     .onStart(() => {
+      if (live) pageUnder.value = '';
       drag.value = { on: true, fx: start.value.x, fy: start.value.y, dx: 0, dy: 0, edge: start.value.x < EDGE };
       // the picture takes over from the media where it is (without one drawn, the page only fades)
       if (flyReady.value) {

@@ -9,10 +9,13 @@
 //   - useTrackElementView: the element on screen is being viewed while the viewer is focused
 //   - a similar one opens a viewer of the similar list on top (a "rabbit hole"); from the second one on, the header's
 //     cross closes them all at once (isInRabbitHole: the screen under is a viewer too)
+//   - a long run of them: one with more than KEEP_DEPTH screens over it lets go of its carousel and grid (their pictures
+//     and views) and keeps what it shows and where its list was; once it is that near the top again they come back,
+//     scrolled where they were, while it is still covered (not in Cosmos, whose grids play nothing; HANDOFF 6.183)
 // 保存 opens the save sheet (MoveSheet), 更多 the element menu (ElementMenuSheet); the connections sheet comes later in step 4; 分享 opens the system's share with the element's address on the computer (Cosmos opens its
 // ShareElementScreen).
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useFocusEffect, useIsFocused, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused, useNavigation, useNavigationState, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { forwardRef, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, useWindowDimensions, View, type ScrollViewProps, type ViewToken } from 'react-native';
@@ -38,7 +41,7 @@ import { noteGridMoved } from '../../lib/gridVideos';
 import { ListImpressions } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { serverUrl } from '../../lib/server';
-import { forgetViewerTransition, viewerTransitionFor, type Rect } from '../../lib/viewerTransition';
+import { forgetViewerTransition, parkViewerTransition, unparkViewerTransition, viewerTransitionFor, type Rect } from '../../lib/viewerTransition';
 import { holdViewerVideos, leaveViewerVideo, peekViewerVideo, playViewerVideo, settleViewerVideos, viewerRevealed } from '../../lib/viewerVideoPlayers';
 import { Routes } from '../../navigation/routes';
 import { useBarStore } from '../../stores/useBarStore';
@@ -52,6 +55,8 @@ const PREFETCH_ORDER = [1, -1, 2, -2];
 const VIEWABILITY = { itemVisiblePercentThreshold: 1 };
 const VIDEO_NEIGHBOURS_DELAY = 300;
 const DESCRIPTION_GUESS = 16 + 24 * 2 + 4; // ElementDescription: spacing.md over its two rows
+const KEEP_DEPTH = 2; // the screens over it with which it keeps its carousel and grid: the top three are whole
+const PARK_DELAY_MS = 1500; // a snapshot is packed once the viewer that covered it has opened
 
 type Params = { viewerId: string; initialIndex: number; openAnimation?: 'fade' | 'zoom' };
 
@@ -198,6 +203,10 @@ export function ElementsViewerScreen() {
   // ---------- the header ----------
   const state = navigation.getState();
   const myIndex = state.routes.findIndex((r) => r.key === route.key);
+  // how many screens are over it, and the one under it (the page a viewer opened from a tile shows under itself)
+  const depth = useNavigationState((s) => { const i = s.routes.findIndex((r) => r.key === route.key); return i < 0 ? 0 : s.routes.length - 1 - i; });
+  const underKey = useNavigationState((s) => { const i = s.routes.findIndex((r) => r.key === route.key); return i > 0 ? s.routes[i - 1].key : ''; });
+  const kept = depth <= KEEP_DEPTH;
   const isInRabbitHole = myIndex > 0 && state.routes[myIndex - 1]?.name === Routes.ELEMENTS_VIEWER;
   const closeAll = () => {
     let n = 0;
@@ -212,6 +221,17 @@ export function ElementsViewerScreen() {
   // when the screen does (not on a re-run of effects)
   const transition = useMemo(() => viewerTransitionFor(viewerId), [viewerId]);
   useEffect(() => () => forgetViewerTransition(viewerId), [viewerId]);
+  // iOS: deep under others its snapshot of the page under it is kept packed, and unpacked once it is near the top
+  const [, setUnpacked] = useState(0);
+  useEffect(() => {
+    if (depth <= 1) {
+      if (unparkViewerTransition(viewerId)) setUnpacked((n) => n + 1);
+      return undefined;
+    }
+    // drawn no more before its pixels go
+    const t = setTimeout(() => { if (parkViewerTransition(viewerId)) setUnpacked((n) => n + 1); }, PARK_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [depth <= 1, viewerId]); // eslint-disable-line react-hooks/exhaustive-deps
   const frame = useRef<ViewerTransitionHandle>(null);
   const [contentReady, setContentReady] = useState(!transition);
   const onOpenSettled = useCallback(() => setContentReady(true), []);
@@ -247,6 +267,15 @@ export function ElementsViewerScreen() {
     }
     useElementViewerStore.getState().closeViewer(viewerId);
   }), [navigation, viewerId, currentElementId]);
+  // where the list was when it let go of its content, to be scrolled back to when it comes again
+  const listOffset = useRef(0);
+  const restoreOffset = useRef(0);
+  useEffect(() => { if (!kept) restoreOffset.current = listOffset.current; }, [kept]);
+  const onListLoad = useCallback(() => {
+    const offset = restoreOffset.current;
+    restoreOffset.current = 0;
+    if (offset > 0) listRef.current?.scrollToOffset({ offset, animated: false });
+  }, []);
   // the list's scrolling waits for a drag back to be ruled out (ViewerTransitionFrame)
   const scrollGesture = useMemo(() => Gesture.Native(), []);
   const GestureScroll = useMemo(() => forwardRef<ScrollView, ScrollViewProps>(function GestureScroll(props, ref) {
@@ -256,7 +285,7 @@ export function ElementsViewerScreen() {
   if (!viewer) return <View style={styles.screen} />;
   const page = (
     <View style={styles.screen}>
-      {contentReady ? (
+      {contentReady && kept ? (
         <FlashList
           ref={listRef}
           data={similar.items}
@@ -271,7 +300,9 @@ export function ElementsViewerScreen() {
           viewabilityConfig={VIEWABILITY}
           onViewableItemsChanged={onViewableItemsChanged}
           scrollEventThrottle={16}
+          onLoad={onListLoad}
           onScroll={(e) => {
+            listOffset.current = e.nativeEvent.contentOffset.y;
             noteGridMoved();
             atTop.value = e.nativeEvent.contentOffset.y <= 1;
             const next = e.nativeEvent.contentOffset.y > carouselHeight * ELEMENT_VIEWER_HIDE_TAB_BAR_RATIO ? 'scrollToTop' : 'actions';
@@ -285,7 +316,7 @@ export function ElementsViewerScreen() {
                 ref={pagerRef}
                 elements={elements}
                 index={index}
-                initialIndex={initialIndex}
+                initialIndex={index} // where it is now when it comes again
                 height={carouselHeight}
                 width={width}
                 bottomOverlayClearance={bottomOverlayClearance}
@@ -315,7 +346,7 @@ export function ElementsViewerScreen() {
     <ViewerSourceContext.Provider value={source}>
       {transition && initialMedia ? (
         <ViewerTransitionFrame ref={frame} transition={transition} initialElementId={viewer.elements[initialIndex]?.id ?? ''} initialMedia={initialMedia}
-          currentId={elementId} currentElementId={currentElementId} flyImage={flyImage} atTop={atTop} scrollGesture={scrollGesture}
+          currentId={elementId} currentElementId={currentElementId} flyImage={flyImage} atTop={atTop} scrollGesture={scrollGesture} underKey={underKey}
           onDragging={setDragging} onDismissed={onDismissed} onOpenSettled={onOpenSettled}>
           {page}
         </ViewerTransitionFrame>

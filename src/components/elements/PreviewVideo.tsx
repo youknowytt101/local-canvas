@@ -7,6 +7,8 @@
 //   - its player is made once the file is here and its turn has come (lib/previewStarts), and the next one may start
 //     once its first frame is drawn; on Android it is given its video only once its view has its Surface, so that its
 //     decoder is never moved onto it (lib/videoSurface)
+//   - one not playing is prepared all the same and stays on its first frame (a grid's tile about to come on screen,
+//     lib/gridVideos): playing it then is only play()
 //   - nothing hides it: VideoView stays see-through until its first frame (a clear view on iOS, the surface at alpha 0
 //     on Android), so the cover under it shows till then
 //   - silent, it keeps no screen awake and leaves other apps' sound alone (audioMixingMode 'auto' mixes while nothing
@@ -82,7 +84,7 @@ function PreviewSurface({ uri, playing, onFail }: { uri: string; playing: boolea
       if (now.current.playing) p.play();
       made = p;
       setPlayer(p);
-    });
+    }, () => now.current.playing);
     now.current.done = done;
     return () => {
       live = false;
