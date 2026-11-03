@@ -15,9 +15,9 @@
 // 保存 opens the save sheet (MoveSheet), 更多 the element menu (ElementMenuSheet); the connections sheet comes later in step 4; 分享 opens the system's share with the element's address on the computer (Cosmos opens its
 // ShareElementScreen).
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useFocusEffect, useIsFocused, useNavigation, useNavigationState, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useNavigationState, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import { Image } from 'expo-image';
-import { forwardRef, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, startTransition, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, useWindowDimensions, View, type ScrollViewProps, type ViewToken } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import type PagerView from 'react-native-pager-view';
@@ -44,11 +44,12 @@ import { serverUrl } from '../../lib/server';
 import { forgetViewerTransition, parkViewerTransition, unparkViewerTransition, viewerTransitionFor, type Rect } from '../../lib/viewerTransition';
 import { holdViewerVideos, leaveViewerVideo, peekViewerVideo, playViewerVideo, settleViewerVideos, viewerRevealed } from '../../lib/viewerVideoPlayers';
 import { Routes } from '../../navigation/routes';
-import { useBarStore } from '../../stores/useBarStore';
+import { useBarStore, type BarActiveState } from '../../stores/useBarStore';
 import { useElementViewerStore } from '../../stores/useElementViewerStore';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 
 const ELEMENT_VIEWER_HIDE_TAB_BAR_RATIO = 0.15;
+const ELEMENT_BAR: BarActiveState = { type: 'element' };
 export const ELEMENT_VIEWER_HEADER_CONTENT_HEIGHT = 64;
 const PAGINATION_THRESHOLD = 5;
 const PREFETCH_ORDER = [1, -1, 2, -2];
@@ -149,21 +150,20 @@ export function ElementsViewerScreen() {
   // ---------- the bar ----------
   const [mode, setMode] = useState<'actions' | 'scrollToTop'>('actions');
   const scrollToTop = useCallback(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }), []);
-  useFocusEffect(useCallback(() => {
-    useBarStore.getState().setActiveState({ type: 'element' });
-    return () => {
-      const bar = useBarStore.getState();
-      if (bar.elementViewerBarState?.viewerId !== viewerId) return;
-      bar.setElementViewerBarState(null);
-      // the screen under it (a collection) may have set its own bar already
-      if (bar.activeState.type === 'element') bar.setActiveState({ type: 'default' });
-    };
-  }, [viewerId]));
+  // useElementViewerTabBarState: focused, the viewer's entry is on the bar's stack ('element'); blurred or gone, it is not
+  const barId = useId();
+  useLayoutEffect(() => {
+    const bar = useBarStore.getState();
+    if (focused) bar.push(barId, ELEMENT_BAR);
+    else bar.pop(barId);
+  }, [barId, focused]);
+  useLayoutEffect(() => () => useBarStore.getState().pop(barId), [barId]);
   const saved = !!element?.isConnectedByUser;
-  useEffect(() => {
+  // what its bar shows (set while focused, and left there when it is not, as Cosmos does)
+  useLayoutEffect(() => {
     if (!focused || !element) return;
     useBarStore.getState().setElementViewerBarState({
-      viewerId, mode, saved,
+      viewerId, mode, scrollToTopHandler: scrollToTop, elementId: element.id, saved,
       onSave: () => useMoveSheetStore.getState().open(element),
       onShare: () => { void Share.share({ message: `${serverUrl()}/e/${element.id}` }); },
       onMore: () => useElementMenuStore.getState().open(element, source, viewer?.remove ? {
@@ -174,7 +174,6 @@ export function ElementsViewerScreen() {
           navigation.goBack();
         },
       } : null),
-      onScrollToTop: scrollToTop,
     });
   }, [focused, element?.id, mode, saved]); // eslint-disable-line react-hooks/exhaustive-deps
 

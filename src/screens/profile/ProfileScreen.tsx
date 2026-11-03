@@ -48,7 +48,7 @@ import { noteGridMoved } from '../../lib/gridVideos';
 import { serverUrl } from '../../lib/server';
 import { Routes } from '../../navigation/routes';
 import { useSessionStore } from '../../stores/useSessionStore';
-import { useTabDoubleTap } from '../../stores/useTabDoubleTapStore';
+import { SCROLL_AT_TOP_THRESHOLD, useTabReselect } from '../../hooks/useTabReselect';
 
 const HEADER_CONTROL_SIZE = 40;
 const HEADER_HORIZONTAL_PADDING = 16;
@@ -161,7 +161,14 @@ export function ProfileScreen() {
     pager.current?.setPage(i);
   };
 
-  useTabDoubleTap(Routes.PROFILE, () => { if (isRoot) scrollPageTo(pageRef.current, 0, true); });
+  // the profile tab pressed again (the tab's own profile only): the page on screen refreshes at its top, else scrolls up
+  useTabReselect({
+    tab: Routes.PROFILE,
+    isActive: () => isRoot,
+    isAtTop: () => scrollY[pageRef.current].get() <= SCROLL_AT_TOP_THRESHOLD,
+    refresh: () => { void refresh(); },
+    scrollToTop: () => scrollPageTo(pageRef.current, 0, true),
+  });
 
   // dragging on the header scrolls the page under it
   const dragStart = useRef(0);

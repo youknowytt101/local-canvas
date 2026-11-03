@@ -30,7 +30,7 @@ import { noteGridMoved } from '../lib/gridVideos';
 import { absoluteUrl } from '../lib/server';
 import { Routes } from '../navigation/routes';
 import { useSessionStore } from '../stores/useSessionStore';
-import { useTabDoubleTap } from '../stores/useTabDoubleTapStore';
+import { SCROLL_AT_TOP_THRESHOLD, useTabReselect } from '../hooks/useTabReselect';
 
 const TABS = [
   { key: 'featured', label: '精选', type: 'all' },
@@ -54,9 +54,17 @@ export function ExploreScreen() {
   const [page, setPage] = useState(0);
   const [seen, setSeen] = useState(() => new Set([0]));
   const lists = useRef<(FlashListRef<Element> | null)[]>([]);
+  const refreshers = useRef<((() => void) | null)[]>([]);
   const bottomInset = insets.bottom + BAR_BOTTOM_OFFSET + TAB_BAR_HOME_HEIGHT + DEFAULT_GRID_GAP;
 
-  useTabDoubleTap(Routes.EXPLORE, () => lists.current[page]?.scrollToOffset({ offset: 0, animated: true }));
+  // the explore tab pressed again: the page on screen reloads at its top, else scrolls up
+  useTabReselect({
+    tab: Routes.EXPLORE,
+    isActive: () => true,
+    isAtTop: () => (lists.current[page]?.getAbsoluteLastScrollOffset() ?? 0) <= SCROLL_AT_TOP_THRESHOLD,
+    refresh: () => refreshers.current[page]?.(),
+    scrollToTop: () => lists.current[page]?.scrollToOffset({ offset: 0, animated: true }),
+  });
 
   return (
     <View style={styles.screen}>
@@ -78,7 +86,7 @@ export function ExploreScreen() {
         {TABS.map((t, i) => (
           <View key={t.key} style={styles.page}>
             <ExploreTabContent type={t.type} shown={seen.has(i)} featured={t.key === 'featured'} bottomInset={bottomInset}
-              listRef={(r) => { lists.current[i] = r; }} />
+              listRef={(r) => { lists.current[i] = r; }} refreshRef={(r) => { refreshers.current[i] = r; }} />
           </View>
         ))}
       </PagerView>
@@ -101,12 +109,13 @@ function ExploreTab({ label, index, pagerX, onPress }: { label: string; index: n
   );
 }
 
-function ExploreTabContent({ type, shown, featured, bottomInset, listRef }: {
+function ExploreTabContent({ type, shown, featured, bottomInset, listRef, refreshRef }: {
   type: string; shown: boolean; featured: boolean; bottomInset: number; listRef: (r: FlashListRef<Element> | null) => void;
+  refreshRef: (refresh: (() => void) | null) => void;
 }) {
   const list = usePagedList<Element>(shown ? `/api/elements?type=${type}&sort=popular&scope=others` : null, PAGE_SIZE);
   const ref = useRef<FlashListRef<Element>>(null);
-  useEffect(() => { listRef(ref.current); });
+  useEffect(() => { listRef(ref.current); refreshRef(() => { void list.refresh(); }); });
   return (
     <ClusterElementGrid
       list={list}

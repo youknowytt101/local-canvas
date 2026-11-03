@@ -12,10 +12,10 @@
 // Near Cosmos: the other tiles do not shuffle while one is dragged (reorderShuffleLayoutAnimation), they move when it is
 // let go; the grid does not scroll by itself near the edges while dragging; the question's words are the web page's.
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useFocusEffect, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet as RNStyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -24,18 +24,19 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { BAR_BOTTOM_OFFSET, TAB_BAR_HEIGHT_DEFAULT } from '../../components/bar/constants';
 import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
 import { CheckIcon } from '../../components/icons';
+import { useBarState } from '../../hooks/useBarState';
 import { usePagedList } from '../../hooks/usePagedList';
 import { api } from '../../lib/api';
 import { markClusterChanged } from '../../lib/clusterChanges';
 import { FEED_IMAGE_SCALE, tileImageUrl, tileRatio, type Element } from '../../lib/elements';
-import { useBarStore } from '../../stores/useBarStore';
+import type { BarActiveState } from '../../stores/useBarStore';
 import { useMoveSheetStore } from '../../stores/useMoveSheetStore';
 import { showToast } from '../../stores/useToastStore';
 
 const NUM_COLUMNS = 2;
 const LONG_PRESS_MS = 300;
 
-export type OrganizeClusterParams = { clusterId: string };
+export type OrganizeClusterParams = { clusterId: string; isFromSubCluster?: boolean };
 type Drag = { id: string; url: string | null; width: number; height: number; x: number; y: number; listLeft: number; listTop: number };
 
 export function OrganizeClusterScreen() {
@@ -43,7 +44,7 @@ export function OrganizeClusterScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
-  const { clusterId } = useRoute<RouteProp<{ o: OrganizeClusterParams }, 'o'>>().params;
+  const { clusterId, isFromSubCluster = false } = useRoute<RouteProp<{ o: OrganizeClusterParams }, 'o'>>().params;
   const enc = encodeURIComponent(clusterId);
   const list = usePagedList<Element>(`/api/elements?cluster=${enc}`, 40);
   const [order, setOrder] = useState<Element[]>([]);
@@ -138,19 +139,10 @@ export function OrganizeClusterScreen() {
       onMoved: () => { for (const id of ids) list.removeId(id); setSelected(new Set()); markClusterChanged(clusterId); },
     });
   }, [selected, order, clusterId, list]);
-  useFocusEffect(useCallback(() => {
-    useBarStore.getState().setActiveState({ type: 'organize' });
-    return () => {
-      const b = useBarStore.getState();
-      if (b.organizeBarState?.clusterId === clusterId) b.setOrganizeBarState(null);
-      if (b.activeState.type === 'organize') b.setActiveState({ type: 'default' });
-    };
-  }, [clusterId]));
-  useEffect(() => {
-    useBarStore.getState().setOrganizeBarState({
-      clusterId, selectedCount: selected.size, onMove: moveChosen, onRemove: removeChosen, onDone: () => navigation.goBack(),
-    });
-  }, [clusterId, selected.size, moveChosen, removeChosen, navigation]);
+  const barState = useMemo<BarActiveState>(() => ({
+    type: 'organize', isFromSubCluster, selectedCount: selected.size, onMove: moveChosen, onRemove: removeChosen, onDone: () => navigation.goBack(),
+  }), [isFromSubCluster, selected.size, moveChosen, removeChosen, navigation]);
+  useBarState(barState);
 
   const renderItem = useCallback(({ item }: { item: Element }) => (
     <OrganizeTile

@@ -14,7 +14,9 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View, t
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { useFollowingFeed, type FollowingItem } from '../../hooks/useFollowingFeed';
 import type { PageScrollHandlers } from '../../hooks/useHomeChrome';
+import { SCROLL_AT_TOP_THRESHOLD } from '../../hooks/useTabReselect';
 import { FEED_IMAGE_SCALE, tileImageUrl, tileRatio, type Element } from '../../lib/elements';
+import { createNoopHomeFeedHandlers, type HomeFeedHandlers } from '../../lib/homeFeedHandlers';
 import { ListImpressions } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { absoluteUrl } from '../../lib/server';
@@ -34,15 +36,27 @@ type Props = {
   bottomInset: number;
   scrollHandlers: PageScrollHandlers;
   listRef: React.RefObject<FlashListRef<FollowingItem> | null>;
+  handlersRef: React.MutableRefObject<HomeFeedHandlers>; // set here: what pressing the home tab again does to this page
 };
 
 const itemKey = (s: FollowingItem) => s.id ?? `${s.collaborator?.id}:${s.cluster?.id}:${s.startedAt}`;
 
-export function FollowingFeed({ userId, active, contentTopInset, bottomInset, scrollHandlers, listRef }: Props) {
+export function FollowingFeed({ userId, active, contentTopInset, bottomInset, scrollHandlers, listRef, handlersRef }: Props) {
   const { theme } = useUnistyles();
   const focused = useIsFocused();
   const showing = active && focused;
   const feed = useFollowingFeed(userId, active);
+  // the home tab pressed again: refresh at the top (as pulling down does), else scroll up
+  const refreshRef = useRef(feed.refresh);
+  refreshRef.current = feed.refresh;
+  useEffect(() => {
+    handlersRef.current = {
+      refresh: () => { void refreshRef.current(); },
+      scrollToTop: () => listRef.current?.scrollToOffset({ offset: 0, animated: true }),
+      isAtTop: () => (listRef.current?.getAbsoluteLastScrollOffset() ?? 0) <= SCROLL_AT_TOP_THRESHOLD,
+    };
+    return () => { handlersRef.current = createNoopHomeFeedHandlers(); };
+  }, [handlersRef, listRef]);
 
   const impressions = useMemo(() => new ListImpressions<Element>(
     (el) => ({ targetType: 'Element', targetId: el.id, userInteractionSource: 'Following', slateId: el.slateId }), true), []);

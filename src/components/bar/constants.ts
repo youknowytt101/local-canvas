@@ -1,5 +1,5 @@
-// The bar's constants (Cosmos module 1747), in its export order; the ones for contents this app does not have yet
-// (organize, profile elements, messages, the element viewer's save) come with those screens.
+// The bar's constants (Cosmos module 1747), in its export order; the ones for contents this app does not have (the
+// profile's selection, messages: only Cosmos' debug menu shows one) are left out.
 export const TAB_BAR_DEFAULT_WIDTH = 210; // tablets only (TAB_BAR_TABLET_BREAKPOINT): phones span the screen
 export const TAB_BAR_DEFAULT_TAB_STACK_PADDING = 9;
 export const TAB_BAR_DEFAULT_ICON_SIZE = 28;
@@ -18,8 +18,15 @@ export const TAB_BAR_ELEMENT_SAVE_CROSSFADE_DURATION = 375;
 export const TAB_BAR_ELEMENT_SAVE_SHRINK_SCALE = 0.7;
 export const TAB_BAR_ELEMENT_SAVE_ICON_GAP = 6;
 export const TAB_BAR_ELEMENT_SAVED_CENTER_OFFSET = -2;
-export const TAB_BAR_ELEMENT_SCROLL_TO_TOP_SIZE = 62;
+export const TAB_BAR_CLUSTER_ORGANIZE_WIDTH = 250;
+export const TAB_BAR_PROFILE_ELEMENTS_WIDTH = 210;
+export const TAB_BAR_CLUSTER_USER_WIDTH = 280;
+export const TAB_BAR_CLUSTER_SEE_SIMILAR_WIDTH = 156;
+export const TAB_BAR_CLUSTER_SEE_SIMILAR_HEIGHT = 54;
+export const TAB_BAR_CLUSTER_ORGANIZE_COMPACT_WIDTH = 280; // organizing a sub-collection
 export const TAB_BAR_HEIGHT_DEFAULT = 62;
+export const TAB_BAR_HEIGHT_TALL = 60;
+export const TAB_BAR_ELEMENT_SCROLL_TO_TOP_SIZE = 62;
 export const TAB_BAR_SIZE_SPRING_CONFIG = { damping: 30, stiffness: 340, overshootClamping: true };
 export const GLOBAL_SEARCH_MORPH_SPRING_CONFIG = { duration: 325, dampingRatio: 0.835 };
 export const GLOBAL_SEARCH_MORPH_EXIT_SPRING_CONFIG = { duration: 325, dampingRatio: 0.92 };
@@ -34,24 +41,21 @@ export const BAR_ACCESSORY_TRANSLATE_X = 50;
 export const BAR_ENTER_TRANSLATE_Y = 10;
 export const BAR_BOTTOM_OFFSET = 16;
 export const BAR_GRADIENT_HEIGHT = 150;
+// the screens over which a blurred screen keeps its bar entry (useBarState's retainOnBlurForScreens): a collection's
+// bar stays under the viewer opened from it
+export const BAR_RETAINED_UNDER_ELEMENT_VIEWER_SCREENS: ReadonlySet<string> = new Set(['ElementsViewer']);
 
-// DynamicBar's screens without a bar (isBarHidden: the focused screen is one of these). The names are Cosmos'; most of
-// these screens come in later steps.
-export const BAR_HIDDEN_SCREENS = new Set([
-  'SettingsRoot', 'EditProfile', 'AccountDetails', 'UpdatePassword', 'BlockedAccounts', 'ContentFiltering', 'Language',
-  'PremiumPaywall', 'CropProfilePicture', 'InfiniteCanvas', 'Login',
-  'ShopProduct', // the web page's product page has no bar (the viewer it stands for has the element's own)
+// DynamicBar's screens without a bar (isBarHidden: the focused screen is one of these), its names in its order
+export const BAR_HIDDEN_SCREENS: ReadonlySet<string> = new Set([
+  'InviteCollaborator', 'AcceptInvite', 'EditCluster', 'ChangeCover', 'SelectClusterElements', 'SettingsRoot', 'EditProfile',
+  'AccountDetails', 'UpdatePassword', 'BlockedAccounts', 'ContentFiltering', 'Language', 'PremiumPaywall', 'CropProfilePicture',
+  'InfiniteCanvas', 'Login',
+  'ShopProduct', // not Cosmos': a placeholder product page standing for the viewer Cosmos opens a product in
 ]);
 
-// BAR_CONTENT_INDEX: the cross-fade interpolates between these numbers (the contents built so far; the others —
-// message 2, profile elements 6 — come with their screens)
+// BAR_CONTENT_INDEX (module 2063): the cross-fade interpolates between these numbers (message 2 and profile elements 6
+// are not drawn here)
 export const BAR_CONTENT_INDEX = { default: 0, 'global-search': 1, element: 3, cluster: 4, organize: 5, 'scroll-to-top': 7, 'cluster-see-similar': 8 } as const;
-// a collection's bar (UserClusterActionTabBarContent: 整理 / 添加 / 相似 / 分享) and someone else's (看相似)
-export const TAB_BAR_CLUSTER_ORGANIZE_WIDTH = 210;
-export const TAB_BAR_CLUSTER_USER_WIDTH = 280;
-export const TAB_BAR_CLUSTER_HEIGHT = 60;
-export const TAB_BAR_CLUSTER_SEE_SIMILAR_WIDTH = 156;
-export const TAB_BAR_CLUSTER_SEE_SIMILAR_HEIGHT = 54;
 export type BarContent = keyof typeof BAR_CONTENT_INDEX;
 
 // dynamicBarLayoutTs1 (module 2206, worklet source): the pill beside a round action of `actionSize`, `actionGap` apart,

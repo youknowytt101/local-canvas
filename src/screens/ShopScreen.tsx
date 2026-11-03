@@ -29,7 +29,7 @@ import { ProductCard, PressScale, useShopNavigation } from '../components/shop/S
 import { BRAND_LETTERS, PLACEHOLDER_BRAND_INDEX, SHOP_PLACEHOLDER_BRANDS, SHOP_TABS, useShopFilterStore } from '../lib/shop';
 import { Routes } from '../navigation/routes';
 import { showToast } from '../stores/useToastStore';
-import { useTabDoubleTap } from '../stores/useTabDoubleTapStore';
+import { useTabReselect } from '../hooks/useTabReselect';
 
 const HORIZONTAL_PADDING = 16;
 const PAGE_BOTTOM_PADDING = 120; // SHOP_PAGE_BOTTOM_PADDING
@@ -47,7 +47,15 @@ export function ShopScreen() {
   const [page, setPage] = useState(0);
   const lists = useRef<({ scrollTo: (o: { y: number; animated: boolean }) => void } | null)[]>([]);
 
-  useTabDoubleTap(Routes.SHOP, () => lists.current[page]?.scrollTo({ y: 0, animated: true }));
+  // the shop tab pressed again: the page on screen scrolls up (Cosmos refreshes it when it is already at the top; the
+  // placeholder shop has nothing to reload, so there it does nothing)
+  useTabReselect({
+    tab: Routes.SHOP,
+    isActive: () => true,
+    isAtTop: () => false,
+    refresh: () => undefined,
+    scrollToTop: () => lists.current[page]?.scrollTo({ y: 0, animated: true }),
+  });
 
   return (
     <View style={styles.screen}>

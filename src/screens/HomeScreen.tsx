@@ -1,7 +1,7 @@
 // Cosmos' HomeScreen (module 3433): two pages side by side in a pager (Pager: react-native-pager-view) — 为你 (ForYouFeed)
 // and 正在关注 (FollowingFeed) — under the floating HomeHeader (useHomeChrome). Swiping or pressing a tab changes the
-// page; pressing the Home tab again scrolls the page on screen back to the top and brings the header back
-// (useTabReselect / useTabDoubleTapStore).
+// page; pressing the Home tab again refreshes the page on screen when it is at its top and otherwise scrolls it back up
+// (useTabReselect, with the handlers each feed hands over).
 import { pushInfiniteCanvas } from '../lib/openInfiniteCanvas';
 import type { FlashListRef } from '@shopify/flash-list';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -16,13 +16,14 @@ import { FollowingFeed } from '../components/home/FollowingFeed';
 import { DEFAULT_GRID_GAP, ForYouFeed } from '../components/home/ForYouFeed';
 import { HEADER_CONTENT_HEIGHT, HomeHeader } from '../components/home/HomeHeader';
 import { useHomeChrome } from '../hooks/useHomeChrome';
+import { useTabReselect } from '../hooks/useTabReselect';
 import { get } from '../lib/api';
 import type { FollowingItem } from '../hooks/useFollowingFeed';
 import type { Element } from '../lib/elements';
 import { noteGridMoved } from '../lib/gridVideos';
+import { createNoopHomeFeedHandlers, type HomeFeedHandlers } from '../lib/homeFeedHandlers';
 import { Routes } from '../navigation/routes';
 import { useSessionStore } from '../stores/useSessionStore';
-import { useTabDoubleTap } from '../stores/useTabDoubleTapStore';
 
 export function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -47,10 +48,16 @@ export function HomeScreen() {
   const contentTopInset = insets.top + HEADER_CONTENT_HEIGHT;
   const bottomInset = insets.bottom + BAR_BOTTOM_OFFSET + TAB_BAR_HOME_HEIGHT + DEFAULT_GRID_GAP;
 
-  useTabDoubleTap(Routes.HOME, () => {
-    if (page === 0) forYouList.current?.scrollToOffset({ offset: 0, animated: true });
-    else followingList.current?.scrollToOffset({ offset: 0, animated: true });
-    chrome.revealHeader();
+  // the home tab pressed again acts on the page on screen: refresh at its top, else scroll it up
+  const forYouHandlers = useRef<HomeFeedHandlers>(createNoopHomeFeedHandlers());
+  const followingHandlers = useRef<HomeFeedHandlers>(createNoopHomeFeedHandlers());
+  const activeHandlers = () => (page === 1 ? followingHandlers : forYouHandlers).current;
+  useTabReselect({
+    tab: Routes.HOME,
+    isActive: () => true,
+    isAtTop: () => activeHandlers().isAtTop(),
+    refresh: () => activeHandlers().refresh(),
+    scrollToTop: () => activeHandlers().scrollToTop(),
   });
 
   return (
@@ -64,11 +71,11 @@ export function HomeScreen() {
       >
         <View key="for-you" style={styles.page}>
           <ForYouFeed userId={userId} active={page === 0} contentTopInset={contentTopInset} bottomInset={bottomInset}
-            scrollHandlers={chrome.forYouScroll} lookRef={forYouLook} listRef={forYouList} />
+            scrollHandlers={chrome.forYouScroll} lookRef={forYouLook} listRef={forYouList} handlersRef={forYouHandlers} />
         </View>
         <View key="following" style={styles.page}>
           <FollowingFeed userId={userId} active={page === 1} contentTopInset={contentTopInset} bottomInset={bottomInset}
-            scrollHandlers={chrome.followingScroll} listRef={followingList} />
+            scrollHandlers={chrome.followingScroll} listRef={followingList} handlersRef={followingHandlers} />
         </View>
       </PagerView>
       <HomeHeader

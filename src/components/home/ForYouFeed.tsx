@@ -15,12 +15,14 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ActivityIndicator, AppState, RefreshControl, useWindowDimensions, View, type ViewToken } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { gql } from '../../lib/auth';
+import { createNoopHomeFeedHandlers, type HomeFeedHandlers } from '../../lib/homeFeedHandlers';
 import { FEED_IMAGE_SCALE, type Element } from '../../lib/elements';
 import { viewedPosition } from '../../lib/feedCache';
 import { noteGridMoved } from '../../lib/gridVideos';
 import { ListImpressions, impressionsScrollEnded } from '../../lib/impressions';
 import { openElementViewer } from '../../lib/openElementViewer';
 import { useForYouFeed } from '../../hooks/useForYouFeed';
+import { SCROLL_AT_TOP_THRESHOLD } from '../../hooks/useTabReselect';
 import { useForYouCanvasStore } from '../../stores/useForYouCanvasStore';
 import type { PageScrollHandlers } from '../../hooks/useHomeChrome';
 import { ElementTile } from '../elements/ElementTile';
@@ -38,10 +40,11 @@ type Props = {
   scrollHandlers: PageScrollHandlers;
   lookRef: React.MutableRefObject<((y: number) => void) | null>; // set here: the screen calls it on every scroll
   listRef: React.RefObject<FlashListRef<Element> | null>;
+  handlersRef: React.MutableRefObject<HomeFeedHandlers>; // set here: what pressing the home tab again does to this page
   onRefreshStart?: () => void;
 };
 
-export function ForYouFeed({ userId, active, contentTopInset, bottomInset, scrollHandlers, lookRef, listRef, onRefreshStart }: Props) {
+export function ForYouFeed({ userId, active, contentTopInset, bottomInset, scrollHandlers, lookRef, listRef, handlersRef, onRefreshStart }: Props) {
   const { theme } = useUnistyles();
   const { width, height: windowHeight } = useWindowDimensions();
   const focused = useIsFocused();
@@ -53,6 +56,18 @@ export function ForYouFeed({ userId, active, contentTopInset, bottomInset, scrol
   const tileWidth = (width - (NUM_COLUMNS + 1) * DEFAULT_GRID_GAP) / NUM_COLUMNS;
   const showing = active && focused;
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
+
+  // the home tab pressed again: refresh at the top (as pulling down does), else scroll up
+  const refreshRef = useRef(() => { onRefreshStart?.(); void feed.refresh(); });
+  refreshRef.current = () => { onRefreshStart?.(); void feed.refresh(); };
+  useEffect(() => {
+    handlersRef.current = {
+      refresh: () => refreshRef.current(),
+      scrollToTop: () => listRef.current?.scrollToOffset({ offset: 0, animated: true }),
+      isAtTop: () => (listRef.current?.getAbsoluteLastScrollOffset() ?? 0) <= SCROLL_AT_TOP_THRESHOLD,
+    };
+    return () => { handlersRef.current = createNoopHomeFeedHandlers(); };
+  }, [handlersRef, listRef]);
 
   // ---------- impressions ----------
   const impressions = useMemo(() => new ListImpressions<Element>(

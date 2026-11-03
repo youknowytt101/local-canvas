@@ -28,13 +28,15 @@ import { SearchLanding, type Starter } from '../components/search/SearchLanding'
 import { SearchResults } from '../components/search/SearchResults';
 import { SkiaColorPicker } from '../components/search/SkiaColorPicker';
 import { SearchTypeahead, type Person, type Typeahead } from '../components/search/SearchTypeahead';
+import { useBarState } from '../hooks/useBarState';
 import { get } from '../lib/api';
 import { forgetAllSearches, forgetSearch, readSearchHistory, rememberSearch, type HistoryEntry } from '../lib/searchHistory';
 import { Routes } from '../navigation/routes';
-import { useBarStore } from '../stores/useBarStore';
+import type { BarActiveState } from '../stores/useBarStore';
 import { useSearchStore } from '../stores/useSearchStore';
 import { useSessionStore } from '../stores/useSessionStore';
 
+const GLOBAL_SEARCH_BAR: BarActiveState = { type: 'global-search' };
 const DRAWER_DURATION = 300;
 const TYPEAHEAD_DELAY = 150;
 const LANDING_REFRESH_MS = 600;
@@ -56,11 +58,10 @@ export function SearchScreen() {
   const drawer = useSharedValue(0);
 
   // ---------- the bar and the field ----------
+  useBarState(GLOBAL_SEARCH_BAR);
   useFocusEffect(useCallback(() => {
-    useBarStore.getState().setActiveState({ type: 'global-search' });
     const s = useSearchStore.getState();
     if (!s.submitted) useSearchStore.setState({ focusToken: s.focusToken + 1 });
-    return () => { if (useBarStore.getState().activeState.type === 'global-search') useBarStore.getState().setActiveState({ type: 'default' }); };
   }, []));
   useEffect(() => () => useSearchStore.getState().reset(), []); // closing search empties it
 

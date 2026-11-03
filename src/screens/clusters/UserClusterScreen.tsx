@@ -3,7 +3,8 @@
 //   - ClusterBodyPager's two pages, one over the other: the collection (UserClusterHeader over ClusterElementGrid,
 //     CollectionOwn) and its similar elements (ClusterSimilarElementsGrid, ClusterRecommendations, asked for the first
 //     time 相似 is pressed). Going to the similar page the collection rises by PAGE_DISTANCE (64) and fades while the
-//     similar page comes up the same way, PAGE_TRANSITION_DURATION_MS (280); 相似 again goes back
+//     similar page comes up the same way, PAGE_TRANSITION_DURATION_MS (280); there the bar is a scroll-to-top (black,
+//     round): pressed it scrolls the similar page up, or at the top goes back to the collection
 //   - the bar (useClusterActionBarState): one's own or one worked on gets 整理 / 添加 / 相似 / 分享, anyone else's 看相似
 //     - 整理: OrganizeClusterScreen; 添加: the create sheet (照片 / 链接 / 笔记 made in here; 创建子集合, inside it for its
 //       owner at the top level; sub-collections here go one level deep, so elsewhere it makes a top-level one)
@@ -16,12 +17,13 @@
 // The header's search (UserClusterSearchOverlay): the search button left of 更多 turns the header into the field with
 // the collection's badge and 取消, its results over the collection (components/clusters/UserClusterSearch.tsx).
 import { useFocusEffect, useNavigation, useRoute, type NavigationProp, type ParamListBase, type RouteProp } from '@react-navigation/native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type { FlashListRef } from '@shopify/flash-list';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
-import { BAR_BOTTOM_OFFSET, TAB_BAR_HOME_HEIGHT } from '../../components/bar/constants';
+import { BAR_BOTTOM_OFFSET, BAR_RETAINED_UNDER_ELEMENT_VIEWER_SCREENS, TAB_BAR_HOME_HEIGHT } from '../../components/bar/constants';
 import { ClusterElementGrid } from '../../components/clusters/ClusterElementGrid';
 import type { Collection } from '../../components/clusters/CollectionCard';
 import { UserClusterHeader, type ClusterDetail } from '../../components/clusters/UserClusterHeader';
@@ -33,7 +35,9 @@ import { useClusterMenuStore } from '../../components/sheets/ClusterMenuSheet';
 import { useCollaboratorsStore } from '../../components/sheets/CollaboratorsSheet';
 import { useCreateSheetStore } from '../../components/sheets/CreateSheets';
 import { onUploadDone } from '../../lib/uploads';
+import { useBarState } from '../../hooks/useBarState';
 import { SIMILAR_PAGE_SIZE } from '../../hooks/useSimilarElements';
+import { SCROLL_AT_TOP_THRESHOLD } from '../../hooks/useTabReselect';
 import { usePagedList } from '../../hooks/usePagedList';
 import { get } from '../../lib/api';
 import { takeClusterChanged } from '../../lib/clusterChanges';
@@ -41,12 +45,14 @@ import type { Element } from '../../lib/elements';
 import { GridVideosShown } from '../../lib/gridVideos';
 import { serverUrl } from '../../lib/server';
 import { Routes } from '../../navigation/routes';
-import { useBarStore } from '../../stores/useBarStore';
+import type { BarActiveState } from '../../stores/useBarStore';
 import { useSessionStore } from '../../stores/useSessionStore';
 
 const PAGE_DISTANCE = 64;
 const PAGE_TRANSITION_DURATION_MS = 280;
 const ELEMENTS_PAGE_SIZE = 40;
+const NO_BAR: BarActiveState = { type: 'default' };
+const RETAINED_UNDER_VIEWER = { retainOnBlurForScreens: BAR_RETAINED_UNDER_ELEMENT_VIEWER_SCREENS };
 
 export type UserClusterParams = { clusterId: string };
 
@@ -117,14 +123,15 @@ export function UserClusterScreen() {
   }, []);
 
   // ---------- the bar ----------
+  // useClusterActionBarState: one's own or one worked on gets the actions, anyone else's 看相似; kept under the viewer
+  // opened from here (BAR_RETAINED_UNDER_ELEMENT_VIEWER_SCREENS)
   const mine = !!cluster?.role;
-  useFocusEffect(useCallback(() => {
-    if (!cluster) return;
-    const bar = useBarStore.getState();
-    bar.setActiveState({ type: mine ? 'cluster' : 'cluster-see-similar' });
-    bar.setClusterBarState({
-      clusterId, canOrganize: mine, similarOn,
-      onOrganize: () => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.ORGANIZE_CLUSTER, params: { clusterId } } }),
+  const barState = useMemo<BarActiveState | null>(() => {
+    if (!cluster) return null;
+    if (!mine) return { type: 'cluster-see-similar', onPress: toggleSimilar };
+    return {
+      type: 'cluster', clusterId, canOrganizeCluster: mine,
+      onOrganize: () => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.ORGANIZE_CLUSTER, params: { clusterId, isFromSubCluster: !!cluster.parentId } } }),
       onAdd: () => {
         const sub = cluster.role === 'Owner' && !cluster.parentId;
         useCreateSheetStore.getState().open({
@@ -132,17 +139,22 @@ export function UserClusterScreen() {
           onChanged: () => { void load(); void elementsRef.current.refresh(); },
         });
       },
-      onSimilar: toggleSimilar,
+      onSimilarPress: toggleSimilar,
       onShare: () => { void Share.share({ message: `${serverUrl()}/collections/${cluster.id}`, title: cluster.name }); },
-    });
-    return () => {
-      const b = useBarStore.getState();
-      if (b.clusterBarState?.clusterId !== clusterId) return;
-      b.setClusterBarState(null);
-      // the screen pushed over it (the viewer) may have set its own bar already
-      if (b.activeState.type === 'cluster' || b.activeState.type === 'cluster-see-similar') b.setActiveState({ type: 'default' });
     };
-  }, [cluster, mine, similarOn, clusterId, load, toggleSimilar]));
+  }, [cluster, mine, clusterId, load, toggleSimilar, navigation]);
+  useBarState(barState ?? NO_BAR, barState != null, RETAINED_UNDER_VIEWER);
+  // ClusterBodyPager: on the similar page the bar is a scroll-to-top over the collection's; at the top it goes back
+  const similarList = useRef<FlashListRef<Element>>(null);
+  const similarScrollToTop = useMemo<BarActiveState>(() => ({
+    type: 'scroll-to-top',
+    onPress: () => {
+      const list = similarList.current;
+      if (list && list.getAbsoluteLastScrollOffset() > SCROLL_AT_TOP_THRESHOLD) list.scrollToOffset({ offset: 0, animated: true });
+      else setSimilarOn(false);
+    },
+  }), []);
+  useBarState(similarScrollToTop, similarOn, RETAINED_UNDER_VIEWER);
 
   const openCluster = (id: string) => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_CLUSTER, params: { clusterId: id } } });
   const onParentPress = () => {
@@ -194,6 +206,7 @@ export function UserClusterScreen() {
               <GridVideosShown.Provider value={similarOn}>
                 <ClusterElementGrid
                   list={similar}
+                  listRef={similarList}
                   source="ClusterRecommendations"
                   topInset={topInset + DEFAULT_GRID_GAP}
                   bottomInset={bottomInset}
