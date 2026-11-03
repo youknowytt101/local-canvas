@@ -11,7 +11,9 @@ import { View } from 'react-native';
 import { useUnistyles } from 'react-native-unistyles';
 import { AppToast } from '../components/AppToast';
 import { DynamicBar } from '../components/bar/DynamicBar';
+import { getHasSeenIntro } from '../lib/appearance';
 import { LoginScreen } from '../screens/auth/LoginScreen';
+import { IntroScreen } from '../screens/onboarding/IntroScreen';
 import { ServerScreen } from '../screens/auth/ServerScreen';
 import { setTransitionRoot } from '../lib/viewerTransition';
 import { useBarStore } from '../stores/useBarStore';
@@ -21,7 +23,7 @@ import { OnboardingNavigator } from './OnboardingNavigator';
 import { navigationRef } from './navigationRef';
 import { Routes } from './routes';
 
-export type RootStackParamList = { Server: undefined; Login: undefined; Onboarding: undefined; Main: undefined };
+export type RootStackParamList = { Server: undefined; GetStarted: undefined; Login: undefined; Onboarding: undefined; Main: undefined };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -59,6 +61,7 @@ export function RootNavigator() {
       <View ref={screens} style={{ flex: 1 }} collapsable={false}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {phase === 'server' ? <Stack.Screen name="Server" component={ServerScreen} /> : null}
+          {phase === 'login' && !getHasSeenIntro() ? <Stack.Screen name={Routes.GET_STARTED} component={IntroScreen} /> : null}
           {phase === 'login' ? <Stack.Screen name="Login" component={LoginScreen} /> : null}
           {phase === 'onboarding' ? <Stack.Screen name={Routes.ONBOARDING} component={OnboardingNavigator} /> : null}
           {phase === 'main' ? <Stack.Screen name={Routes.MAIN} component={MainNavigator} /> : null}

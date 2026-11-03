@@ -17,6 +17,7 @@ export const APPEARANCES: [Appearance, string][] = [['system', '系统'], ['ligh
 const store = createMMKV({ id: 'app-settings' });
 const APPEARANCE_KEY = 'appearance';
 const HAPTICS_KEY = 'hapticsEnabled';
+const INTRO_KEY = 'hasSeenIntro';
 
 export const getAppearance = (): Appearance => {
   const v = store.getString(APPEARANCE_KEY);
@@ -71,6 +72,10 @@ export function initAppearanceStalenessGuard() {
 
 // haptics
 const hapticsListeners = new Set<() => void>();
+// hasSeenIntro: the intro (IntroScreen) is shown until one has signed in on this phone
+export const getHasSeenIntro = () => store.getBoolean(INTRO_KEY) === true;
+export const setHasSeenIntro = (seen: boolean) => store.set(INTRO_KEY, seen);
+
 export const getIsHapticsEnabled = () => store.getBoolean(HAPTICS_KEY) !== false;
 export function setIsHapticsEnabled(on: boolean) {
   store.set(HAPTICS_KEY, on);
@@ -82,6 +87,9 @@ const subscribeHaptics = (l: () => void) => {
 };
 export const useIsHapticsEnabled = () => useSyncExternalStore(subscribeHaptics, getIsHapticsEnabled, getIsHapticsEnabled);
 
+export function triggerSelectionFeedback() {
+  if (getIsHapticsEnabled()) void Haptics.selectionAsync().catch(() => undefined);
+}
 export function triggerImpactFeedback(style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) {
   if (getIsHapticsEnabled()) Haptics.impactAsync(style).catch(() => undefined);
 }

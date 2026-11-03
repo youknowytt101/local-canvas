@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect } from 'react';
 import { Linking } from 'react-native';
 import { SheetHosts } from '../components/sheets/SheetHosts';
+import { setHasSeenIntro } from '../lib/appearance';
 import { resumeUploads } from '../lib/uploads';
 import { ChangeCoverScreen } from '../screens/ChangeCoverScreen';
 import { AcceptInviteScreen } from '../screens/clusters/AcceptInviteScreen';
@@ -21,6 +22,7 @@ const Stack = createNativeStackNavigator();
 
 export function MainNavigator() {
   useEffect(() => resumeUploads(), []);
+  useEffect(() => { setHasSeenIntro(true); }, []);
   // Cosmos' handleDeepLink: the invite link, opened with the app or into it
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
   useEffect(() => {
