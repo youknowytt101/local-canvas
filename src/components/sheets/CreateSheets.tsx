@@ -109,6 +109,8 @@ export function CreateSheet() {
   const onProfile = context?.isOnProfile ?? true;
   const title = onProfile ? (context?.firstCollection ? '创建您的第一个收藏' : '创建新收藏集') : '创建子集合';
   const subtitle = onProfile ? '整理你的元素' : '元素的嵌套文件夹';
+  // Cosmos' isInSubclusterView: not inside a sub-collection (nor here for whoever cannot nest one in this collection)
+  const canMakeCollection = onProfile || !!context?.subParent;
   const photos = async () => {
     const c = context;
     if (c) await pickAndUploadMedia({ clusterId: c.clusterId, isOnProfile: c.isOnProfile }, () => dismiss(CREATE_SHEET));
@@ -133,14 +135,16 @@ export function CreateSheet() {
             <View style={styles.actionContent}><ALargeIcon color={theme.colors.primary} size={24} /><Text style={styles.actionLabel} numberOfLines={1}>笔记</Text></View>
           </ScalePressable>
         </View>
-        <ScalePressable targetScale={0.98} style={styles.collectionRow} onPress={() => void collection()} label={title}>
-          <MosaicPlaceholder size={48} dividerColor={theme.colors.sheetElevated} />
-          <View style={styles.collectionText}>
-            <Text style={styles.collectionTitle} numberOfLines={1}>{title}</Text>
-            <Text style={styles.collectionSubtitle} numberOfLines={1}>{subtitle}</Text>
-          </View>
-          <PlusIcon color={theme.colors.primary} size={24} />
-        </ScalePressable>
+        {canMakeCollection ? (
+          <ScalePressable targetScale={0.98} style={styles.collectionRow} onPress={() => void collection()} label={title}>
+            <MosaicPlaceholder size={48} dividerColor={theme.colors.sheetElevated} />
+            <View style={styles.collectionText}>
+              <Text style={styles.collectionTitle} numberOfLines={1}>{title}</Text>
+              <Text style={styles.collectionSubtitle} numberOfLines={1}>{subtitle}</Text>
+            </View>
+            <PlusIcon color={theme.colors.primary} size={24} />
+          </ScalePressable>
+        ) : null}
       </View>
     </TrueSheet>
   );

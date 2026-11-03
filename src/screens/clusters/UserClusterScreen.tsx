@@ -30,7 +30,8 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { BAR_BOTTOM_OFFSET, BAR_RETAINED_UNDER_ELEMENT_VIEWER_SCREENS, TAB_BAR_HOME_HEIGHT } from '../../components/bar/constants';
 import { ClusterElementGrid, TOP_OFFSET_THRESHOLD } from '../../components/clusters/ClusterElementGrid';
 import type { Collection } from '../../components/clusters/CollectionCard';
-import { UserClusterHeader, type ClusterDetail } from '../../components/clusters/UserClusterHeader';
+import { ClusterHeaderTitle, UserClusterHeader, type ClusterDetail } from '../../components/clusters/UserClusterHeader';
+import type { UserClusterParams } from '../../lib/clusters/buildSubClusterRouteParams';
 import { DEFAULT_GRID_GAP } from '../../components/home/ForYouFeed';
 import { HEADER_CONTENT_HEIGHT } from '../../components/home/HomeHeader';
 import { ClusterSearchBar, ClusterSearchOverlay, useClusterSearch } from '../../components/clusters/UserClusterSearch';
@@ -64,14 +65,15 @@ const ELEMENTS_PAGE_SIZE = 40;
 const NO_BAR: BarActiveState = { type: 'default' };
 const RETAINED_UNDER_VIEWER = { retainOnBlurForScreens: BAR_RETAINED_UNDER_ELEMENT_VIEWER_SCREENS };
 
-export type UserClusterParams = { clusterId: string };
-
 export function UserClusterScreen() {
   const { theme } = useUnistyles();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
-  const { clusterId } = useRoute<RouteProp<{ c: UserClusterParams }, 'c'>>().params;
+  const route = useRoute<RouteProp<{ c: UserClusterParams }, 'c'>>();
+  const { clusterId, parentClusterName, subClusterName } = route.params;
+  // the same screen under either name, as in Cosmos' ProfileNavigator; a sub-collection opened as a collection (from search, say) is not one here
+  const isSubCluster = (route.name as string) === Routes.SUB_CLUSTER;
   const meId = useSessionStore((s) => s.me?.id ?? null);
   const [cluster, setCluster] = useState<ClusterDetail | null>(null);
   const [parent, setParent] = useState<{ id: string; name: string } | null>(null);
@@ -188,9 +190,9 @@ export function UserClusterScreen() {
     if (!mine) return { type: 'cluster-see-similar', onPress: toggleSimilar };
     return {
       type: 'cluster', clusterId, canOrganizeCluster: mine,
-      onOrganize: () => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.ORGANIZE_CLUSTER, params: { clusterId, isFromSubCluster: !!cluster.parentId } } }),
+      onOrganize: () => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.ORGANIZE_CLUSTER, params: { clusterId, isFromSubCluster: isSubCluster } } }),
       onAdd: () => {
-        const sub = cluster.role === 'Owner' && !cluster.parentId;
+        const sub = cluster.role === 'Owner' && !cluster.parentId && !isSubCluster;
         useCreateSheetStore.getState().open({
           isOnProfile: false, clusterId: cluster.id, subParent: sub ? { id: cluster.id, name: cluster.name } : null, firstCollection: false,
           onChanged: () => { void load(); void elementsRef.current.refresh(); },
@@ -214,12 +216,17 @@ export function UserClusterScreen() {
   useBarState(similarScrollToTop, similarOn, RETAINED_UNDER_VIEWER);
 
   const openCluster = (id: string) => navigation.dispatch({ type: 'PUSH', payload: { name: Routes.USER_CLUSTER, params: { clusterId: id } } });
+  const openSubCluster = (s: Collection) => navigation.dispatch({
+    type: 'PUSH',
+    payload: { name: Routes.SUB_CLUSTER, params: { clusterId: s.id, subClusterName: s.name, parentClusterName: parentClusterName ?? cluster?.name } },
+  });
+  const shownParent = parent ?? (cluster?.parentId && parentClusterName ? { id: cluster.parentId, name: parentClusterName } : null);
   const onParentPress = () => {
-    if (!parent) return;
+    if (!shownParent) return;
     const routes = navigation.getState()?.routes ?? [];
     const prev = routes[routes.length - 2] as { name: string; params?: UserClusterParams } | undefined;
-    if (prev?.name === Routes.USER_CLUSTER && prev.params?.clusterId === parent.id) navigation.goBack();
-    else openCluster(parent.id);
+    if ((prev?.name === Routes.USER_CLUSTER || prev?.name === Routes.SUB_CLUSTER) && prev.params?.clusterId === shownParent.id) navigation.goBack();
+    else openCluster(shownParent.id);
   };
   const onOwnerPress = () => {
     if (!cluster?.ownerId) return;
@@ -246,8 +253,8 @@ export function UserClusterScreen() {
                 empty={mine ? { title: '建议要素', hint: '开始策划您的收藏' } : { title: '无元素', hint: '该集合为空' }}
                 header={
                   <UserClusterHeader
-                    cluster={cluster} parent={parent} subClusters={subClusters} width={width}
-                    onParentPress={onParentPress} onOwnerPress={onOwnerPress} onOpenSub={(s) => openCluster(s.id)}
+                    cluster={cluster} parent={shownParent} subClusters={subClusters} width={width}
+                    onParentPress={onParentPress} onOwnerPress={onOwnerPress} onOpenSub={openSubCluster}
                     onChanged={(patch) => setCluster((c) => (c ? { ...c, ...patch } : c))}
                     onPeoplePress={() => useCollaboratorsStore.getState().open(cluster.id, cluster.role === 'Owner', {
                       onOpenPerson: (userId) => (userId === meId ? navigation.navigate(Routes.PROFILE)
@@ -281,6 +288,7 @@ export function UserClusterScreen() {
         </View>
       ) : (
         <View style={[styles.center, { paddingTop: topInset }]}>
+          {subClusterName && !failed ? <View style={[styles.loadingTitle, { top: topInset }]}><ClusterHeaderTitle name={subClusterName} parentName={parentClusterName} /></View> : null}
           {failed ? <Text style={styles.failed}>打不开这个收藏夹</Text> : <ActivityIndicator color={theme.colors.tertiary} />}
         </View>
       )}
@@ -314,6 +322,7 @@ export function UserClusterScreen() {
 const styles = StyleSheet.create((theme) => ({
   screen: { flex: 1, backgroundColor: theme.colors.background },
   pager: { flex: 1, overflow: 'hidden' },
+  loadingTitle: { position: 'absolute', left: 0, right: 0 },
   center: { flex: 1, alignItems: 'center', paddingHorizontal: theme.spacing.md },
   failed: { ...theme.typography.regular, color: theme.colors.tertiary, marginTop: theme.spacing.xxxxl },
   header: {

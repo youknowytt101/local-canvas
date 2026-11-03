@@ -47,6 +47,19 @@ type Props = {
   onInvite: () => void; // the add circle: the invite link
 };
 
+// The name, or the parent's " / " its own; a sub-collection has both from its route before it has loaded (Cosmos: r33 ?? subClusterName)
+export function ClusterHeaderTitle({ name, parentName, onParentPress }: { name: string; parentName?: string | null; onParentPress?: () => void }) {
+  return parentName ? (
+    <View style={styles.breadcrumb}>
+      <Text style={[styles.nested, styles.parentName]} numberOfLines={1} onPress={onParentPress} accessibilityRole="link">{parentName}</Text>
+      <Text style={[styles.nested, styles.parentName]}> / </Text>
+      <Text style={[styles.nested, styles.segment]} numberOfLines={1}>{name}</Text>
+    </View>
+  ) : (
+    <Text style={styles.title}>{name}</Text>
+  );
+}
+
 export function UserClusterHeader({ cluster: c, parent, subClusters, width, onParentPress, onOwnerPress, onOpenSub, onChanged, onPeoplePress, onInvite }: Props) {
   const { theme } = useUnistyles();
   const [people, setPeople] = useState<Person[]>([]);
@@ -74,15 +87,7 @@ export function UserClusterHeader({ cluster: c, parent, subClusters, width, onPa
   const cardWidth = (width - 3 * DEFAULT_GRID_GAP) / 2;
   return (
     <View style={styles.container}>
-      {parent ? (
-        <View style={styles.breadcrumb}>
-          <Text style={[styles.nested, styles.parentName]} numberOfLines={1} onPress={onParentPress} accessibilityRole="link">{parent.name}</Text>
-          <Text style={[styles.nested, styles.parentName]}> / </Text>
-          <Text style={[styles.nested, styles.segment]} numberOfLines={1}>{c.name}</Text>
-        </View>
-      ) : (
-        <Text style={styles.title}>{c.name}</Text>
-      )}
+      <ClusterHeaderTitle name={c.name} parentName={parent?.name} onParentPress={onParentPress} />
       <View style={styles.subtitleRow}>
         <Text style={styles.subtitle} onPress={onOwnerPress}>@{c.owner}</Text>
         <Text style={styles.subtitle}>· {formatClusterElementCount(c.count, c.isPrivate)}</Text>

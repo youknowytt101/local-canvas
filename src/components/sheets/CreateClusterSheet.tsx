@@ -7,12 +7,16 @@
 // Near Cosmos: the layout (its sheet's exact spacing is not read); no elements to put in a new one yet; editing is this
 // sheet rather than Cosmos' own screen, and has no cover (ChangeCoverScreen) yet.
 import { TrueSheet } from '@lodev09/react-native-true-sheet';
+import { CommonActions } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { Switch, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { create } from 'zustand';
 import { api } from '../../lib/api';
+import { buildSubClusterRouteParams } from '../../lib/clusters/buildSubClusterRouteParams';
+import { navigationRef } from '../../navigation/navigationRef';
+import { Routes } from '../../navigation/routes';
 import { showToast } from '../../stores/useToastStore';
 import { Button } from '../Button';
 import type { Collection } from '../clusters/CollectionCard';
@@ -70,6 +74,13 @@ export function CreateClusterSheet() {
         : await api<Collection>('POST', '/api/clusters', { name: n, isPrivate, parentId: parent?.id ?? null });
       await TrueSheet.dismiss(CREATE_CLUSTER_SHEET).catch(() => undefined);
       useCreateClusterStore.getState().onCreated?.({ ...c, count: c.count ?? 0 });
+      // Cosmos: a new sub-collection is opened in the profile's tab, under its parent's name
+      if (!editing && parent && navigationRef.isReady()) {
+        navigationRef.dispatch(CommonActions.navigate({
+          name: Routes.MAIN,
+          params: { screen: Routes.MAIN_TABS, pop: true, params: { screen: Routes.PROFILE, params: buildSubClusterRouteParams({ clusterId: c.id, subClusterName: c.name, parentClusterName: parent.name }) } },
+        }));
+      }
     } catch (e) {
       showToast({ text: e instanceof Error ? e.message : editing ? '无法保存' : '无法创建' });
     } finally {

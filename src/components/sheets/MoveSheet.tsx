@@ -32,6 +32,7 @@ import { announceElementSaved, MOVE_SHEET, useMoveSheetStore } from '../../store
 import { useSessionStore } from '../../stores/useSessionStore';
 import { showToast } from '../../stores/useToastStore';
 import { CheckIcon, PlusIcon, UserRound } from '../icons';
+import { buildSubClusterRouteParams, buildUserClusterRouteParams } from '../../lib/clusters/buildSubClusterRouteParams';
 import { SheetGrabber } from './SheetGrabber';
 
 const ROW_HEIGHT = 60;
@@ -140,14 +141,21 @@ export function MoveSheet() {
       announceElementSaved(element.id, { isConnectedByUser: nextProfile || nextClusters.size > 0, isUserPublicElement: nextProfile });
       if (!had) {
         await TrueSheet.dismiss(MOVE_SHEET).catch(() => undefined);
+        const parentName = c?.parentId ? clusters.find((p) => p.id === c.parentId)?.name : undefined;
         showToast({
           text: c ? `已保存到${c.name}` : '已保存至个人资料',
           actionText: '查看',
           imageUrl: tileImageUrl(element, 24, 2),
           imageBlurred: element.nsfw?.treatment === 'blur',
           duration: 3500,
-          // navigateToSavedDestination: the profile's tab (its 元素 tab comes with the profile page), or the collection
-          onAction: () => navigation.dispatch({ type: 'NAVIGATE', payload: { name: Routes.MAIN, params: { screen: Routes.MAIN_TABS, params: { screen: Routes.PROFILE } } } }),
+          // navigateToSavedDestination: the profile's tab (its 元素 tab comes with the profile page), or in the home tab the collection
+          onAction: () => navigation.dispatch({
+            type: 'NAVIGATE',
+            payload: { name: Routes.MAIN, params: { screen: Routes.MAIN_TABS, pop: true, params: !c ? { screen: Routes.PROFILE } : {
+              screen: Routes.HOME,
+              params: parentName ? buildSubClusterRouteParams({ clusterId: c.id, subClusterName: c.name, parentClusterName: parentName }) : buildUserClusterRouteParams({ clusterId: c.id }),
+            } } },
+          }),
         });
       }
     } catch (e) {

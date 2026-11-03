@@ -26,6 +26,7 @@ export const Routes = {
   ALL_ELEMENTS: 'AllElements',
   ELEMENTS_VIEWER: 'ElementsViewer',
   USER_CLUSTER: 'UserCluster',
+  SUB_CLUSTER: 'SubCluster',
   ORGANIZE_CLUSTER: 'OrganizeCluster',
   USER_PROFILE: 'UserProfile',
   PROFILE_CONNECTIONS: 'ProfileConnections',

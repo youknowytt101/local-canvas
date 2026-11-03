@@ -54,6 +54,7 @@ export function HomeNavigator() {
       <HomeStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <HomeStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
       <HomeStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <HomeStack.Screen name={Routes.SUB_CLUSTER} component={UserClusterScreen} />
       <HomeStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <HomeStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <HomeStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
@@ -70,6 +71,7 @@ export function ExploreNavigator() {
       <ExploreStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <ExploreStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
       <ExploreStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <ExploreStack.Screen name={Routes.SUB_CLUSTER} component={UserClusterScreen} />
       <ExploreStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <ExploreStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <ExploreStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
@@ -88,6 +90,7 @@ export function ShopNavigator() {
       <ShopStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <ShopStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
       <ShopStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <ShopStack.Screen name={Routes.SUB_CLUSTER} component={UserClusterScreen} />
       <ShopStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <ShopStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <ShopStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
@@ -104,6 +107,7 @@ export function ProfileNavigator() {
       <ProfileStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <ProfileStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
       <ProfileStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <ProfileStack.Screen name={Routes.SUB_CLUSTER} component={UserClusterScreen} />
       <ProfileStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <ProfileStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <ProfileStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
@@ -120,6 +124,7 @@ export function SearchNavigator() {
       <SearchStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <SearchStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
       <SearchStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <SearchStack.Screen name={Routes.SUB_CLUSTER} component={UserClusterScreen} />
       <SearchStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <SearchStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <SearchStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
@@ -142,6 +147,7 @@ export function SettingsNavigator() {
       <SettingsStack.Screen name={Routes.ELEMENTS_VIEWER} component={ElementsViewerScreen} options={getElementsViewerOptions} />
       <SettingsStack.Screen name={Routes.INFINITE_CANVAS} component={InfiniteCanvasScreen} options={CANVAS_OPTIONS} />
       <SettingsStack.Screen name={Routes.USER_CLUSTER} component={UserClusterScreen} />
+      <SettingsStack.Screen name={Routes.SUB_CLUSTER} component={UserClusterScreen} />
       <SettingsStack.Screen name={Routes.ORGANIZE_CLUSTER} component={OrganizeClusterScreen} />
       <SettingsStack.Screen name={Routes.USER_PROFILE} component={ProfileScreen} />
       <SettingsStack.Screen name={Routes.PROFILE_CONNECTIONS} component={ProfileConnectionsScreen} />
